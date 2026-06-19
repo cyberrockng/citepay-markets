@@ -72,14 +72,14 @@ export async function verifyX402Payment(req: NextRequest): Promise<{
     return { valid: false, error: "Missing X-PAYMENT header" };
   }
 
+  // Development mode: accept any non-empty payment header
+  if (process.env.NODE_ENV === "development" || process.env.X402_DEV_MODE === "true") {
+    const fakeTxHash = `0x${sha256(paymentHeader + Date.now()).substring(0, 64)}`;
+    return { valid: true, txHash: fakeTxHash };
+  }
+
   try {
     const payment = JSON.parse(paymentHeader);
-
-    // Development mode: accept any payment header with a valid structure
-    if (process.env.NODE_ENV === "development" || process.env.X402_DEV_MODE === "true") {
-      const fakeTxHash = `0x${sha256(JSON.stringify(payment) + Date.now()).substring(0, 64)}`;
-      return { valid: true, txHash: fakeTxHash };
-    }
 
     // Production: verify via Circle API
     if (process.env.CIRCLE_API_KEY) {

@@ -13,6 +13,7 @@ export async function POST(req: NextRequest) {
   }
 
   const { title, url, creatorName, creatorHandle, payoutWallet, price, bond, content } = body;
+  const description = (body as Record<string, unknown>).description as string || content || "";
 
   if (!title || !url || !creatorName || !payoutWallet || !price) {
     return NextResponse.json(
@@ -35,6 +36,7 @@ export async function POST(req: NextRequest) {
     payoutWallet: String(payoutWallet),
     contentHash,
     metadataURI: body.metadataURI || "",
+    description,
     price: Number(price),
     bond: Number(bond || 0),
     bonded: Number(bond || 0) > 0,

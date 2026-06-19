@@ -9,6 +9,7 @@ export interface Source {
   payoutWallet: string;
   contentHash: string;
   metadataURI: string;
+  description: string;
   price: number; // USDC micro (6 decimals)
   bond: number;
   bonded: boolean;

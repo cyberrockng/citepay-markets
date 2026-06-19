@@ -12,8 +12,8 @@ const W_BOND        = 0.15;
 const W_REPUTATION  = 0.15;
 
 // Thresholds
-const MIN_SCORE_TO_PAY    = 55;
-const MIN_SCORE_TO_REFUSE = 30; // below this = SKIP
+const MIN_SCORE_TO_PAY    = 45;
+const MIN_SCORE_TO_REFUSE = 25; // below this = SKIP
 
 export function getAgentAddress(): string {
   return AGENT_ADDRESS;
@@ -30,15 +30,16 @@ async function scoreSource(
   allPrices: number[]
 ): Promise<{ scores: ScoreBreakdown; excerptUsed: string }> {
   // Relevance via Claude
+  const descriptionLine = source.description ? `\nContent preview: "${source.description.substring(0, 300)}"` : "";
   const prompt = `You are scoring a creator source for relevance to a research query.
 
 Query: "${query}"
 
 Source title: "${source.title}"
 Source URL: ${source.url}
-Creator: ${source.creatorName}
+Creator: ${source.creatorName}${descriptionLine}
 
-Score the relevance from 0 to 100. Return ONLY a JSON object like:
+Score the relevance from 0 to 100. A score of 80+ means this source directly answers the query. Return ONLY a JSON object like:
 {"relevance": 82, "excerpt": "one-sentence summary of why this source is or isn't relevant"}`;
 
   let relevance = 50;

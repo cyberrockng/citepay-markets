@@ -30,6 +30,7 @@ function migrate(db: Database.Database) {
       payout_wallet TEXT NOT NULL,
       content_hash TEXT NOT NULL,
       metadata_uri TEXT,
+      description TEXT NOT NULL DEFAULT '',
       price INTEGER NOT NULL,
       bond INTEGER NOT NULL DEFAULT 0,
       bonded INTEGER NOT NULL DEFAULT 0,
@@ -107,12 +108,12 @@ export function insertSource(s: Source): void {
   const db = getDb();
   db.prepare(`
     INSERT INTO sources (id, title, url, creator_name, creator_handle, payout_wallet,
-      content_hash, metadata_uri, price, bond, bonded, reputation,
+      content_hash, metadata_uri, description, price, bond, bonded, reputation,
       paid_count, refused_count, skip_count, active, created_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).run(
     s.id, s.title, s.url, s.creatorName, s.creatorHandle, s.payoutWallet,
-    s.contentHash, s.metadataURI || "", s.price, s.bond, s.bonded ? 1 : 0,
+    s.contentHash, s.metadataURI || "", s.description || "", s.price, s.bond, s.bonded ? 1 : 0,
     s.reputation, s.paidCount, s.refusedCount, s.skipCount, s.active ? 1 : 0,
     s.createdAt
   );
@@ -152,6 +153,7 @@ function rowToSource(r: Record<string, unknown>): Source {
     payoutWallet: r.payout_wallet as string,
     contentHash: r.content_hash as string,
     metadataURI: r.metadata_uri as string,
+    description: (r.description as string) || "",
     price: r.price as number,
     bond: r.bond as number,
     bonded: Boolean(r.bonded),

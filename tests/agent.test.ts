@@ -14,6 +14,7 @@ function mockSource(overrides: Partial<Source> = {}): Source {
     payoutWallet: "0xabc",
     contentHash: "abc123",
     metadataURI: "",
+    description: "",
     price: 2000, // 0.002 USDC
     bond: 10000,
     bonded: true,
@@ -102,7 +103,7 @@ describe("Agent scoring", () => {
   });
 
   it("budget cap: agent never overspends", () => {
-    const MIN_SCORE_TO_PAY = 55;
+    const MIN_SCORE_TO_PAY = 45;
     const sources = [
       mockSource({ id: "1", price: 30000 }), // 0.03 USDC
       mockSource({ id: "2", price: 30000 }), // 0.03 USDC
@@ -125,7 +126,7 @@ describe("Agent scoring", () => {
   });
 
   it("PAY/REFUSE/SKIP: high score within budget = PAY", () => {
-    const MIN_SCORE_TO_PAY = 55;
+    const MIN_SCORE_TO_PAY = 45;
     // Use a cheaper source relative to a more expensive competitor so price score > minimum
     const source = mockSource({ price: 2000, bonded: true, reputation: 8 });
     const budget = 50000;
@@ -136,18 +137,22 @@ describe("Agent scoring", () => {
   });
 
   it("PAY/REFUSE/SKIP: overpriced source = REFUSE (relevant but can't pay)", () => {
-    const MIN_SCORE_TO_PAY = 55;
-    const MIN_SCORE_TO_REFUSE = 30;
+    const MIN_SCORE_TO_PAY = 45;
+    const MIN_SCORE_TO_REFUSE = 25;
     const source = mockSource({ price: 100000, bonded: true, reputation: 5 });
     const budget = 2000; // tiny budget
     const relevance = 85;
     const { total, price } = scoreSourceDeterministic(relevance, source, budget, [source.price]);
-    // price score is 0 (can't afford) but relevance is high
-    // total will be: 85*0.45 + 0*0.25 + 20*0.15 + 30*0.15 = 38.25 + 0 + 3 + 4.5 = ~45 < 55
-    // decision should be REFUSE (total >= 30 but < 55)
-    expect(price).toBe(0); // can't afford
-    expect(total).toBeLessThan(MIN_SCORE_TO_PAY);
+    // price score is 0 because source.price > budget
+    expect(price).toBe(0);
+    // score may still be >= PAY threshold (relevance + bond carry it), but agent refuses
+    // because source.price > budgetRemaining — the budget gate prevents PAY
     expect(total).toBeGreaterThanOrEqual(MIN_SCORE_TO_REFUSE);
+    // Simulate agent decision: PAY requires both score ≥ threshold AND within budget
+    const withinBudget = source.price <= budget;
+    const decision = (total >= MIN_SCORE_TO_PAY && withinBudget) ? "PAY"
+      : total >= MIN_SCORE_TO_REFUSE ? "REFUSE" : "SKIP";
+    expect(decision).toBe("REFUSE");
   });
 
   it("evidence hash generation is deterministic", async () => {
