@@ -470,7 +470,7 @@ CI runs all of the above automatically on every push via `.github/workflows/ci.y
 
 | Contract | Network | Address |
 |---|---|---|
-| CitePayMarket | Base Sepolia | TBD — pending deployment |
+| CitePayMarket | Local Hardhat / Base Sepolia pending | `0x5FbDB2315678afecb367f032d93F642f64180aa3` (local) |
 | USDC | Base Sepolia | `0x036CbD53842c5426634e7929541eC2318f3dCF7e` |
 
 Contract source: [`contracts/contracts/CitePayMarket.sol`](contracts/contracts/CitePayMarket.sol)
@@ -509,7 +509,7 @@ Local dev: `npm run dev` → http://localhost:3000
 - **Simulated payouts**: Without `CIRCLE_API_KEY`, creator payouts generate a deterministic SHA-256 txHash instead of a real transfer. Clearly labeled in UI.
 - **Dev mode x402**: `X402_DEV_MODE=true` accepts any `X-PAYMENT` header. Production requires Circle payment verification.
 - **Relevance scoring**: Claude Haiku scores relevance from title + description only (not full content fetch). Scores are probabilistic.
-- **Contract not deployed**: CitePayMarket.sol is written and tested but not yet deployed to Base Sepolia. The backend mirrors all data to SQLite.
+- **Contract deployment**: CitePayMarket.sol is compiled and verified locally (deployed to Hardhat local node at `0x5FbDB2315678afecb367f032d93F642f64180aa3`). Base Sepolia testnet deployment pending faucet availability. The backend mirrors all data to SQLite.
 - **Base Sepolia only**: All payments are testnet USDC with no real monetary value.
 
 ---

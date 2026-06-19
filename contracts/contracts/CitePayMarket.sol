@@ -277,7 +277,7 @@ contract CitePayMarket {
         require(!r.challenged, "Already challenged");
 
         Source storage src = sources[r.sourceId];
-        require(src.contentHash != r.contentHashAtDecision, "Hash unchanged — no slash");
+        require(src.contentHash != r.contentHashAtDecision, "Hash unchanged - no slash");
 
         r.challenged = true;
 
