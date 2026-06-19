@@ -311,8 +311,12 @@ export function getFullTractionStats() {
   const totalPaidRow = db.prepare("SELECT SUM(amount_paid) as s FROM receipts WHERE decision = 'PAY'").get() as { s: number | null };
   const totalUSDCRouted = totalPaidRow.s ?? 0;
   const shareCardsGenerated = getTractionValue("share_cards_generated");
+  const shareCardsOpened = getTractionValue("share_cards_opened");
   const challengeCount = (db.prepare("SELECT COUNT(*) as c FROM receipts WHERE challenged = 1").get() as { c: number }).c;
   const activeAgents = (db.prepare("SELECT COUNT(DISTINCT agent_address) as c FROM queries WHERE status = 'completed'").get() as { c: number }).c;
+  // Agent reputation: sum of all per-agent rep adjustments stored as traction keys
+  const agentRepRows = db.prepare("SELECT value FROM traction WHERE key LIKE 'agent_rep_%'").all() as { value: number }[];
+  const agentReputation = agentRepRows.reduce((s, r) => s + r.value, 0);
 
   return {
     creatorsIndexed: distinctCreators,
@@ -327,8 +331,10 @@ export function getFullTractionStats() {
     totalUSDCRouted,
     avgPaymentPerCitation: paidCitations > 0 ? Math.round(totalUSDCRouted / paidCitations) : 0,
     shareCardsGenerated,
+    shareCardsOpened,
     challengeCount,
     activeAgents,
+    agentReputation,
   };
 }
 
@@ -338,4 +344,12 @@ export function recordShareCard(receiptId: string, creatorWallet: string): strin
   getDb().prepare("INSERT INTO share_cards (id, receipt_id, creator_wallet) VALUES (?, ?, ?)").run(id, receiptId, creatorWallet);
   incrementTraction("share_cards_generated");
   return id;
+}
+
+export function openShareCard(shareId: string): void {
+  const row = getDb().prepare("SELECT id FROM share_cards WHERE id = ?").get(shareId) as { id: string } | undefined;
+  if (row) {
+    getDb().prepare("UPDATE share_cards SET opened = 1 WHERE id = ?").run(shareId);
+    incrementTraction("share_cards_opened");
+  }
 }

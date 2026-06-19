@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getReceiptById, getSourceById, markReceiptChallenged, updateSourceHash } from "@/lib/db";
-import { incrementTraction } from "@/lib/db";
+import { getReceiptById, getSourceById, markReceiptChallenged, updateSourceStats, incrementTraction } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
 
@@ -36,10 +35,14 @@ export async function POST(
 
   markReceiptChallenged(receiptId);
   incrementTraction("challenge_count");
+  // Creator reputation drops for modifying source after payment
+  updateSourceStats(receipt.sourceId, "REFUSE");
+  // Agent reputation drops slightly for curating a now-broken source
+  incrementTraction(`agent_rep_${receipt.agentAddress}`, -1);
 
   return NextResponse.json({
     success: true,
-    message: "Challenge resolved. Content hash changed after payment — creator reputation reduced.",
+    message: "Challenge resolved. Content hash changed — creator reputation reduced, agent reputation adjusted.",
     receiptId,
     hashAtPayment: receipt.contentHashAtDecision,
     currentHash: source.contentHash,

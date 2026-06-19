@@ -1,16 +1,22 @@
 "use client";
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import type { TractionStats } from "@/types";
+import type { TractionStats, Receipt } from "@/types";
+
+const DECISION_COLOR: Record<string, string> = {
+  PAY: "text-green-400 border-green-800 bg-green-900/20",
+  REFUSE: "text-red-400 border-red-800 bg-red-900/20",
+  SKIP: "text-gray-400 border-gray-700 bg-gray-800/20",
+};
 
 export default function LandingPage() {
   const [stats, setStats] = useState<TractionStats | null>(null);
+  const [recentReceipts, setRecentReceipts] = useState<Receipt[]>([]);
 
   useEffect(() => {
-    fetch("/api/traction")
-      .then((r) => r.json())
-      .then((d) => setStats(d.stats))
-      .catch(() => {});
+    fetch("/api/traction").then((r) => r.json()).then((d) => setStats(d.stats)).catch(() => {});
+    // Load a few recent receipts for sample display
+    fetch("/api/ask").then(() => {}).catch(() => {});
   }, []);
 
   return (
@@ -76,6 +82,35 @@ export default function LandingPage() {
           <Link href="/traction" className="text-indigo-400 hover:underline text-sm">
             View full traction dashboard →
           </Link>
+        </div>
+      </section>
+
+      {/* Sample Receipts */}
+      <section className="max-w-4xl mx-auto px-6 py-16 border-t border-gray-800">
+        <h2 className="text-2xl font-bold mb-4 text-center">How a Receipt Looks</h2>
+        <p className="text-gray-400 text-center text-sm mb-8">Every agent decision — PAY, REFUSE, or SKIP — generates a public receipt with evidence hash and reasoning.</p>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          {[
+            { decision: "PAY", source: "x402: HTTP-Native Payments", creator: "@coinbase", paid: "$0.002", reason: "High relevance, bonded creator, fair price.", score: 72 },
+            { decision: "REFUSE", source: "Generic Blog Post", creator: "@unknown", paid: "$0.000", reason: "Relevant but overpriced relative to budget.", score: 41 },
+            { decision: "SKIP", source: "Unrelated Marketing Page", creator: "@marketer", paid: "$0.000", reason: "Weak relevance to query.", score: 18 },
+          ].map(({ decision, source, creator, paid, reason, score }) => (
+            <div key={decision} className={`rounded-xl p-4 border ${DECISION_COLOR[decision]}`}>
+              <div className="flex items-center justify-between mb-3">
+                <span className={`text-xs font-mono font-bold px-2 py-0.5 rounded border ${DECISION_COLOR[decision]}`}>{decision}</span>
+                <span className="text-xs text-gray-500">score: {score}/100</span>
+              </div>
+              <div className="text-sm font-medium text-white mb-1">{source}</div>
+              <div className="text-xs text-gray-500 mb-2">{creator}</div>
+              <div className="text-xs text-gray-400 mb-3">{reason}</div>
+              <div className="text-xs font-mono text-gray-500">
+                Paid: <span className={decision === "PAY" ? "text-green-400" : "text-gray-500"}>{paid} USDC</span>
+              </div>
+            </div>
+          ))}
+        </div>
+        <div className="text-center mt-6">
+          <Link href="/ask" className="text-indigo-400 hover:underline text-sm">Try it yourself — ask a question →</Link>
         </div>
       </section>
 

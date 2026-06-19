@@ -129,7 +129,7 @@ export default function MarketPage() {
                   {sources.map((s) => (
                     <tr key={s.id} className="border-b border-gray-800 hover:bg-gray-800/30">
                       <td className="px-4 py-3">
-                        <div className="font-medium text-white">{s.title}</div>
+                        <Link href={`/source/${s.id}`} className="font-medium text-white hover:text-indigo-400 transition">{s.title}</Link>
                         <div className="text-gray-500 text-xs">{s.creatorName} · <a href={s.url} target="_blank" rel="noopener noreferrer" className="text-indigo-400 hover:underline">{s.url.replace(/^https?:\/\//, "").slice(0, 40)}</a></div>
                       </td>
                       <td className="px-4 py-3 text-center">

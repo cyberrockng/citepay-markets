@@ -107,6 +107,8 @@ export interface TractionStats {
   totalUSDCRouted: number;
   avgPaymentPerCitation: number;
   shareCardsGenerated: number;
+  shareCardsOpened: number;
   challengeCount: number;
   activeAgents: number;
+  agentReputation: number;
 }

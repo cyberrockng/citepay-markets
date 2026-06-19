@@ -24,15 +24,29 @@ export default function ReceiptPage({ params }: { params: Promise<{ id: string }
       .catch(() => setLoading(false));
   }, [id]);
 
-  async function handleShare() {
+  function getShareText() {
+    if (!receipt) return "";
+    return `An AI cited my work and paid me USDC!\n\nSource: ${receipt.sourceTitle}\nPaid: $${(receipt.amountPaid / 1_000_000).toFixed(4)} USDC\nReason: ${receipt.reason}\nReceipt: ${window.location.href}\n\nPowered by CitePay Markets`;
+  }
+
+  async function handleShare(target: "copy" | "x" | "farcaster" | "discord") {
     if (!receipt) return;
     await fetch(`/api/creator/${receipt.creatorWallet}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ action: "share", receiptId: receipt.id }),
     });
-    const text = `An AI cited my work and paid me USDC!\n\nSource: ${receipt.sourceTitle}\nPaid: $${(receipt.amountPaid / 1_000_000).toFixed(4)} USDC\nReason: ${receipt.reason}\nReceipt: ${window.location.href}\n\nPowered by CitePay Markets`;
-    await navigator.clipboard.writeText(text).catch(() => {});
+    const text = getShareText();
+    if (target === "copy") {
+      await navigator.clipboard.writeText(text).catch(() => {});
+    } else if (target === "x") {
+      window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}`, "_blank");
+    } else if (target === "farcaster") {
+      window.open(`https://warpcast.com/~/compose?text=${encodeURIComponent(text)}`, "_blank");
+    } else if (target === "discord") {
+      await navigator.clipboard.writeText(text).catch(() => {});
+      alert("Share text copied — paste it in Discord!");
+    }
     setShared(true);
   }
 
@@ -131,12 +145,20 @@ Receipt: /receipt/${receipt.id}
 
 Powered by CitePay Markets`}
             </div>
-            <button
-              onClick={handleShare}
-              className="bg-indigo-600 hover:bg-indigo-500 text-white font-semibold px-6 py-2 rounded-lg transition text-sm"
-            >
-              {shared ? "✓ Copied to clipboard" : "Copy & Share →"}
-            </button>
+            <div className="flex flex-wrap gap-2">
+              <button onClick={() => handleShare("copy")} className="bg-indigo-600 hover:bg-indigo-500 text-white font-semibold px-4 py-2 rounded-lg transition text-sm">
+                {shared ? "✓ Copied" : "Copy Link"}
+              </button>
+              <button onClick={() => handleShare("x")} className="bg-black hover:bg-gray-900 border border-gray-700 text-white font-semibold px-4 py-2 rounded-lg transition text-sm">
+                Share on X
+              </button>
+              <button onClick={() => handleShare("farcaster")} className="bg-purple-700 hover:bg-purple-600 text-white font-semibold px-4 py-2 rounded-lg transition text-sm">
+                Farcaster
+              </button>
+              <button onClick={() => handleShare("discord")} className="bg-indigo-800 hover:bg-indigo-700 text-white font-semibold px-4 py-2 rounded-lg transition text-sm">
+                Discord
+              </button>
+            </div>
           </div>
         )}
 

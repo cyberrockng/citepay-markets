@@ -33,8 +33,10 @@ export default function TractionPage() {
         { label: "Total USDC Routed", value: `$${(stats.totalUSDCRouted / 1_000_000).toFixed(4)}`, color: "text-green-400" },
         { label: "Avg Payment / Citation", value: `$${(stats.avgPaymentPerCitation / 1_000_000).toFixed(4)}`, color: "text-indigo-400" },
         { label: "Share Cards Generated", value: stats.shareCardsGenerated, color: "text-purple-400" },
+        { label: "Share Cards Opened", value: stats.shareCardsOpened, color: "text-purple-400" },
         { label: "Challenges", value: stats.challengeCount, color: "text-yellow-400" },
         { label: "Active Agents", value: stats.activeAgents, color: "text-indigo-400" },
+        { label: "Agent Reputation", value: `${stats.agentReputation >= 0 ? "+" : ""}${stats.agentReputation}`, color: stats.agentReputation >= 0 ? "text-green-400" : "text-red-400" },
       ]
     : [];
 

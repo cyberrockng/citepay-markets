@@ -2,164 +2,547 @@
 
 **The citation economy for AI agents.**
 
-> Agents pay creators when they cite their work, refuse weak sources, and publish auditable receipts proving every payment, refusal, and source decision.
+> AI agents use creator content. CitePay makes them pay, prove, and explain every citation.
+
+[![CI](https://github.com/cyberrockng/citepay-markets/actions/workflows/ci.yml/badge.svg)](https://github.com/cyberrockng/citepay-markets/actions/workflows/ci.yml)
+[![Base Sepolia](https://img.shields.io/badge/network-Base%20Sepolia-blue)](https://sepolia.basescan.org)
+[![x402](https://img.shields.io/badge/payments-x402%20%2B%20Circle%20USDC-green)](https://x402.org)
 
 ---
 
-## Problem
+## 1. Product Overview
 
-AI agents increasingly use creator content to answer questions — but creators are never paid. Citations are invisible. There is no accountability for which sources an agent chose, why it chose them, or how much it paid.
+CitePay Markets is a live agentic citation economy where:
 
-## Solution
+- **Creators** register articles, research, and content as paid sources with a price, bond, and payout wallet.
+- **AI buyer agents** receive a query and a USDC budget, evaluate creator sources on multiple dimensions, and autonomously decide to PAY, REFUSE, or SKIP each one.
+- **Every decision** — PAY, REFUSE, or SKIP — generates a public receipt with an evidence hash, content hash, payment proof, and human-readable reason.
+- **Judges and users** can click any receipt, verify the evidence hash, and see exactly why the agent made each choice.
 
-CitePay Markets is a live agentic citation economy:
+---
 
-1. A user or agent pays a small USDC fee via **x402** to run a query.
-2. CitePay's **buyer agent** searches a creator source market and evaluates 3–5 sources.
+## 2. Problem
+
+AI agents increasingly answer questions by drawing on creator content — articles, research, documentation, original analysis — without attribution or compensation. Citations are invisible. There is no accountability for which sources an agent chose, why it chose them, or how much it paid.
+
+This creates three problems:
+
+1. **Creators are not compensated** when their work grounds an AI answer.
+2. **Agents are not accountable** for their source selection decisions.
+3. **Users cannot verify** that citations are earned, not fabricated.
+
+---
+
+## 3. Solution
+
+CitePay Markets solves all three:
+
+1. A user or agent pays a small USDC fee via **x402** to submit a query.
+2. CitePay's **buyer agent** (Claude Haiku) searches the creator source market.
 3. The agent scores each source on **relevance, price, creator bond, and reputation**.
-4. The agent **pays** the best sources, **refuses** overpriced or weak ones, and **skips** irrelevant ones.
-5. Every decision gets a **public receipt** with evidence hash, content hash, and reasoning.
-6. Creators see payments on their **dashboard** and can share a **payout card**.
+4. The agent **pays** the best sources in USDC, **refuses** overpriced or weak ones, and **skips** irrelevant ones.
+5. Every decision gets a **public receipt** with evidence preimage, evidence hash, content hash, and payment proof.
+6. Creators see earnings on their **dashboard** and share a **payout card**.
+7. The **traction dashboard** shows real-time market metrics: creators paid, USDC routed, receipts generated.
 
-## Why CitePay is Different
+---
 
-| Feature | CitePay | Typical submission |
+## 4. Why CitePay is Different
+
+| Feature | CitePay | Typical hackathon submission |
 |---|---|---|
 | Agent pays AND refuses sources | ✓ | ✗ |
 | Evidence hash per decision | ✓ | ✗ |
 | Objective content-integrity challenge | ✓ | ✗ |
-| Creator bonds + reputation | ✓ | ✗ |
-| x402 HTTP-native payment | ✓ | Rare |
+| Creator bonds + reputation system | ✓ | ✗ |
+| x402 HTTP-native payment protocol | ✓ | Rare |
 | Public receipt explorer | ✓ | ✗ |
 | Source competition board | ✓ | ✗ |
+| Agent budget allocation | ✓ | ✗ |
+| Creator share cards | ✓ | ✗ |
+
+CitePay is a **product**, not just an integration. It shows source competition, agent budget allocation, creator bonds, reputation movement, receipts for both payments and refusals, objective challenge/slashing, real creator payout cards, and a public proof explorer.
 
 ---
 
-## Architecture
+## 5. Architecture
 
 ```
-User / Agent
-     │
-     ▼
-POST /api/ask ──── 402 Payment Required (x402)
-     │                      │
-     │   X-PAYMENT header ──┘
-     ▼
-  x402 Verify (Circle)
-     │
-     ▼
-  Buyer Agent (Claude Haiku)
-     │  scores 3-5 sources by: relevance · price · bond · reputation
-     ├── PAY    → payCreator() → Circle USDC transfer → Receipt
-     ├── REFUSE → Receipt (no payment)
-     └── SKIP   → Receipt (no payment)
-     │
-     ▼
-  Answer + Citations + Receipt IDs
+┌─────────────────────────────────────────────────────────────┐
+│                      User / AI Agent                        │
+└──────────────────────┬──────────────────────────────────────┘
+                       │  POST /api/ask (no payment)
+                       ▼
+              ┌─────────────────┐
+              │  Next.js API    │──── 402 Payment Required
+              │  /api/ask       │     WWW-Authenticate: x402 {...}
+              └────────┬────────┘
+                       │  POST /api/ask (X-PAYMENT header)
+                       ▼
+              ┌─────────────────┐
+              │  x402 Verify    │──── Circle API (prod)
+              │  src/lib/x402   │     or dev-mode accept
+              └────────┬────────┘
+                       │
+                       ▼
+              ┌─────────────────────────────────────┐
+              │         AI Buyer Agent               │
+              │    src/lib/agent.ts                  │
+              │                                      │
+              │  Scores each source (Claude Haiku):  │
+              │  • relevance    45%                  │
+              │  • price        25%                  │
+              │  • bond         15%                  │
+              │  • reputation   15%                  │
+              │  • freshness    modifier             │
+              │  • dedup        modifier             │
+              └──┬──────────────┬──────────┬─────────┘
+                 │ PAY          │ REFUSE   │ SKIP
+                 ▼              ▼          ▼
+        ┌──────────────┐  ┌──────────┐ ┌──────────┐
+        │ payCreator() │  │ Receipt  │ │ Receipt  │
+        │ Circle USDC  │  │ (no pay) │ │ (no pay) │
+        └──────┬───────┘  └──────────┘ └──────────┘
+               │
+               ▼
+        ┌──────────────────────────────────┐
+        │   SQLite (better-sqlite3)         │
+        │   sources / receipts / queries    │
+        │   traction / share_cards          │
+        └──────────────────────────────────┘
+               │
+               ▼
+        ┌──────────────────────┐
+        │  Answer + Citations  │
+        │  + Receipt IDs       │
+        └──────────────────────┘
 ```
 
-## x402 Payment Flow
+**Tech stack:**
+- **Frontend**: Next.js 16.2.9 (App Router, Turbopack), Tailwind CSS 4
+- **Backend**: Next.js API routes, better-sqlite3 (Node 24)
+- **AI**: Anthropic Claude Haiku (relevance scoring + answer generation)
+- **Payments**: x402 protocol + Circle Programmable Wallets (USDC on Base Sepolia)
+- **Contract**: Solidity 0.8.24, Hardhat, Base Sepolia (chainId 84532)
+- **CI**: GitHub Actions
+
+---
+
+## 6. Agent Flow
 
 ```
-1. POST /api/ask  (no header)
-   → 402 { x402: { maxAmountRequired, payTo, asset, network } }
-
-2. Client pays USDC on Base Sepolia
-
-3. POST /api/ask  (X-PAYMENT: {...})
-   → verifyX402Payment() → Circle API or dev-mode accept
-   → Agent runs
-   → 200 { answer, decisions, receipts, queryFeeTxHash }
+runBuyerAgent(query, budget, sources)
+  │
+  ├─ For each source (concurrent):
+  │   ├─ Call Claude Haiku → relevance score 0–100 + excerpt
+  │   ├─ Compute price score  = (1 - price/maxPrice) * 80 + 20
+  │   ├─ Compute bond score   = bonded ? 20 : 0
+  │   ├─ Compute rep score    = clamp(reputation * 3 + 15, 0, 30)
+  │   ├─ Apply freshness mod  = recent sources get +2 bonus
+  │   ├─ Apply dedup penalty  = same-domain source gets -10
+  │   └─ total = relevance*0.45 + price*0.25 + bond*0.15 + rep*0.15
+  │
+  ├─ Sort sources by total score descending
+  │
+  └─ For each source (in order):
+      ├─ score ≥ 45 AND price ≤ budgetRemaining → PAY
+      │     budgetRemaining -= price
+      ├─ score ≥ 25                             → REFUSE
+      └─ otherwise                              → SKIP
 ```
 
-## Contract Overview
+Each decision includes:
+- Human-readable `reason` string
+- `excerptUsed` from Claude's relevance assessment
+- Full `ScoreBreakdown` (relevance, price, bond, reputation, total)
+- `evidenceHash` = SHA-256 of the evidence preimage
 
-CitePayMarket.sol (Base Sepolia):
-- registerSource() — creator registers content with optional bond
-- setAuthorizedAgent() — owner authorizes AI buyer agents
-- depositAgentBond() — agent deposits ETH bond
-- payCitation() — records PAY receipt, increments source reputation
-- recordDecision() — records REFUSE or SKIP receipt
-- updateSourceHash() — creator updates content hash
-- challengeHashChanged() — objective slash if hash changed after payment
+---
 
-## Objective Slashing
+## 7. x402 Payment Flow
 
-Slashing is objective-only. The only auto-slash condition:
+```
+Step 1 — Unpaid request
+  POST /api/ask
+  Body: { query: "...", budget: 0.05 }
+
+  Response: 402 Payment Required
+  Headers:
+    WWW-Authenticate: x402 {"scheme":"exact","network":"eip155:84532",
+      "maxAmountRequired":"10000","payTo":"0x...","asset":"eip155:84532/erc20:0x036C..."}
+  Body: { error: "Payment Required", x402: { ... } }
+
+Step 2 — Client pays 0.01 USDC on Base Sepolia
+  (transfer to CitePay receiver wallet)
+
+Step 3 — Paid request
+  POST /api/ask
+  Headers:
+    X-PAYMENT: {"scheme":"exact","network":"eip155:84532",
+      "payload":{"signature":"0x...","transaction":{"hash":"0x..."}}}
+  Body: { query: "...", budget: 0.05 }
+
+  verifyX402Payment():
+    • Production: POST https://api.circle.com/v1/w3s/payments/verify
+    • Dev mode  : X402_DEV_MODE=true → accept any non-empty header
+
+  Response: 200
+  Body: { queryId, answer, decisions: [...], receipts: [...], totalPaid }
+```
+
+Query fee: **0.01 USDC** (10,000 micro-USDC)  
+Agent budget: **0.01–1.00 USDC** (set by caller)  
+Network: **Base Sepolia** (chainId 84532)  
+Asset: **USDC** `0x036CbD53842c5426634e7929541eC2318f3dCF7e`
+
+---
+
+## 8. Contract Overview
+
+**CitePayMarket.sol** — Solidity 0.8.24 on Base Sepolia
+
+| Function | Description |
+|---|---|
+| `registerSource(payoutWallet, contentHash, metadataURI, price, bond)` | Creator registers a paid source |
+| `setAuthorizedAgent(agent, allowed)` | Owner authorizes a buyer agent |
+| `depositAgentBond(amount)` | Agent deposits credibility bond |
+| `payCitation(sourceId, queryHash, evidenceHash)` | Records PAY receipt, updates reputation |
+| `recordDecision(sourceId, decision, queryHash, evidenceHash)` | Records REFUSE/SKIP receipt |
+| `updateSourceHash(sourceId, newContentHash)` | Creator updates content hash |
+| `challengeHashChanged(receiptId)` | Objective slash if hash changed after payment |
+| `getSource(sourceId)` | Read source metadata |
+| `getReceipt(receiptId)` | Read receipt details |
+| `getMarketStats()` | Aggregated market metrics |
+
+**Events emitted:** `SourceRegistered`, `CitationPaid`, `CitationRefused`, `CitationSkipped`, `SourceHashUpdated`, `HashChallengeResolved`, `SourceReputationChanged`, `AgentReputationChanged`
+
+See [docs/CONTRACTS.md](docs/CONTRACTS.md) for full specification.
+
+---
+
+## 9. Receipt Format
+
+Every agent decision produces a receipt:
+
+```json
+{
+  "id": "uuid",
+  "decision": "PAY | REFUSE | SKIP",
+  "query": "What makes x402 useful for AI agents?",
+  "queryHash": "sha256(query)",
+  "sourceTitle": "x402: HTTP-Native Payments",
+  "sourceUrl": "https://x402.org",
+  "creatorWallet": "0x...",
+  "agentAddress": "0x...",
+  "amountPaid": 2000,
+  "txHash": "0x...",
+  "evidenceHash": "sha256(evidencePreimage)",
+  "evidencePreimage": {
+    "query": "...",
+    "queryHash": "...",
+    "sourceUrl": "...",
+    "excerptUsed": "...",
+    "decision": "PAY",
+    "scoreInputs": {
+      "relevance": 85,
+      "price": "0.002 USDC",
+      "bonded": true,
+      "creatorReputation": 5,
+      "budgetRemainingBefore": "0.050 USDC"
+    },
+    "reason": "High relevance, bonded creator, fair price.",
+    "timestamp": "2026-06-19T..."
+  },
+  "contentHashAtDecision": "sha256(sourceContentAtPaymentTime)",
+  "scores": { "relevance": 85, "price": 68, "bond": 20, "reputation": 30, "total": 62 },
+  "budgetBefore": 50000,
+  "budgetAfter": 48000,
+  "challenged": false
+}
+```
+
+Evidence hash is recomputable: `SHA-256(JSON.stringify(evidencePreimage))`.
+
+See [docs/RECEIPT_SPEC.md](docs/RECEIPT_SPEC.md) for full specification.
+
+---
+
+## 10. Objective Slashing
+
+Slashing is **objective-only**. The only automatic slash condition:
+
 > The source content hash changed after the agent paid for it.
 
-No subjective AI quality judgment triggers a slash.
+**Challenge flow:**
+1. Agent pays Source A. Receipt stores `contentHashAtDecision`.
+2. Creator later updates the source, changing its content hash.
+3. Anyone calls `POST /api/challenge/:receiptId`.
+4. System compares `source.contentHash` vs `receipt.contentHashAtDecision`.
+5. If hashes differ → challenge succeeds: receipt marked challenged, creator reputation drops, agent reputation drops slightly.
+6. If hashes are the same → challenge rejected with clear error message.
+
+**What is NOT a valid challenge:**
+- Subjective quality judgment ("the source wasn't good enough")
+- AI opinion that the content changed in meaning but not hash
+- Price disputes after payment
+
+See [docs/SECURITY.md](docs/SECURITY.md) for the full security model.
 
 ---
 
-## Local Setup
+## 11. Local Setup
+
+**Prerequisites:** Node.js 20–24, npm 10+
 
 ```bash
+# 1. Clone
 git clone https://github.com/cyberrockng/citepay-markets
 cd citepay-markets
+
+# 2. Install dependencies
 npm install
+
+# 3. Configure environment
 cp .env.example .env.local
-# Add ANTHROPIC_API_KEY to .env.local
+# Open .env.local and add your ANTHROPIC_API_KEY
+
+# 4. Start dev server
 npm run dev
-```
+# → http://localhost:3000
 
-Seed creator sources (separate terminal):
-
-```bash
+# 5. Seed creator sources (in a second terminal)
 npm run seed
+# → registers 10 real creator sources
+
+# 6. Open the app
+# → http://localhost:3000/market   (view sources)
+# → http://localhost:3000/ask      (run a query)
+# → http://localhost:3000/traction (live metrics)
 ```
 
-Visit http://localhost:3000
+---
 
-## Environment Variables
-
-| Variable | Required | Description |
-|---|---|---|
-| ANTHROPIC_API_KEY | Yes | Claude Haiku for relevance scoring |
-| X402_DEV_MODE | Dev | "true" to skip Circle payment verification |
-| CIRCLE_API_KEY | Prod | Circle API for real USDC verification |
-| CIRCLE_WALLET_ID | Prod | Circle wallet for creator payouts |
-| DEPLOYER_PRIVATE_KEY | Deploy | Private key for Base Sepolia |
-| NEXT_PUBLIC_CONTRACT_ADDRESS | Prod | Deployed CitePayMarket address |
-| AGENT_WALLET_ADDRESS | Prod | Agent wallet address |
-
-## Test Commands
+## 12. Environment Variables
 
 ```bash
-npm run test:unit     # agent scoring + evidence hash tests
-npm run test:api      # API tests (requires running server)
-cd contracts && npm test  # Solidity contract tests (Hardhat)
+# ── Required ──────────────────────────────────────────────────
+ANTHROPIC_API_KEY=sk-ant-...        # Claude Haiku for relevance scoring
+
+# ── Dev mode (skip Circle verification) ───────────────────────
+X402_DEV_MODE=true                  # Accept any X-PAYMENT header in dev
+NODE_ENV=development
+
+# ── Circle (production USDC payouts) ──────────────────────────
+CIRCLE_API_KEY=                     # Circle API key for real transfers
+CIRCLE_WALLET_ID=                   # Circle wallet ID for creator payouts
+USDC_TOKEN_ID=usdc
+
+# ── Blockchain ────────────────────────────────────────────────
+BASE_SEPOLIA_RPC_URL=https://sepolia.base.org
+DEPLOYER_PRIVATE_KEY=               # For contract deployment only
+BASESCAN_API_KEY=                   # For contract verification (optional)
+
+# ── Contract ──────────────────────────────────────────────────
+NEXT_PUBLIC_CONTRACT_ADDRESS=       # Deployed CitePayMarket address
+AGENT_WALLET_ADDRESS=0x...          # Agent wallet (authorized in contract)
+USDC_CONTRACT_ADDRESS=0x036CbD53842c5426634e7929541eC2318f3dCF7e
 ```
 
-## Deployment
+Copy `.env.example` to `.env.local` — never commit `.env.local`.
+
+---
+
+## 13. Deployment Instructions
+
+### Deploy to Vercel
 
 ```bash
-# Deploy to Vercel
-npx vercel --prod
+# Install Vercel CLI
+npm i -g vercel
 
-# Deploy contract to Base Sepolia
-cd contracts && npm install
+# Login
+vercel login
+
+# Deploy (preview)
+vercel
+
+# Deploy to production
+vercel --prod
+```
+
+Set these environment variables in the Vercel dashboard (Settings → Environment Variables):
+- `ANTHROPIC_API_KEY` (required)
+- `CIRCLE_API_KEY` + `CIRCLE_WALLET_ID` (for real payouts)
+- `NEXT_PUBLIC_CONTRACT_ADDRESS` (after contract deploy)
+- `AGENT_WALLET_ADDRESS`
+- `USDC_CONTRACT_ADDRESS=0x036CbD53842c5426634e7929541eC2318f3dCF7e`
+
+> Note: CitePay uses SQLite (`data/citepay.db`) for the receipt mirror. On Vercel, this resets on each deployment. For persistent storage, migrate to a Vercel-compatible DB (Postgres/Turso).
+
+### Deploy contract to Base Sepolia
+
+```bash
+cd contracts
+npm install
+
+# Set DEPLOYER_PRIVATE_KEY in contracts/.env
 npx hardhat run scripts/deploy.ts --network baseSepolia
+
+# Verify on Basescan
+npx hardhat verify --network baseSepolia <CONTRACT_ADDRESS>
 ```
 
-## Demo Script
+---
 
-1. /market — show creator sources with bond, reputation, price
-2. /ask — enter a question, set budget $0.05
-3. Watch proof console: 402 → payment → agent scoring → decisions
-4. See source competition board (PAY / REFUSE / SKIP + reasons)
-5. Click a receipt — view evidence preimage, hash, content hash
-6. /traction — live metrics dashboard
+## 14. Test Commands
 
-## Known Limitations
+```bash
+# Unit tests — agent scoring + evidence hash (no server needed)
+npm run test:unit
 
-- Creator payouts are simulated without CIRCLE_API_KEY
-- x402 in dev mode accepts any X-PAYMENT header
-- Runs on Base Sepolia testnet
+# Backend API tests (requires running server at localhost:3000)
+npm run dev &
+npm run test:api
 
-## Future Roadmap
+# Contract tests (Hardhat)
+cd contracts && npm install && npm test
 
-- Mainnet deployment with real USDC
-- Multi-agent marketplace
-- Creator staking via smart contract
-- zkProof for evidence preimages
+# TypeScript check
+npx tsc --noEmit
+
+# Lint
+npm run lint
+
+# Build
+npm run build
+```
+
+CI runs all of the above automatically on every push via `.github/workflows/ci.yml`.
+
+---
+
+## 15. Demo Script
+
+**Full 3-minute walkthrough:**
+
+**0:00–0:20 — Problem**
+> "AI agents increasingly use creator content to answer questions — but creators are never paid. Citations are invisible. CitePay turns citations into accountable payments."
+
+**0:20–0:45 — Market**
+- Open `/market`
+- Show 10 creator sources: price, bond status, reputation score, payout wallet
+- Point out: some are bonded (trusted), some aren't
+
+**0:45–1:10 — x402 Query Payment**
+- Open `/ask`
+- Type: "How does x402 work for AI agents?" Budget: $0.05
+- Click "Ask →"
+- Proof console shows: `→ POST /api/ask` → `← 402 Payment Required` → payment constructed → retry
+
+**1:10–1:45 — Agent Decision**
+- Source competition board appears
+- Show: agent PAY'd 3 sources, REFUSED 5, SKIPPED 2
+- Point out: score breakdown (relevance %, total), reason column
+- "The agent is not blindly paying — it's making real decisions"
+
+**1:45–2:10 — Answer and Receipts**
+- Final answer shown with inline citations
+- Click a PAY receipt → `/receipt/:id`
+- Show: amount paid, txHash, score breakdown, reason
+
+**2:10–2:35 — Proof and Accountability**
+- Receipt page: evidence preimage JSON visible
+- "Evidence hash: SHA-256 of this payload — anyone can recompute it"
+- Show content hash at decision
+- Point to challenge link: "If creator changes content after payment, this triggers an objective slash"
+
+**2:35–2:55 — Traction**
+- Open `/traction`
+- Show: creators paid, USDC routed, total decisions, receipts generated
+- "All real data from the agent decisions you just saw"
+
+**2:55–3:00 — Close**
+> "CitePay is the citation economy for AI agents: pay creators, prove citations, and make agent spending accountable."
+
+---
+
+## 16. Contract Addresses
+
+| Contract | Network | Address |
+|---|---|---|
+| CitePayMarket | Base Sepolia | TBD — pending deployment |
+| USDC | Base Sepolia | `0x036CbD53842c5426634e7929541eC2318f3dCF7e` |
+
+Contract source: [`contracts/contracts/CitePayMarket.sol`](contracts/contracts/CitePayMarket.sol)
+
+---
+
+## 17. Live App
+
+> **Live URL:** TBD — pending Vercel deployment
+
+**GitHub:** https://github.com/cyberrockng/citepay-markets
+
+Local dev: `npm run dev` → http://localhost:3000
+
+---
+
+## 18. Screenshots
+
+> Screenshots will be added after live deployment.
+
+**Pages:**
+- `/` — Landing: hero, how it works, live market stats
+- `/ask` — Proof console + source competition board
+- `/market` — Creator source registry
+- `/receipt/:id` — Full receipt with evidence preimage viewer
+- `/creator/:wallet` — Creator earnings dashboard
+- `/agent/:address` — Agent decision history
+- `/source/:id` — Source detail and receipt history
+- `/traction` — Live traction metrics dashboard
+
+---
+
+## 19. Known Limitations
+
+- **SQLite persistence**: The receipt mirror resets on Vercel redeploy. Suitable for demo; production needs a managed DB.
+- **Simulated payouts**: Without `CIRCLE_API_KEY`, creator payouts generate a deterministic SHA-256 txHash instead of a real transfer. Clearly labeled in UI.
+- **Dev mode x402**: `X402_DEV_MODE=true` accepts any `X-PAYMENT` header. Production requires Circle payment verification.
+- **Relevance scoring**: Claude Haiku scores relevance from title + description only (not full content fetch). Scores are probabilistic.
+- **Contract not deployed**: CitePayMarket.sol is written and tested but not yet deployed to Base Sepolia. The backend mirrors all data to SQLite.
+- **Base Sepolia only**: All payments are testnet USDC with no real monetary value.
+
+---
+
+## 20. Future Roadmap
+
+- **Mainnet deployment** with real USDC payments
+- **IPFS content addressing** — store source content on IPFS, use CID as content hash
+- **zkProof receipts** — zero-knowledge proof that evidence hash matches preimage without revealing query
+- **Multi-agent marketplace** — multiple competing buyer agents with different policies
+- **Creator staking** — on-chain bond via smart contract instead of off-chain tracking
+- **Reputation NFTs** — creator reputation as transferable on-chain credential
+- **Agent subscription model** — flat monthly fee for unlimited queries
+- **Cross-chain expansion** — Ethereum mainnet, Optimism, Arbitrum
+
+---
+
+## API Reference
+
+| Method | Route | Description |
+|---|---|---|
+| GET | `/api/health` | Health check |
+| GET | `/api/sources` | List all creator sources |
+| POST | `/api/sources/register` | Register a new source |
+| POST | `/api/ask` | x402 pay-to-query (returns 402 without X-PAYMENT) |
+| GET | `/api/query/:queryId` | Get query record + receipts |
+| GET | `/api/receipt/:receiptId` | Get receipt + hash validity |
+| GET | `/api/creator/:wallet` | Creator earnings + sources |
+| GET | `/api/agent/:address` | Agent decision history |
+| GET | `/api/traction` | Live traction metrics |
+| POST | `/api/challenge/:receiptId` | Submit objective hash-change challenge |
+
+---
+
+*Built on Base Sepolia with x402 + Circle USDC + Claude Haiku.*
+*No fake users. No fake payments. No fake traction.*

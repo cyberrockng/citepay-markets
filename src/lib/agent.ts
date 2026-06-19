@@ -29,15 +29,20 @@ async function scoreSource(
   budgetRemaining: number,
   allPrices: number[]
 ): Promise<{ scores: ScoreBreakdown; excerptUsed: string }> {
+  // Source freshness bonus (0–5 points added post-scoring)
+  const daysOld = (Date.now() - new Date(source.createdAt).getTime()) / (1000 * 60 * 60 * 24);
+  const freshnessBonus = daysOld < 7 ? 5 : daysOld < 30 ? 2 : 0;
+
   // Relevance via Claude
   const descriptionLine = source.description ? `\nContent preview: "${source.description.substring(0, 300)}"` : "";
+  const freshnessLine = freshnessBonus > 0 ? `\nNote: This is a recently registered source (${Math.round(daysOld)} days old).` : "";
   const prompt = `You are scoring a creator source for relevance to a research query.
 
 Query: "${query}"
 
 Source title: "${source.title}"
 Source URL: ${source.url}
-Creator: ${source.creatorName}${descriptionLine}
+Creator: ${source.creatorName}${descriptionLine}${freshnessLine}
 
 Score the relevance from 0 to 100. A score of 80+ means this source directly answers the query. Return ONLY a JSON object like:
 {"relevance": 82, "excerpt": "one-sentence summary of why this source is or isn't relevant"}`;
@@ -75,11 +80,15 @@ Score the relevance from 0 to 100. A score of 80+ means this source directly ans
   // Reputation score: clamped 0–30
   const repScore = Math.max(0, Math.min(30, source.reputation * 3 + 15));
 
-  const total = Math.round(
-    relevance * W_RELEVANCE +
-    adjustedPriceScore * W_PRICE +
-    bondScore * W_BOND +
-    repScore * W_REPUTATION
+  const total = Math.min(
+    100,
+    Math.round(
+      relevance * W_RELEVANCE +
+      adjustedPriceScore * W_PRICE +
+      bondScore * W_BOND +
+      repScore * W_REPUTATION +
+      freshnessBonus
+    )
   );
 
   return {
@@ -133,6 +142,19 @@ export async function runBuyerAgent(query: string, budget: number, sources: Sour
 
   // Sort by total score descending
   scored.sort((a, b) => b.scores.total - a.scores.total);
+
+  // Duplicate-source risk: penalise lower-ranked sources from the same domain
+  const seenDomains = new Set<string>();
+  for (const item of scored) {
+    try {
+      const domain = new URL(item.source.url).hostname.replace(/^www\./, "");
+      if (seenDomains.has(domain)) {
+        item.scores.total = Math.max(0, item.scores.total - 10);
+      } else {
+        seenDomains.add(domain);
+      }
+    } catch { /* skip malformed URLs */ }
+  }
 
   for (const { source, scores, excerptUsed } of scored) {
     let decision: Decision;
