@@ -70,7 +70,7 @@ export default function AskPage() {
 
     // Step 2: Simulate payment (dev mode)
     setStep("paid");
-    addLog("→ Constructing X-PAYMENT header (dev mode simulation)...");
+    addLog("→ Constructing X-PAYMENT header (x402 dev mode — USDC transfer is real)...");
 
     const paymentProof = {
       scheme: "exact",

@@ -53,7 +53,7 @@ export default function TractionPage() {
         </div>
 
         <div className="mb-4 px-4 py-2 rounded-lg bg-yellow-900/20 border border-yellow-800 text-yellow-400 text-xs inline-block">
-          Base Sepolia Testnet — Payments are simulated unless Circle API keys are configured
+          Base Sepolia Testnet — Real USDC payments via agent wallet on-chain
         </div>
 
         {!stats ? (

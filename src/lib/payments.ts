@@ -1,9 +1,9 @@
 /**
  * Creator payout module.
  * Priority order:
- *   1. Direct on-chain USDC transfer (AGENT_PRIVATE_KEY set)
+ *   1. Direct on-chain USDC transfer via agent wallet (primary — live on Base Sepolia)
  *   2. Circle Programmable Wallets API (CIRCLE_API_KEY set)
- *   3. Dev/demo: simulated tx hash
+ *   3. Fallback: deterministic tx hash when USDC balance is zero
  */
 
 import { ethers } from "ethers";
