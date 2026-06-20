@@ -480,17 +480,15 @@ Contract source: [`contracts/contracts/CitePayMarket.sol`](contracts/contracts/C
 
 ## 17. Live App
 
-> **Live URL:** TBD — pending Vercel deployment
-
 **GitHub:** https://github.com/cyberrockng/citepay-markets
 
-Local dev: `npm run dev` → http://localhost:3000
+Run locally: `npm run dev` → http://localhost:3000
+
+See [section 13](#13-deployment-instructions) for Vercel deployment steps.
 
 ---
 
-## 18. Screenshots
-
-> Screenshots will be added after live deployment.
+## 18. Pages
 
 **Pages:**
 - `/` — Landing: hero, how it works, live market stats
@@ -507,7 +505,7 @@ Local dev: `npm run dev` → http://localhost:3000
 ## 19. Known Limitations
 
 - **SQLite persistence**: The receipt mirror resets on Vercel redeploy. Suitable for demo; production needs a managed DB.
-- **Simulated payouts**: Without `CIRCLE_API_KEY`, creator payouts generate a deterministic SHA-256 txHash instead of a real transfer. Clearly labeled in UI.
+- **Payout fallback**: Creator payouts are real on-chain USDC transfers when `AGENT_PRIVATE_KEY` is set and the wallet is funded. If neither `AGENT_PRIVATE_KEY` nor `CIRCLE_API_KEY` is configured, the system generates a deterministic SHA-256 txHash so receipts remain structurally valid during local development.
 - **Dev mode x402**: `X402_DEV_MODE=true` accepts any `X-PAYMENT` header. Production requires Circle payment verification.
 - **Relevance scoring**: Claude Haiku scores relevance from title + description only (not full content fetch). Scores are probabilistic.
 - **Contract deployment**: CitePayMarket.sol deployed to Base Sepolia at [`0x396cf1646EbAeF85ee8428C2d9239C46Ae956085`](https://sepolia.basescan.org/address/0x396cf1646EbAeF85ee8428C2d9239C46Ae956085). The backend mirrors all data to SQLite for fast reads.

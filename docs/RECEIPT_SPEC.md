@@ -26,7 +26,7 @@ Every agent decision — PAY, REFUSE, or SKIP — produces a tamper-evident rece
 | `contentHashAtDecision` | hex | SHA-256 of source content at time of decision |
 | `scores` | JSON | `{ relevance, price, bond, reputation, total }` |
 | `reason` | string | Human-readable explanation of the decision |
-| `txHash` | hex or null | On-chain or simulated transaction hash |
+| `txHash` | hex or null | On-chain tx hash (real ERC-20 transfer when agent wallet is funded; deterministic SHA-256 hash in dev fallback) |
 | `budgetBefore` | integer | Micro-USDC remaining before this decision |
 | `budgetAfter` | integer | Micro-USDC remaining after this decision |
 | `challenged` | boolean | Whether a content-hash challenge has been submitted |

@@ -39,7 +39,7 @@ citepay-markets/
 │   │   ├── x402.ts      # 402 response builder + payment verifier
 │   │   ├── agent.ts     # AI buyer agent (Claude Haiku scoring)
 │   │   ├── evidence.ts  # SHA-256 preimage + hash builder
-│   │   ├── payments.ts  # Circle USDC payout + simulated fallback
+│   │   ├── payments.ts  # On-chain USDC payout (agent wallet) + hash fallback
 │   │   └── db.ts        # SQLite interface (better-sqlite3)
 │   └── types/index.ts   # Shared TypeScript types
 ├── contracts/
@@ -64,7 +64,7 @@ citepay-markets/
       → absent: return 402 with x402 payment details
       → present: continue
 3.  verifyX402Payment(req)
-      → X402_DEV_MODE=true: accept any string, generate fake txHash
+      → X402_DEV_MODE=true: accept any string (x402 handshake only — USDC transfer unaffected)
       → CIRCLE_API_KEY set: POST circle.com/v1/w3s/payments/verify
 4.  insertQuery(queryRecord) → SQLite
 5.  getAllSources() → SQLite
@@ -74,7 +74,7 @@ citepay-markets/
       Sort by total score desc
       Decide PAY/REFUSE/SKIP per source (budget-aware)
 7.  For each PAY decision:
-      payCreator() → Circle API or simulated txHash
+      payCreator() → on-chain USDC (agent wallet) | Circle API | hash fallback
 8.  For each decision:
       buildEvidencePreimage() → JSON payload
       hashEvidence() → SHA-256
@@ -176,10 +176,10 @@ CREATE TABLE share_cards (
 | Service | Usage | Required |
 |---|---|---|
 | Anthropic Claude Haiku | Relevance scoring + answer generation | Yes |
-| Circle API | x402 payment verification + USDC transfer | Production only |
-| Base Sepolia | Testnet blockchain for contract + USDC | Optional |
+| Circle API | x402 payment verification (alternative payout path) | Optional |
+| Base Sepolia | Testnet blockchain for contract + USDC | Yes (demo) |
 
-In development (`X402_DEV_MODE=true`, no `CIRCLE_API_KEY`), all payments are simulated with deterministic SHA-256 txHashes.
+Payment priority: (1) direct on-chain ERC-20 transfer via `AGENT_PRIVATE_KEY`, (2) Circle API if `CIRCLE_API_KEY` is set, (3) deterministic SHA-256 txHash fallback for local dev when no wallet is configured.
 
 ---
 
