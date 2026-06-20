@@ -19,6 +19,7 @@ export interface Source {
   skipCount: number;
   active: boolean;
   createdAt: string;
+  onChainId?: number | null; // CitePayMarket.sol sourceId once registered
 }
 
 export interface ScoreBreakdown {
@@ -77,6 +78,8 @@ export interface Receipt {
   budgetAfter: number;
   challenged: boolean;
   createdAt: string;
+  onChainReceiptId?: number | null; // CitePayMarket.sol receiptId
+  onChainTxHash?: string | null;    // tx that wrote to the contract
 }
 
 export interface QueryRecord {

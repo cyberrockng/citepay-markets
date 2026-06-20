@@ -131,6 +131,40 @@ export default function ReceiptPage({ params }: { params: Promise<{ id: string }
           </div>
         </div>
 
+        {/* On-Chain Anchor */}
+        {receipt.decision === "PAY" && (
+          <div className="bg-gray-900 rounded-xl p-6 border border-green-900 mb-4">
+            <h2 className="font-semibold mb-3 text-green-400">On-Chain Anchor</h2>
+            {receipt.onChainTxHash ? (
+              <div className="space-y-2 text-sm">
+                <div className="flex items-center gap-2">
+                  <span className="text-green-400 font-bold">✓</span>
+                  <span className="text-gray-300">Decision anchored on Base Sepolia</span>
+                </div>
+                <div>
+                  <span className="text-gray-500 text-xs">Contract Receipt ID: </span>
+                  <span className="font-mono text-gray-300 text-xs">#{receipt.onChainReceiptId}</span>
+                </div>
+                <div>
+                  <span className="text-gray-500 text-xs">Anchor Tx: </span>
+                  <a
+                    href={`https://sepolia.basescan.org/tx/${receipt.onChainTxHash}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="font-mono text-indigo-400 hover:underline text-xs break-all"
+                  >
+                    {receipt.onChainTxHash}
+                  </a>
+                </div>
+              </div>
+            ) : (
+              <div className="text-gray-500 text-xs">
+                Anchor pending — source must be registered on-chain first (<code>npm run seed</code>).
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Share Card (PAY only) */}
         {receipt.decision === "PAY" && (
           <div className="bg-gray-900 rounded-xl p-6 border border-indigo-900 mb-4">

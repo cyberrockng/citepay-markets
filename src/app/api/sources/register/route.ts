@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { v4 as uuidv4 } from "uuid";
-import { insertSource } from "@/lib/db";
+import { insertSource, updateSourceOnChainId } from "@/lib/db";
 import { contentHashFromText } from "@/lib/evidence";
+import { registerSourceOnChain } from "@/lib/anchor";
 import type { Source } from "@/types";
 
 export async function POST(req: NextRequest) {
@@ -49,6 +50,19 @@ export async function POST(req: NextRequest) {
   };
 
   insertSource(source);
+
+  // Anchor source on-chain (non-blocking — don't delay the HTTP response)
+  void registerSourceOnChain({
+    payoutWallet: source.payoutWallet,
+    contentHash:  source.contentHash,
+    metadataURI:  source.metadataURI,
+    price:        source.price,
+  }).then((onChainId) => {
+    if (onChainId) {
+      updateSourceOnChainId(id, onChainId);
+      console.log(`[anchor] source ${id} → on-chain #${onChainId}`);
+    }
+  });
 
   return NextResponse.json({ source, message: "Source registered" }, { status: 201 });
 }

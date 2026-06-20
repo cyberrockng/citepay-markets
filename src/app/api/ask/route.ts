@@ -5,12 +5,14 @@ import { build402Response, verifyX402Payment, QUERY_FEE_MICRO } from "@/lib/x402
 import { runBuyerAgent, getAgentAddress } from "@/lib/agent";
 import { buildEvidencePreimage, hashEvidence, sha256, parseUSDC } from "@/lib/evidence";
 import { payCreator } from "@/lib/payments";
+import { anchorPAY } from "@/lib/anchor";
 import {
   getAllSources,
   insertQuery,
   updateQuery,
   insertReceipt,
   updateSourceStats,
+  updateReceiptOnChain,
 } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
@@ -120,6 +122,19 @@ export async function POST(req: NextRequest) {
       txHash = payment.txHash;
       totalPaid += d.source.price;
       budgetRemaining -= d.source.price;
+
+      // Anchor PAY decision on-chain (inline — gives receipt page an immediate BaseScan link)
+      if (d.source.onChainId) {
+        const anchor = await anchorPAY({
+          onChainSourceId: d.source.onChainId,
+          queryHash,
+          evidenceHash,
+        });
+        if (anchor) {
+          updateReceiptOnChain(receiptId, anchor.onChainReceiptId, anchor.txHash);
+          console.log(`[anchor] PAY receipt ${receiptId} → on-chain #${anchor.onChainReceiptId} (${anchor.txHash})`);
+        }
+      }
     }
 
     // Persist receipt

@@ -40,7 +40,8 @@ function migrate(db: Database.Database) {
       refused_count INTEGER NOT NULL DEFAULT 0,
       skip_count INTEGER NOT NULL DEFAULT 0,
       active INTEGER NOT NULL DEFAULT 1,
-      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      on_chain_id INTEGER DEFAULT NULL
     );
 
     CREATE TABLE IF NOT EXISTS receipts (
@@ -64,7 +65,9 @@ function migrate(db: Database.Database) {
       budget_before INTEGER NOT NULL,
       budget_after INTEGER NOT NULL,
       challenged INTEGER NOT NULL DEFAULT 0,
-      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      on_chain_receipt_id INTEGER DEFAULT NULL,
+      on_chain_tx_hash TEXT DEFAULT NULL
     );
 
     CREATE TABLE IF NOT EXISTS queries (
@@ -101,6 +104,15 @@ function migrate(db: Database.Database) {
       ('challenge_count', 0),
       ('active_agents', 0);
   `);
+
+  // Additive migrations for existing DBs (safe to run repeatedly)
+  for (const sql of [
+    "ALTER TABLE sources  ADD COLUMN on_chain_id         INTEGER DEFAULT NULL",
+    "ALTER TABLE receipts ADD COLUMN on_chain_receipt_id INTEGER DEFAULT NULL",
+    "ALTER TABLE receipts ADD COLUMN on_chain_tx_hash    TEXT    DEFAULT NULL",
+  ]) {
+    try { db.exec(sql); } catch { /* column already exists */ }
+  }
 }
 
 // ─── Sources ─────────────────────────────────────────────────────────────────
@@ -144,6 +156,15 @@ export function updateSourceHash(id: string, newHash: string): void {
   getDb().prepare("UPDATE sources SET content_hash = ? WHERE id = ?").run(newHash, id);
 }
 
+export function updateSourceOnChainId(id: string, onChainId: number): void {
+  getDb().prepare("UPDATE sources SET on_chain_id = ? WHERE id = ?").run(onChainId, id);
+}
+
+export function updateReceiptOnChain(id: string, onChainReceiptId: number, onChainTxHash: string): void {
+  getDb().prepare("UPDATE receipts SET on_chain_receipt_id = ?, on_chain_tx_hash = ? WHERE id = ?")
+    .run(onChainReceiptId, onChainTxHash, id);
+}
+
 function rowToSource(r: Record<string, unknown>): Source {
   return {
     id: r.id as string,
@@ -164,6 +185,7 @@ function rowToSource(r: Record<string, unknown>): Source {
     skipCount: r.skip_count as number,
     active: Boolean(r.active),
     createdAt: r.created_at as string,
+    onChainId: (r.on_chain_id as number | null) ?? null,
   };
 }
 
@@ -233,6 +255,8 @@ function rowToReceipt(r: Record<string, unknown>): Receipt {
     budgetAfter: r.budget_after as number,
     challenged: Boolean(r.challenged),
     createdAt: r.created_at as string,
+    onChainReceiptId: (r.on_chain_receipt_id as number | null) ?? null,
+    onChainTxHash: (r.on_chain_tx_hash as string | null) ?? null,
   };
 }
 
