@@ -1,6 +1,7 @@
 "use client";
 import { useState, useCallback } from "react";
 import Link from "next/link";
+import { BackLink } from "@/components/ui";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -18,15 +19,21 @@ type Steps = Record<string, Step>;
 const STEPS = ["sources", "query", "receipt", "verify", "tamper", "challenge"] as const;
 
 const STEP_META: Record<string, { title: string; proof?: string }> = {
-  sources: { title: "Load sources" },
-  query:   { title: "Agent queries the market",       proof: "Agent used creator content" },
-  receipt: { title: "Creator payout confirmed",        proof: "Creator paid in USDC" },
-  verify:  { title: "Evidence hash verified",          proof: "Citation decision is verifiable" },
-  tamper:  { title: "Creator edits content (simulated)" },
-  challenge: { title: "Objective challenge succeeds",  proof: "Tampering can be challenged" },
+  sources:   { title: "Load sources" },
+  query:     { title: "Agent queries the market",         proof: "Agent used creator content" },
+  receipt:   { title: "Creator payout confirmed",          proof: "Creator paid in USDC" },
+  verify:    { title: "Evidence hash verified",            proof: "Citation decision is verifiable" },
+  tamper:    { title: "Creator edits content (simulated)" },
+  challenge: { title: "Objective challenge succeeds",     proof: "Tampering can be challenged" },
 };
 
 const PROOFS = ["query", "receipt", "verify", "challenge"] as const;
+const PROOF_LABELS: Record<string, string> = {
+  query:     "Agent used creator content",
+  receipt:   "Creator paid in USDC",
+  verify:    "Citation is verifiable",
+  challenge: "Tampering can be challenged",
+};
 
 // ── SHA-256 via Web Crypto ────────────────────────────────────────────────────
 
@@ -92,12 +99,12 @@ export default function DemoPage() {
       const first = payDecisions[0];
 
       set("query", "done", {
-        queryId:    ask.queryId,
-        answer:     ask.answer,
-        pay:        payDecisions.length,
-        refuse:     decisions.filter(d => d.decision === "REFUSE").length,
-        skip:       decisions.filter(d => d.decision === "SKIP").length,
-        totalPaid:  ask.totalPaid,
+        queryId:     ask.queryId,
+        answer:      ask.answer,
+        pay:         payDecisions.length,
+        refuse:      decisions.filter(d => d.decision === "REFUSE").length,
+        skip:        decisions.filter(d => d.decision === "SKIP").length,
+        totalPaid:   ask.totalPaid,
         payDecision: first,
       });
 
@@ -112,16 +119,16 @@ export default function DemoPage() {
       const rData = await rRes.json();
       const r     = rData.receipt;
       set("receipt", "done", {
-        receiptId:        r.id,
-        sourceTitle:      r.sourceTitle,
-        sourceId:         r.sourceId,
-        amountPaid:       r.amountPaid,
-        txHash:           r.txHash,
-        onChainTxHash:    r.onChainTxHash,
-        onChainReceiptId: r.onChainReceiptId,
-        evidenceHash:     r.evidenceHash,
-        preimage:         r.evidencePreimage,
-        scores:           r.scores,
+        receiptId:             r.id,
+        sourceTitle:           r.sourceTitle,
+        sourceId:              r.sourceId,
+        amountPaid:            r.amountPaid,
+        txHash:                r.txHash,
+        onChainTxHash:         r.onChainTxHash,
+        onChainReceiptId:      r.onChainReceiptId,
+        evidenceHash:          r.evidenceHash,
+        preimage:              r.evidencePreimage,
+        scores:                r.scores,
         contentHashAtDecision: r.contentHashAtDecision,
       });
 
@@ -165,47 +172,57 @@ export default function DemoPage() {
   const proofsDone = PROOFS.filter(k => steps[k]?.status === "done");
 
   return (
-    <main className="min-h-screen bg-gray-950 text-white">
+    <main className="min-h-screen bg-[#0a0a0f] text-[#f0f0f5]">
       <div className="max-w-3xl mx-auto px-6 py-12">
 
         {/* Header */}
-        <div className="mb-2">
-          <Link href="/" className="text-gray-500 hover:text-gray-300 text-sm">← Home</Link>
+        <div className="mb-8">
+          <BackLink href="/" label="Home" />
+          <h1 className="text-3xl font-bold mt-4 text-[#f0f0f5]">Proof-of-Paid-Citation</h1>
+          <p className="text-[#8b8b9e] mt-1">Live judge demo — four proofs in one automated flow</p>
         </div>
-        <h1 className="text-3xl font-bold mb-1">Proof-of-Paid-Citation</h1>
-        <p className="text-gray-400 mb-8">Live judge demo — four proofs in one flow</p>
 
-        {/* 4 Proof Badges */}
+        {/* 4 Proof Badges — 2×2 grid */}
         <div className="grid grid-cols-2 gap-3 mb-8">
           {PROOFS.map(k => {
-            const done = steps[k]?.status === "done";
+            const isDone = steps[k]?.status === "done";
+            const isRunning = steps[k]?.status === "running";
             return (
-              <div key={k} className={`rounded-xl p-4 border transition-all ${done ? "border-green-700 bg-green-900/20" : "border-gray-800 bg-gray-900"}`}>
-                <div className={`text-lg mb-1 ${done ? "text-green-400" : "text-gray-600"}`}>
-                  {done ? "✓" : "○"}
+              <div
+                key={k}
+                className={`rounded-xl p-4 border transition-all duration-500 ${
+                  isDone
+                    ? "border-[#00ff88]/40 bg-[#00ff88]/5 shadow-[0_0_20px_rgba(0,255,136,0.08)]"
+                    : isRunning
+                    ? "border-[#6366f1]/40 bg-[#6366f1]/5"
+                    : "border-[#1e1e2e] bg-[#111118]"
+                }`}
+              >
+                <div className={`text-lg font-mono mb-1 transition-colors ${isDone ? "text-[#00ff88]" : "text-[#4a4a5e]"}`}>
+                  {isDone ? "✓" : isRunning ? "●" : "○"}
                 </div>
-                <div className={`text-sm font-semibold ${done ? "text-green-300" : "text-gray-500"}`}>
-                  {STEP_META[k].proof}
+                <div className={`text-xs font-semibold transition-colors ${isDone ? "text-[#00ff88]" : "text-[#8b8b9e]"}`}>
+                  {PROOF_LABELS[k]}
                 </div>
               </div>
             );
           })}
         </div>
 
-        {/* Run button */}
+        {/* Run Button */}
         <button
           onClick={runDemo}
           disabled={running}
           className={`w-full py-4 rounded-xl font-bold text-lg mb-8 transition-all ${
             running
-              ? "bg-gray-800 text-gray-500 cursor-not-allowed"
-              : "bg-indigo-600 hover:bg-indigo-500 text-white"
+              ? "bg-[#111118] text-[#4a4a5e] cursor-not-allowed border border-[#1e1e2e]"
+              : "bg-[#6366f1] hover:bg-indigo-500 text-white"
           }`}
         >
           {running ? "Running demo…" : done ? "▶ Run Demo Again" : "▶ Start Demo"}
         </button>
 
-        {/* Step Log */}
+        {/* Step Timeline */}
         <div className="space-y-3">
           {STEPS.map((key, i) => {
             const step = steps[key];
@@ -224,17 +241,31 @@ export default function DemoPage() {
           })}
         </div>
 
+        {/* Final Success State */}
         {done && proofsDone.length === 4 && (
-          <div className="mt-8 rounded-xl p-6 border border-green-700 bg-green-900/20 text-center">
-            <div className="text-4xl mb-3">✓</div>
-            <h2 className="text-xl font-bold text-green-300 mb-2">All four proofs verified</h2>
-            <p className="text-gray-400 text-sm">
+          <div className="mt-8 rounded-xl p-8 border border-[#00ff88]/30 bg-[#00ff88]/5 text-center">
+            <div className="text-5xl mb-4 text-[#00ff88]">✓</div>
+            <h2 className="text-xl font-bold text-[#00ff88] mb-3">All four proofs verified</h2>
+            <p className="text-[#8b8b9e] text-sm max-w-md mx-auto mb-6">
               An AI agent queried creator content, paid USDC, produced a verifiable receipt,
-              and the challenge mechanism worked — all on Base Sepolia testnet.
+              and the challenge mechanism confirmed content integrity — all on Base Sepolia.
             </p>
+            <div className="flex justify-center gap-4 flex-wrap">
+              <Link
+                href="/market"
+                className="text-[#6366f1] hover:text-indigo-300 text-sm border border-[#6366f1]/30 px-4 py-2 rounded-lg transition-colors"
+              >
+                View Source Market →
+              </Link>
+              <Link
+                href="/traction"
+                className="text-[#8b8b9e] hover:text-[#f0f0f5] text-sm border border-[#1e1e2e] px-4 py-2 rounded-lg transition-colors"
+              >
+                Live Traction →
+              </Link>
+            </div>
           </div>
         )}
-
       </div>
     </main>
   );
@@ -254,23 +285,23 @@ function StepCard({
 }) {
   const { status, data, error } = step;
 
-  const border =
-    status === "done"    ? "border-green-800" :
-    status === "running" ? "border-yellow-800" :
-    status === "error"   ? "border-red-800"   : "border-gray-800";
+  const leftBorder =
+    status === "done"    ? "border-l-[#00ff88]" :
+    status === "running" ? "border-l-[#6366f1]" :
+    status === "error"   ? "border-l-red-500"   : "border-l-[#1e1e2e]";
 
   const icon =
-    status === "done"    ? <span className="text-green-400">✓</span> :
-    status === "running" ? <span className="text-yellow-400 animate-pulse">●</span> :
+    status === "done"    ? <span className="text-[#00ff88]">✓</span> :
+    status === "running" ? <span className="text-[#6366f1] animate-pulse">●</span> :
     status === "error"   ? <span className="text-red-400">✗</span>   : null;
 
   return (
-    <div className={`rounded-xl p-5 border bg-gray-900 ${border}`}>
+    <div className={`rounded-xl p-5 bg-[#111118] border border-[#1e1e2e] border-l-2 ${leftBorder}`}>
       <div className="flex items-center gap-3 mb-3">
-        <span className="text-gray-600 text-xs font-mono w-4">{number}</span>
-        <span className="font-semibold text-sm">{title}</span>
+        <span className="text-[#4a4a5e] text-xs font-mono w-4">{number}</span>
+        <span className="font-semibold text-sm text-[#f0f0f5]">{title}</span>
         {proof && status === "done" && (
-          <span className="ml-auto text-xs text-green-400 bg-green-900/40 border border-green-800 px-2 py-0.5 rounded-full">
+          <span className="ml-auto text-xs text-[#00ff88] bg-[#00ff88]/10 border border-[#00ff88]/30 px-2 py-0.5 rounded-full">
             Proof ✓
           </span>
         )}
@@ -278,7 +309,7 @@ function StepCard({
       </div>
 
       {status === "running" && (
-        <p className="text-gray-500 text-xs">Processing…</p>
+        <p className="text-[#8b8b9e] text-xs animate-pulse">Processing…</p>
       )}
 
       {status === "error" && (
@@ -301,12 +332,10 @@ function StepData({ stepKey, data, microToUsdc, trunc }: {
   microToUsdc: (v: number) => string;
   trunc: (s: string, n?: number) => string;
 }) {
-  // Step 1 — sources
   if (stepKey === 1) return (
     <Row label="Sources loaded" value={`${data.count} sources`} />
   );
 
-  // Step 2 — query
   if (stepKey === 2) return (<>
     <Row label="Query" value="What is x402 and how does it enable micropayments for AI agents?" plain />
     <Row label="Decisions" value={`${data.pay} PAY · ${data.refuse} REFUSE · ${data.skip} SKIP`} />
@@ -316,11 +345,12 @@ function StepData({ stepKey, data, microToUsdc, trunc }: {
     )}
   </>);
 
-  // Step 3 — receipt
   if (stepKey === 3) return (<>
     <Row label="Source" value={data.sourceTitle} plain />
     <Row label="Amount paid" value={`$${microToUsdc(data.amountPaid)} USDC`} />
-    {data.txHash && <Row label="USDC tx" value={data.txHash} link={`https://sepolia.basescan.org/tx/${data.txHash}`} trunc={trunc} />}
+    {data.txHash && (
+      <Row label="USDC tx" value={data.txHash} link={`https://sepolia.basescan.org/tx/${data.txHash}`} trunc={trunc} />
+    )}
     {data.onChainTxHash && (
       <Row label="Anchor tx" value={data.onChainTxHash} link={`https://sepolia.basescan.org/tx/${data.onChainTxHash}`} trunc={trunc} />
     )}
@@ -329,14 +359,12 @@ function StepData({ stepKey, data, microToUsdc, trunc }: {
     <Row label="Receipt" value={`/receipt/${data.receiptId}`} link={`/receipt/${data.receiptId}`} trunc={trunc} />
   </>);
 
-  // Step 4 — verify
   if (stepKey === 4) return (<>
     <Row label="Stored hash"     value={trunc(data.stored, 40)} />
     <Row label="Recomputed hash" value={trunc(data.recomputed, 40)} />
     <Row label="Match"           value={data.valid ? "✓ Identical — evidence is intact" : "✗ Mismatch"} />
   </>);
 
-  // Step 5 — tamper
   if (stepKey === 5) return (<>
     <Row label="Source"   value={data.sourceTitle} plain />
     <Row label="Old hash" value={trunc(data.oldHash, 40)} />
@@ -344,9 +372,8 @@ function StepData({ stepKey, data, microToUsdc, trunc }: {
     <p className="text-yellow-500 mt-1">Hash at decision is now different from current hash.</p>
   </>);
 
-  // Step 6 — challenge
   if (stepKey === 6) return (<>
-    <Row label="Result"         value="Challenge succeeded" />
+    <Row label="Result"          value="Challenge succeeded" />
     <Row label="Hash at payment" value={trunc(data.hashBefore, 40)} />
     <Row label="Hash now"        value={trunc(data.hashAfter, 40)} />
     <Row label="Outcome"         value="Creator reputation −3 · Agent reputation −1" />
@@ -366,14 +393,18 @@ function Row({ label, value, link, plain, trunc }: {
   const display = trunc ? trunc(value, 48) : value;
   return (
     <div className="flex gap-2">
-      <span className="text-gray-500 shrink-0 w-36">{label}:</span>
+      <span className="text-[#4a4a5e] shrink-0 w-36">{label}:</span>
       {link ? (
-        <a href={link} target={link.startsWith("http") ? "_blank" : "_self"} rel="noopener noreferrer"
-           className="text-indigo-400 hover:underline break-all">
+        <a
+          href={link}
+          target={link.startsWith("http") ? "_blank" : "_self"}
+          rel="noopener noreferrer"
+          className="text-[#6366f1] hover:text-indigo-300 break-all transition-colors"
+        >
           {display}
         </a>
       ) : (
-        <span className={plain ? "text-gray-300 break-all" : "text-gray-200"}>{display}</span>
+        <span className={plain ? "text-[#f0f0f5] break-all" : "text-[#8b8b9e]"}>{display}</span>
       )}
     </div>
   );
