@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import type { TractionStats, Receipt } from "@/types";
+import type { TractionStats } from "@/types";
 
 const DECISION_COLOR: Record<string, string> = {
   PAY: "text-green-400 border-green-800 bg-green-900/20",
@@ -11,7 +11,6 @@ const DECISION_COLOR: Record<string, string> = {
 
 export default function LandingPage() {
   const [stats, setStats] = useState<TractionStats | null>(null);
-  const [recentReceipts, setRecentReceipts] = useState<Receipt[]>([]);
 
   useEffect(() => {
     fetch("/api/traction").then((r) => r.json()).then((d) => setStats(d.stats)).catch(() => {});

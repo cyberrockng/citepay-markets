@@ -95,7 +95,7 @@ Update the hash. Navigate back to the receipt.
 
 Navigate to `/traction`.
 
-> "Here's the live traction dashboard. 4 creators paid, $0.008 USDC routed, 30 decisions made — all from real on-chain transactions. This is the citation economy in production."
+> "Here's the live traction dashboard. Every metric here comes from real agent decisions — PAY, REFUSE, SKIP — each backed by a SHA-256 evidence hash and recorded on Base Sepolia. Payments run through the x402 protocol with testnet USDC. This is the citation economy running end-to-end."
 
 ---
 

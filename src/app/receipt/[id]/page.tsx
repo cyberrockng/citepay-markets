@@ -165,7 +165,18 @@ Powered by CitePay Markets`}
         {/* Challenge (PAY only, not yet challenged) */}
         {receipt.decision === "PAY" && !receipt.challenged && (
           <div className="bg-gray-900 rounded-xl p-4 border border-gray-800 text-xs text-gray-500">
-            <strong className="text-gray-300">Content Integrity Challenge:</strong> If the creator updated this source after payment, the content hash will differ. <Link href={`/api/challenge/${receipt.id}`} className="text-indigo-400 hover:underline">Submit objective challenge →</Link>
+            <strong className="text-gray-300">Content Integrity Challenge:</strong> If the creator updated this source after payment, the content hash will differ.{" "}
+            <button
+              onClick={async () => {
+                const res = await fetch(`/api/challenge/${receipt.id}`, { method: "POST" });
+                const d = await res.json();
+                if (res.ok) alert(`Challenge succeeded: ${d.message}`);
+                else alert(`Challenge failed: ${d.error}`);
+              }}
+              className="text-indigo-400 hover:underline cursor-pointer"
+            >
+              Submit objective challenge →
+            </button>
           </div>
         )}
       </div>

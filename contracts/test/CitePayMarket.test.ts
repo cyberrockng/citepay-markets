@@ -168,7 +168,7 @@ describe("CitePayMarket", function () {
     await market.connect(agent).payCitation(1, QUERY_HASH, EVIDENCE_HASH);
     await expect(
       market.connect(challenger).challengeHashChanged(1)
-    ).to.be.revertedWith("Hash unchanged — no slash");
+    ).to.be.revertedWith("Hash unchanged - no slash");
   });
 
   it("15. prevents double challenge on same receipt", async () => {

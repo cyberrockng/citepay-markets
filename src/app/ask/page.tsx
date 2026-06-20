@@ -1,7 +1,6 @@
 "use client";
 import { useState } from "react";
 import Link from "next/link";
-import type { AgentDecision } from "@/types";
 
 type Step = "idle" | "waiting_payment" | "paid" | "running" | "done" | "error";
 
@@ -33,7 +32,7 @@ const DECISION_COLOR: Record<string, string> = {
 
 const LOG_MESSAGES: Record<Step, string[]> = {
   idle: [],
-  waiting_payment: ["→ POST /api/ask", "← 402 Payment Required", "Awaiting X-PAYMENT header..."],
+  "waiting_payment": ["→ POST /api/ask", "← 402 Payment Required", "Awaiting X-PAYMENT header..."],
   paid: ["✓ Payment verified", "→ Retrying with payment proof..."],
   running: ["✓ Payment accepted", "→ Running buyer agent...", "→ Scoring creator sources..."],
   done: ["✓ Agent decisions complete", "✓ Receipts generated", "✓ Creator payouts recorded"],
@@ -180,7 +179,7 @@ export default function AskPage() {
         {/* Proof Console */}
         {logs.length > 0 && (
           <div className="bg-black rounded-xl p-4 border border-gray-800 mb-6 font-mono text-xs">
-            <div className="text-gray-500 mb-2">// Proof Console</div>
+            <div className="text-gray-500 mb-2">{"// Proof Console"}</div>
             {logs.map((log, i) => (
               <div key={i} className={log.includes("✗") ? "text-red-400" : log.includes("✓") ? "text-green-400" : "text-gray-300"}>
                 {log}

@@ -3,8 +3,8 @@ import { describe, it, expect } from "vitest";
 const BASE = "http://localhost:3000";
 
 describe("Backend API", () => {
-  it("GET /health returns ok", async () => {
-    const res = await fetch(`${BASE}/health`);
+  it("GET /api/health returns ok", async () => {
+    const res = await fetch(`${BASE}/api/health`);
     const data = await res.json();
     expect(res.status).toBe(200);
     expect(data.status).toBe("ok");

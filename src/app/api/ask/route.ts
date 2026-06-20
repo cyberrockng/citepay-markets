@@ -11,7 +11,6 @@ import {
   updateQuery,
   insertReceipt,
   updateSourceStats,
-  getQueryById,
 } from "@/lib/db";
 
 export const dynamic = "force-dynamic";

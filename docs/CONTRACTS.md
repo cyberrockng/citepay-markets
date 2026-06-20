@@ -12,7 +12,7 @@ The contract is **optional** — the application works fully in dev mode without
 
 **Network:** Base Sepolia (chainId 84532)  
 **Compiler:** Solidity ^0.8.24  
-**Status:** Not yet deployed (deploy address TBD)  
+**Address:** [`0x396cf1646EbAeF85ee8428C2d9239C46Ae956085`](https://sepolia.basescan.org/address/0x396cf1646EbAeF85ee8428C2d9239C46Ae956085)  
 **Token:** USDC on Base Sepolia (`0x036CbD53842c5426634e7929541eC2318f3dCF7e`)
 
 ---
@@ -129,7 +129,7 @@ After deployment, set `CITEPAY_CONTRACT_ADDRESS=<deployed address>` in `.env.loc
 
 | Network | Address |
 |---|---|
-| Base Sepolia | TBD (not yet deployed) |
+| Base Sepolia | `0x396cf1646EbAeF85ee8428C2d9239C46Ae956085` |
 | Base Mainnet | Not deployed |
 
 ---

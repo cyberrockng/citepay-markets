@@ -1,6 +1,7 @@
 import Database from "better-sqlite3";
 import path from "path";
 import fs from "fs";
+import { v4 as uuidv4 } from "uuid";
 import type { Source, Receipt, QueryRecord } from "@/types";
 
 const DATA_DIR = path.join(process.cwd(), "data");
@@ -339,7 +340,6 @@ export function getFullTractionStats() {
 }
 
 export function recordShareCard(receiptId: string, creatorWallet: string): string {
-  const { v4: uuidv4 } = require("uuid");
   const id = uuidv4();
   getDb().prepare("INSERT INTO share_cards (id, receipt_id, creator_wallet) VALUES (?, ?, ?)").run(id, receiptId, creatorWallet);
   incrementTraction("share_cards_generated");
