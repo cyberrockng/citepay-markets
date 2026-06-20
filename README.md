@@ -10,7 +10,7 @@
 
 ## Judge Quick Start
 
-1. Open the live app → **[citepay-markets.vercel.app](https://citepay-markets.vercel.app)**
+1. Open the live app → **[citepay-markets.vercel.app](https://citepay-markets.vercel.app)** — or the alias **[citepay-markets-blrtq2g0o-cyberrockng-s-projects.vercel.app](https://citepay-markets-blrtq2g0o-cyberrockng-s-projects.vercel.app)**
 2. Click **Run Demo** on the `/demo` page — four proofs run automatically
 3. Open any generated receipt — verify the evidence hash client-side
 4. Confirm the Base Sepolia tx link on any `USDC payout: confirmed on-chain` receipt
