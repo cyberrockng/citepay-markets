@@ -162,7 +162,7 @@ export default function AskPage() {
 
           {/* Proof Console */}
           <div className="bg-[#0a0a0f] rounded-xl border border-[#1e1e2e] p-5 font-mono text-xs flex flex-col min-h-[200px]">
-            <div className="text-[#4a4a5e] mb-3 text-xs">// Proof Console</div>
+            <div className="text-[#4a4a5e] mb-3 text-xs">{"// Proof Console"}</div>
             {logs.length === 0 && step === "idle" && (
               <div className="text-[#4a4a5e] flex-1 flex items-center justify-center">
                 x402 protocol trace will appear here

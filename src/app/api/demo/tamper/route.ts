@@ -11,6 +11,10 @@ export const dynamic = "force-dynamic";
  * objective challenge condition.
  */
 export async function POST(req: NextRequest) {
+  if (process.env.NODE_ENV === "production" && process.env.DEMO_MODE !== "true") {
+    return NextResponse.json({ error: "Demo endpoint disabled in production" }, { status: 403 });
+  }
+
   let body: { sourceId?: string } = {};
   try { body = await req.json(); } catch { /* empty */ }
 

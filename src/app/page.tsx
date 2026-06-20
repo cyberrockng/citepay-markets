@@ -46,8 +46,7 @@ export default function LandingPage() {
           <span className="text-[#6366f1]">for AI Agents</span>
         </h1>
         <p className="text-xl text-[#8b8b9e] max-w-2xl mx-auto mb-10 leading-relaxed">
-          AI agents pay creators in USDC when they cite their work.
-          Every decision is a public, verifiable receipt — powered by x402 on Base.
+          Agents pay creators in USDC, publish verifiable receipts, and expose tampering through objective hash challenges.
         </p>
         <div className="flex flex-col sm:flex-row gap-3 justify-center">
           <Link

@@ -1,6 +1,5 @@
 "use client";
 import { useEffect, useState } from "react";
-import Link from "next/link";
 import { use } from "react";
 import type { Receipt } from "@/types";
 import {
@@ -106,13 +105,25 @@ export default function ReceiptPage({ params }: { params: Promise<{ id: string }
       </div>
 
       {/* USDC Tx */}
-      {isPay && receipt.txHash && (
-        <div className="bg-[#111118] rounded-xl p-5 border border-[#1e1e2e] mb-4">
-          <ProofPanel
-            label="USDC Payment Transaction"
-            baseScanTx={receipt.txHash}
-            baseScanTxLabel={receipt.txHash.slice(0, 16) + "…"}
-          />
+      {isPay && (
+        <div className={`rounded-xl p-5 border mb-4 ${receipt.txHash ? "bg-[#00ff88]/5 border-[#00ff88]/30" : "bg-[#111118] border-[#1e1e2e]"}`}>
+          <div className="flex items-center gap-2 mb-3">
+            <span className="text-xs font-semibold text-[#8b8b9e] uppercase tracking-widest">USDC Payout</span>
+            {receipt.txHash
+              ? <span className="text-[#00ff88] text-xs font-mono">✓ confirmed on-chain</span>
+              : <span className="text-yellow-400 text-xs font-mono">⚠ simulated fallback (no on-chain tx)</span>}
+          </div>
+          {receipt.txHash
+            ? <ProofPanel
+                label="Base Sepolia Transaction"
+                baseScanTx={receipt.txHash}
+                baseScanTxLabel={receipt.txHash.slice(0, 20) + "…"}
+              />
+            : <p className="text-[#8b8b9e] text-xs">
+                USDC transfer was not executed on-chain for this receipt.
+                This happens when the agent wallet lacks funds or the RPC call failed.
+              </p>
+          }
         </div>
       )}
 

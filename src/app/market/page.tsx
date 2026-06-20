@@ -2,7 +2,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import type { Source } from "@/types";
-import { PageShell, Badge, decisionStyle } from "@/components/ui";
+import { PageShell, Badge } from "@/components/ui";
 import { BackButton } from "@/components/back-button";
 
 export default function MarketPage() {

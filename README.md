@@ -1,12 +1,22 @@
 # CitePay Markets
 
-**The citation economy for AI agents.**
-
-> AI agents use creator content. CitePay makes them pay, prove, and explain every citation.
+> **CitePay is Proof-of-Paid-Citation for AI agents: agents pay creators in USDC, publish verifiable receipts, and expose tampering through objective hash challenges.**
 
 [![CI](https://github.com/cyberrockng/citepay-markets/actions/workflows/ci.yml/badge.svg)](https://github.com/cyberrockng/citepay-markets/actions/workflows/ci.yml)
 [![Base Sepolia](https://img.shields.io/badge/network-Base%20Sepolia-blue)](https://sepolia.basescan.org)
 [![x402](https://img.shields.io/badge/payments-x402%20%2B%20Circle%20USDC-green)](https://x402.org)
+
+---
+
+## Judge Quick Start
+
+1. Open the live app → **[citepay-markets.vercel.app](https://citepay-markets.vercel.app)**
+2. Click **Run Demo** on the `/demo` page — four proofs run automatically
+3. Open any generated receipt — verify the evidence hash client-side
+4. Confirm the Base Sepolia tx link on any `USDC payout: confirmed on-chain` receipt
+5. Click **Submit challenge** after the tamper step — watch the receipt flip to `CHALLENGED`
+
+Contract: [`0x396cf1646EbAeF85ee8428C2d9239C46Ae956085`](https://sepolia.basescan.org/address/0x396cf1646EbAeF85ee8428C2d9239C46Ae956085) · Network: Base Sepolia (chainId 84532)
 
 ---
 
