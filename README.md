@@ -526,6 +526,61 @@ See [section 13](#13-deployment-instructions) for Vercel deployment steps.
 
 ---
 
+## 21. Agent API
+
+Any AI application can use CitePay as citation infrastructure. The single endpoint is:
+
+```
+POST /api/ask
+```
+
+**How it works:** The server returns HTTP 402 on the first call. The client retries with an `X-PAYMENT` header. The agent then scores all registered sources, pays the best ones in USDC, and returns a structured answer with receipt IDs.
+
+```bash
+curl -X POST https://your-citepay-url/api/ask \
+  -H "Content-Type: application/json" \
+  -H "X-PAYMENT: dev-proof" \
+  -d '{"query": "What is x402?", "budget": 0.05}'
+```
+
+**Response includes:**
+- `answer` — Claude Haiku answer citing only paid sources
+- `decisions` — array of PAY / REFUSE / SKIP with scores, reason, txHash, evidenceHash
+- `receiptIds` — public receipt URLs for every decision
+- `totalPaid` — micro-USDC paid this query
+
+Every receipt is independently verifiable: `SHA-256(JSON.stringify(evidencePreimage))` equals the stored `evidenceHash` — recomputable by anyone.
+
+See [`docs/AGENT_API.md`](docs/AGENT_API.md) for full request/response schema, curl examples, and source registration.
+
+---
+
+## 22. Creator Monetization Flow
+
+Creators earn USDC every time an AI agent cites their work.
+
+```
+1. Register source   →  POST /api/sources/register  (or /market UI)
+                         Fields: title, url, price (USDC), bond, content
+                         Content is hashed — any post-payment edit is challengeable
+
+2. Set price         →  price field in micro-USDC (2000 = $0.002 per citation)
+                         Bond increases credibility score and agent willingness to pay
+
+3. Agent pays        →  POST /api/ask triggers automatic scoring + payout
+                         Real ERC-20 USDC transfer to payoutWallet on Base Sepolia
+                         On-chain receipt written to CitePayMarket.sol
+
+4. View earnings     →  /creator/:wallet
+                         Shows all paid citations, total USDC earned, source reputation
+```
+
+**Creator dashboard:** `/creator/<your-wallet-address>` — linked from every source row on the market page.
+
+**Share card:** Every PAY receipt includes a one-click share card so creators can post proof of payment on X or Farcaster.
+
+---
+
 ## API Reference
 
 | Method | Route | Description |
