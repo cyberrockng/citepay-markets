@@ -337,7 +337,8 @@ CIRCLE_API_KEY=                     # Circle API key for real transfers
 CIRCLE_WALLET_ID=                   # Circle wallet ID for creator payouts
 USDC_TOKEN_ID=usdc
 
-# ── Blockchain ────────────────────────────────────────────────
+# ── Agent wallet (primary USDC payout path) ───────────────────
+AGENT_PRIVATE_KEY=                  # Private key of funded Base Sepolia wallet
 BASE_SEPOLIA_RPC_URL=https://sepolia.base.org
 DEPLOYER_PRIVATE_KEY=               # For contract deployment only
 BASESCAN_API_KEY=                   # For contract verification (optional)
@@ -546,4 +547,4 @@ Local dev: `npm run dev` → http://localhost:3000
 
 *Built on Base Sepolia with x402 + Circle USDC + Claude Haiku.*
 
-**Proof transparency:** All agent decisions use real x402 payment headers and SHA-256 evidence hashes. Creator payouts are real on-chain USDC transfers on Base Sepolia — the agent wallet (`0x5389688243328c26a92b301faEEAb5fbf9AFf105`) holds live USDC funded via a Uniswap V3 swap (tx `0xad6e7c56af23961247fb0c3ee8a4a07543f7f44f6add71081cd0fa5f7ccdbb71`). `X402_DEV_MODE=true` relaxes the 402 handshake header check for local testing but does not affect the USDC transfer. Traction metrics come exclusively from actual agent runs — no seeded or fabricated data. The deployed contract (`0x396cf1646EbAeF85ee8428C2d9239C46Ae956085`) serves as on-chain proof of deployment; the backend mirrors receipts to SQLite for fast reads.
+**Proof transparency:** All agent decisions use real x402 payment headers and SHA-256 evidence hashes. When `AGENT_PRIVATE_KEY` is set and the wallet holds USDC, creator payouts are real on-chain ERC-20 transfers on Base Sepolia — the demo wallet (`0x5389688243328c26a92b301faEEAb5fbf9AFf105`) was funded via a Uniswap V3 swap (tx [`0xad6e7c5...`](https://sepolia.basescan.org/tx/0xad6e7c56af23961247fb0c3ee8a4a07543f7f44f6add71081cd0fa5f7ccdbb71)). Without `AGENT_PRIVATE_KEY` or when balance is zero the system falls back to a deterministic SHA-256 tx hash so receipts remain structurally valid during development. `X402_DEV_MODE=true` relaxes only the 402 handshake header check; it does not affect the USDC transfer path. Traction metrics come exclusively from actual agent runs — no seeded or fabricated data. The deployed contract (`0x396cf1646EbAeF85ee8428C2d9239C46Ae956085`) serves as on-chain proof of deployment; the backend mirrors receipts to SQLite for fast reads.
