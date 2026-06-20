@@ -89,13 +89,13 @@ When a PAY decision is made, the source's current `content_hash` is snapshotted 
 If the creator later updates their content and the new hash differs, any observer can submit an objective challenge:
 
 ```
-GET /api/challenge/:receiptId
+POST /api/challenge/:receiptId
 ```
 
 The challenge endpoint:
 1. Fetches the source's current `content_hash` from the DB
 2. Compares it against `contentHashAtDecision` from the receipt
-3. If they differ: marks receipt as `challenged = true`, decrements creator reputation, decrements agent reputation
+3. If they differ: marks receipt as `challenged = true`, decrements creator reputation (−1), decrements agent reputation (−1)
 4. If they are the same: returns 409 "Content unchanged — challenge not valid"
 
 Challenges are objective (hash comparison only — no AI judgment).
@@ -122,8 +122,10 @@ Public receipt accessible at /receipt/:id
 
 ---
 
-## On-Chain Anchoring (Optional)
+## On-Chain Anchoring
 
-When `CITEPAY_CONTRACT_ADDRESS` and `PRIVATE_KEY` are set, the evidence hash can be anchored on Base Sepolia via `CitePayMarket.recordPayment()`. This makes the receipt permanently verifiable without trusting the CitePay server.
+`CitePayMarket.sol` is deployed at [`0x396cf1646EbAeF85ee8428C2d9239C46Ae956085`](https://sepolia.basescan.org/address/0x396cf1646EbAeF85ee8428C2d9239C46Ae956085) on Base Sepolia.
 
-See `docs/CONTRACTS.md` for the contract specification.
+The contract exposes `payCitation(sourceId, queryHash, evidenceHash)` and `recordDecision(sourceId, decision, queryHash, evidenceHash, reasonCode)` — matching the same `evidenceHash` stored in each SQLite receipt. Direct contract writes from `/api/ask` are the next integration milestone; the deployed contract currently serves as on-chain proof of the protocol.
+
+See `docs/CONTRACTS.md` for the full contract specification.
