@@ -252,23 +252,35 @@ export default function AskPage() {
 
             {/* Receipt Links */}
             <div className="bg-[#111118] rounded-xl p-6 border border-[#1e1e2e]">
-              <h2 className="font-semibold mb-3 text-[#f0f0f5]">Public Receipts</h2>
+              <div className="flex items-baseline justify-between mb-3">
+                <h2 className="font-semibold text-[#f0f0f5]">Decision Audit Trail</h2>
+                <span className="text-xs text-[#4a4a5e]">every decision is public</span>
+              </div>
               <div className="space-y-2">
-                {result.decisions.map((d) => (
-                  <Link
-                    key={d.receiptId}
-                    href={d.receiptUrl}
-                    className={`flex items-center justify-between p-3 rounded-lg border hover:border-[#6366f1]/50 transition-colors ${decisionStyle(d.decision)} bg-opacity-5`}
-                  >
-                    <div className="flex items-center gap-3">
-                      <span className={`px-2 py-0.5 rounded border font-mono text-xs ${decisionStyle(d.decision)}`}>
-                        {d.decision}
+                {result.decisions.map((d) => {
+                  const isPay = d.decision === "PAY";
+                  return (
+                    <Link
+                      key={d.receiptId}
+                      href={d.receiptUrl}
+                      className={`flex items-center justify-between p-3 rounded-lg border transition-colors ${
+                        isPay
+                          ? "border-[#00ff88]/30 hover:border-[#00ff88]/60 bg-[#00ff88]/5"
+                          : "border-[#1e1e2e] hover:border-[#6366f1]/30 opacity-60 hover:opacity-80"
+                      }`}
+                    >
+                      <div className="flex items-center gap-3">
+                        <span className={`px-2 py-0.5 rounded border font-mono text-xs ${decisionStyle(d.decision)}`}>
+                          {d.decision}
+                        </span>
+                        <span className={`text-sm ${isPay ? "text-[#f0f0f5]" : "text-[#8b8b9e]"}`}>{d.source}</span>
+                      </div>
+                      <span className={`text-xs ${isPay ? "text-[#6366f1]" : "text-[#4a4a5e]"}`}>
+                        {isPay ? "View receipt →" : "Audit log →"}
                       </span>
-                      <span className="text-sm text-[#f0f0f5]">{d.source}</span>
-                    </div>
-                    <span className="text-xs text-[#6366f1]">View receipt →</span>
-                  </Link>
-                ))}
+                    </Link>
+                  );
+                })}
               </div>
               <div className="mt-4 pt-4 border-t border-[#1e1e2e] flex justify-between text-sm text-[#8b8b9e]">
                 <span>
