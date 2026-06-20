@@ -30,14 +30,6 @@ const DECISION_COLOR: Record<string, string> = {
   SKIP: "text-gray-400 bg-gray-800/30 border-gray-700",
 };
 
-const LOG_MESSAGES: Record<Step, string[]> = {
-  idle: [],
-  "waiting_payment": ["→ POST /api/ask", "← 402 Payment Required", "Awaiting X-PAYMENT header..."],
-  paid: ["✓ Payment verified", "→ Retrying with payment proof..."],
-  running: ["✓ Payment accepted", "→ Running buyer agent...", "→ Scoring creator sources..."],
-  done: ["✓ Agent decisions complete", "✓ Receipts generated", "✓ Creator payouts recorded"],
-  error: ["✗ Error occurred"],
-};
 
 export default function AskPage() {
   const [query, setQuery] = useState("");
