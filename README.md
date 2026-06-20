@@ -20,6 +20,19 @@ Contract: [`0x396cf1646EbAeF85ee8428C2d9239C46Ae956085`](https://sepolia.basesca
 
 ---
 
+## Screenshots
+
+| Page | Preview |
+|------|---------|
+| Landing | ![Landing](docs/screenshots/01-landing.png) |
+| Market | ![Market](docs/screenshots/02-market.png) |
+| Ask (Agent Workbench) | ![Ask](docs/screenshots/03-ask.png) |
+| Demo (4-proof flow) | ![Demo](docs/screenshots/04-demo.png) |
+| Traction Dashboard | ![Traction](docs/screenshots/05-traction.png) |
+| Receipt (PAY, on-chain) | ![Receipt](docs/screenshots/06-receipt.png) |
+
+---
+
 ## 1. Product Overview
 
 CitePay Markets is a live agentic citation economy where:
