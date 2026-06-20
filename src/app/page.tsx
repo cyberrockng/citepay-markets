@@ -34,8 +34,11 @@ export default function LandingPage() {
           and publish auditable receipts proving every decision.
         </p>
         <div className="flex flex-col sm:flex-row gap-4 justify-center">
+          <Link href="/demo" className="bg-green-600 hover:bg-green-500 text-white font-semibold px-8 py-3 rounded-lg transition">
+            Live Demo →
+          </Link>
           <Link href="/ask" className="bg-indigo-600 hover:bg-indigo-500 text-white font-semibold px-8 py-3 rounded-lg transition">
-            Ask a Question →
+            Ask a Question
           </Link>
           <Link href="/market" className="border border-gray-700 hover:border-gray-500 text-gray-300 font-semibold px-8 py-3 rounded-lg transition">
             View Source Market
@@ -140,6 +143,7 @@ export default function LandingPage() {
       {/* Footer */}
       <footer className="border-t border-gray-800 py-8 text-center text-gray-600 text-sm">
         CitePay Markets — Built on Base Sepolia with x402 + Circle USDC ·{" "}
+        <Link href="/demo" className="hover:text-gray-400">Demo</Link> ·{" "}
         <Link href="/traction" className="hover:text-gray-400">Traction</Link> ·{" "}
         <Link href="/market" className="hover:text-gray-400">Market</Link>
       </footer>
