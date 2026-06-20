@@ -4,8 +4,9 @@ import Link from "next/link";
 import { use } from "react";
 import type { Receipt } from "@/types";
 import {
-  PageShell, BackLink, Badge, ProofPanel, ScoreBar, DataRow, decisionStyle,
+  PageShell, Badge, ProofPanel, ScoreBar, DataRow, decisionStyle,
 } from "@/components/ui";
+import { BackButton } from "@/components/back-button";
 
 export default function ReceiptPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
@@ -70,7 +71,7 @@ export default function ReceiptPage({ params }: { params: Promise<{ id: string }
     <PageShell maxWidth="max-w-3xl">
       {/* Header */}
       <div className="mb-8">
-        <BackLink href="/" label="Home" />
+        <BackButton label="Home" />
         <div className="flex items-center gap-3 mt-4 flex-wrap">
           <h1 className="text-2xl font-bold text-[#f0f0f5]">Receipt #{receipt.id.slice(0, 8)}</h1>
           <span className={`px-3 py-1 rounded border font-mono text-sm ${decisionStyle(receipt.decision)}`}>

@@ -3,7 +3,8 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { use } from "react";
 import type { Receipt } from "@/types";
-import { PageShell, StatCard, BackLink, decisionStyle } from "@/components/ui";
+import { PageShell, StatCard, decisionStyle } from "@/components/ui";
+import { BackButton } from "@/components/back-button";
 
 interface AgentData {
   agentAddress: string;
@@ -49,7 +50,7 @@ export default function AgentPage({ params }: { params: Promise<{ address: strin
   return (
     <PageShell maxWidth="max-w-4xl">
       <div className="mb-8">
-        <BackLink href="/" label="Home" />
+        <BackButton label="Home" />
         <h1 className="text-2xl font-bold mt-4 text-[#f0f0f5]">Agent Dashboard</h1>
         <div className="font-mono text-[#6366f1] text-sm mt-1 break-all">{address}</div>
       </div>

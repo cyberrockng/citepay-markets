@@ -3,7 +3,8 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { use } from "react";
 import type { Source, Receipt } from "@/types";
-import { PageShell, StatCard, BackLink, Badge, DataRow, decisionStyle } from "@/components/ui";
+import { PageShell, StatCard, Badge, DataRow, decisionStyle } from "@/components/ui";
+import { BackButton } from "@/components/back-button";
 
 export default function SourcePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
@@ -64,7 +65,7 @@ export default function SourcePage({ params }: { params: Promise<{ id: string }>
   return (
     <PageShell maxWidth="max-w-4xl">
       <div className="mb-8">
-        <BackLink href="/market" label="Market" />
+        <BackButton label="Market" />
         <div className="flex items-center gap-3 mt-4 flex-wrap">
           <h1 className="text-2xl font-bold text-[#f0f0f5]">{source.title}</h1>
           {source.bonded && <Badge type="BONDED" label="Bonded" />}

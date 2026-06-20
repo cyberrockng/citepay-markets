@@ -1,7 +1,7 @@
 "use client";
 import { useState, useCallback } from "react";
 import Link from "next/link";
-import { BackLink } from "@/components/ui";
+import { BackButton } from "@/components/back-button";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -177,7 +177,7 @@ export default function DemoPage() {
 
         {/* Header */}
         <div className="mb-8">
-          <BackLink href="/" label="Home" />
+          <BackButton label="Home" />
           <h1 className="text-3xl font-bold mt-4 text-[#f0f0f5]">Proof-of-Paid-Citation</h1>
           <p className="text-[#8b8b9e] mt-1">Live judge demo — four proofs in one automated flow</p>
         </div>

@@ -2,7 +2,8 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import type { Source } from "@/types";
-import { PageShell, BackLink, Badge, decisionStyle } from "@/components/ui";
+import { PageShell, Badge, decisionStyle } from "@/components/ui";
+import { BackButton } from "@/components/back-button";
 
 export default function MarketPage() {
   const [sources, setSources] = useState<Source[]>([]);
@@ -57,7 +58,7 @@ export default function MarketPage() {
     <PageShell maxWidth="max-w-5xl">
       <div className="flex items-start justify-between mb-8">
         <div>
-          <BackLink href="/" label="Home" />
+          <BackButton label="Home" />
           <h1 className="text-3xl font-bold mt-4 text-[#f0f0f5]">Creator Source Market</h1>
           <p className="text-[#8b8b9e] mt-1">
             {totalSources} sources competing for AI citations on Base Sepolia

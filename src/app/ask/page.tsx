@@ -1,7 +1,8 @@
 "use client";
 import { useState } from "react";
 import Link from "next/link";
-import { BackLink, decisionStyle } from "@/components/ui";
+import { decisionStyle } from "@/components/ui";
+import { BackButton } from "@/components/back-button";
 
 type Step = "idle" | "waiting_payment" | "paid" | "running" | "done" | "error";
 
@@ -117,7 +118,7 @@ export default function AskPage() {
     <main className="min-h-screen bg-[#0a0a0f] text-[#f0f0f5]">
       <div className="max-w-5xl mx-auto px-6 py-12">
         <div className="mb-8">
-          <BackLink href="/" label="Home" />
+          <BackButton label="Home" />
           <h1 className="text-3xl font-bold mt-4 text-[#f0f0f5]">Agent Workbench</h1>
           <p className="text-[#8b8b9e] mt-1">Pay to query · Agent scores creator sources · Every decision gets a public receipt</p>
         </div>

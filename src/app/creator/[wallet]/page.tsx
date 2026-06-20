@@ -3,7 +3,8 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { use } from "react";
 import type { Receipt, Source } from "@/types";
-import { PageShell, StatCard, BackLink, Badge, decisionStyle } from "@/components/ui";
+import { PageShell, StatCard, Badge, decisionStyle } from "@/components/ui";
+import { BackButton } from "@/components/back-button";
 
 export default function CreatorPage({ params }: { params: Promise<{ wallet: string }> }) {
   const { wallet } = use(params);
@@ -33,7 +34,7 @@ export default function CreatorPage({ params }: { params: Promise<{ wallet: stri
   return (
     <PageShell maxWidth="max-w-4xl">
       <div className="mb-8">
-        <BackLink href="/market" label="Market" />
+        <BackButton label="Market" />
         <h1 className="text-xl font-bold mt-4 font-mono text-[#f0f0f5] break-all">{wallet}</h1>
         <p className="text-[#8b8b9e] mt-1 text-sm">Creator Dashboard</p>
       </div>

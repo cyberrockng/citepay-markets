@@ -2,7 +2,8 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import type { TractionStats } from "@/types";
-import { PageShell, StatCard, BackLink } from "@/components/ui";
+import { PageShell, StatCard } from "@/components/ui";
+import { BackButton } from "@/components/back-button";
 
 export default function TractionPage() {
   const [stats, setStats] = useState<TractionStats | null>(null);
@@ -24,7 +25,7 @@ export default function TractionPage() {
     <PageShell maxWidth="max-w-5xl">
       <div className="mb-8 flex items-start justify-between">
         <div>
-          <BackLink href="/" label="Home" />
+          <BackButton label="Home" />
           <h1 className="text-3xl font-bold mt-4 text-[#f0f0f5]">Traction Dashboard</h1>
           <p className="text-[#8b8b9e] mt-1">Real metrics from real agent decisions · live on Base Sepolia</p>
         </div>
