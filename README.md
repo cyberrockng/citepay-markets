@@ -545,4 +545,5 @@ Local dev: `npm run dev` → http://localhost:3000
 ---
 
 *Built on Base Sepolia with x402 + Circle USDC + Claude Haiku.*
-*No fake users. No fake payments. No fake traction.*
+
+**Proof transparency:** All agent decisions use real x402 payment headers and SHA-256 evidence hashes. Payments run through testnet USDC in dev mode (`X402_DEV_MODE=true`); production requires Circle API keys for real on-chain settlement. Traction metrics come exclusively from actual agent runs — no seeded or fabricated data. The deployed contract (`0x396cf1646EbAeF85ee8428C2d9239C46Ae956085`) serves as on-chain proof of deployment; the backend mirrors receipts to SQLite for fast reads.

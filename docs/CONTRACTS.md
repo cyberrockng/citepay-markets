@@ -2,9 +2,9 @@
 
 ## Overview
 
-CitePay Markets includes an optional Solidity contract (`CitePayMarket.sol`) deployed on Base Sepolia. It provides on-chain anchoring of payment receipts and supports objective slashing when creators tamper with content after payment.
+CitePay Markets includes `CitePayMarket.sol` deployed on Base Sepolia. It provides on-chain anchoring of source registrations, citation decisions, and content-integrity challenges.
 
-The contract is **optional** — the application works fully in dev mode without it.
+The backend mirrors all data to SQLite for fast reads. The contract is the authoritative on-chain record.
 
 ---
 
@@ -13,115 +13,104 @@ The contract is **optional** — the application works fully in dev mode without
 **Network:** Base Sepolia (chainId 84532)  
 **Compiler:** Solidity ^0.8.24  
 **Address:** [`0x396cf1646EbAeF85ee8428C2d9239C46Ae956085`](https://sepolia.basescan.org/address/0x396cf1646EbAeF85ee8428C2d9239C46Ae956085)  
-**Token:** USDC on Base Sepolia (`0x036CbD53842c5426634e7929541eC2318f3dCF7e`)
-
----
-
-## Data Structures
-
-```solidity
-struct Payment {
-    address creatorWallet;
-    uint256 amount;         // micro-USDC (6 decimals)
-    bytes32 evidenceHash;   // SHA-256 of the evidence preimage JSON
-    uint256 timestamp;
-    bool slashed;
-}
-```
+**Token:** USDC on Base Sepolia (`0x036CbD53842c5426634e7929541eC2318f3dCF7e`)  
+**Explorer:** https://sepolia.basescan.org/address/0x396cf1646EbAeF85ee8428C2d9239C46Ae956085
 
 ---
 
 ## Core Functions
 
-### `recordPayment`
+### `registerSource`
 
 ```solidity
-function recordPayment(
-    bytes32 receiptId,
-    address creatorWallet,
-    uint256 amount,
+function registerSource(
+    address payoutWallet,
+    bytes32 contentHash,
+    string calldata metadataURI,
+    uint256 price,
+    uint256 bond
+) external payable returns (uint256 sourceId)
+```
+
+Registers a creator source. `contentHash` is the SHA-256 of the content at registration time. Bonded sources post ETH as credibility collateral.
+
+### `payCitation`
+
+```solidity
+function payCitation(
+    uint256 sourceId,
+    bytes32 queryHash,
     bytes32 evidenceHash
-) external onlyAgent returns (bool)
+) external onlyAuthorizedAgent returns (uint256 receiptId)
 ```
 
-Called by the CitePay agent after a PAY decision. Anchors the evidence hash on-chain. Emits `PaymentRecorded`.
+Called by an authorized agent after a PAY decision. Records the citation on-chain, increments source reputation, and emits `CitationPaid`.
 
-### `slashPayment`
+### `recordDecision`
 
 ```solidity
-function slashPayment(bytes32 receiptId) external returns (bool)
+function recordDecision(
+    uint256 sourceId,
+    uint8 decision,
+    bytes32 queryHash,
+    bytes32 evidenceHash,
+    uint8 reasonCode
+) external onlyAuthorizedAgent returns (uint256 receiptId)
 ```
 
-Called by any observer after a content-hash challenge succeeds. Marks the payment as slashed. Emits `PaymentSlashed`.
+Records a REFUSE (decision=1) or SKIP (decision=2). Emits `CitationRefused` or `CitationSkipped`.
 
-Prerequisites:
-- Receipt must exist
-- Payment must not already be slashed
-- Content hash at decision must differ from current content hash (enforced off-chain via `/api/challenge/:receiptId`)
-
-### `getPayment`
+### `challengeHashChanged`
 
 ```solidity
-function getPayment(bytes32 receiptId) external view returns (Payment memory)
+function challengeHashChanged(uint256 receiptId) external returns (bool)
 ```
 
-Returns the full payment record for a given receipt ID.
+Objective-only challenge. Succeeds only if `currentHash != contentHashAtDecision`. On success: creator reputation −3, agent reputation −1. Emits `HashChallengeResolved`.
 
-### `isSlashed`
+### `updateSourceHash`
 
 ```solidity
-function isSlashed(bytes32 receiptId) external view returns (bool)
+function updateSourceHash(uint256 sourceId, bytes32 newContentHash) external
 ```
 
-Returns whether a payment was successfully challenged.
+Called by the creator to update their content hash. Enables challengers to detect post-payment tampering.
 
 ---
 
 ## Events
 
 ```solidity
-event PaymentRecorded(
-    bytes32 indexed receiptId,
-    address indexed creatorWallet,
-    uint256 amount,
-    bytes32 evidenceHash,
-    uint256 timestamp
-);
-
-event PaymentSlashed(
-    bytes32 indexed receiptId,
-    address indexed creatorWallet,
-    address indexed challenger,
-    uint256 timestamp
-);
+event SourceRegistered(uint256 indexed sourceId, address indexed creator, address payoutWallet, bytes32 contentHash, uint256 price, uint256 bond);
+event CitationPaid(uint256 indexed receiptId, uint256 indexed sourceId, address indexed agent, address creator, uint256 amount, bytes32 queryHash, bytes32 evidenceHash);
+event CitationRefused(uint256 indexed receiptId, uint256 indexed sourceId, address indexed agent, bytes32 queryHash, bytes32 evidenceHash, uint8 reasonCode);
+event CitationSkipped(uint256 indexed receiptId, uint256 indexed sourceId, address indexed agent, bytes32 queryHash, bytes32 evidenceHash, uint8 reasonCode);
+event SourceHashUpdated(uint256 indexed sourceId, bytes32 oldHash, bytes32 newHash);
+event HashChallengeResolved(uint256 indexed receiptId, uint256 indexed sourceId, address agent, address creator, uint256 refundAmount);
+event SourceReputationChanged(uint256 indexed sourceId, int256 oldScore, int256 newScore);
+event AgentReputationChanged(address indexed agent, int256 oldScore, int256 newScore);
 ```
 
 ---
 
 ## Access Control
 
-- `onlyAgent` modifier restricts `recordPayment` to the configured `agentAddress`
-- The agent address is set in the constructor and can be updated by the contract owner
-- `slashPayment` is permissionless — any observer can challenge
+- `onlyAuthorizedAgent` — restricts `payCitation` and `recordDecision` to agents authorized by the owner and who have posted a bond
+- `onlyOwner` — restricts `setAuthorizedAgent`
+- `challengeHashChanged` — permissionless, anyone can challenge
 
 ---
 
-## Deployment
+## Receipt Mirror Architecture
 
-```bash
-# Install dependencies
-npm run compile
+The backend records every decision in SQLite for fast API reads. The contract serves as the authoritative on-chain anchor. Both stores share the same `evidenceHash` (SHA-256 of the evidence preimage JSON), making receipts independently verifiable.
 
-# Deploy to Base Sepolia
-npm run deploy:contract
-
-# Required environment variables
-PRIVATE_KEY=                    # Deployer private key
-BASE_SEPOLIA_RPC_URL=          # Base Sepolia RPC URL
-CITEPAY_PAYOUT_WALLET=         # Agent payout wallet address
 ```
-
-After deployment, set `CITEPAY_CONTRACT_ADDRESS=<deployed address>` in `.env.local`.
+/api/ask  →  agent scores sources
+          →  PAY: payCreator() + insertReceipt() in SQLite
+          →  REFUSE/SKIP: insertReceipt() in SQLite
+          (contract integration: next milestone — payCitation/recordDecision calls)
+```
 
 ---
 
@@ -129,7 +118,7 @@ After deployment, set `CITEPAY_CONTRACT_ADDRESS=<deployed address>` in `.env.loc
 
 | Network | Address |
 |---|---|
-| Base Sepolia | `0x396cf1646EbAeF85ee8428C2d9239C46Ae956085` |
+| Base Sepolia | [`0x396cf1646EbAeF85ee8428C2d9239C46Ae956085`](https://sepolia.basescan.org/address/0x396cf1646EbAeF85ee8428C2d9239C46Ae956085) |
 | Base Mainnet | Not deployed |
 
 ---
@@ -141,8 +130,19 @@ cd contracts
 npx hardhat test
 ```
 
-Test coverage:
-- `recordPayment` success and access control
-- `slashPayment` success and already-slashed guard
-- `getPayment` and `isSlashed` view functions
-- Event emission checks
+17 tests covering: source registration, agent authorization, payCitation, recordDecision, content hash challenge, reputation slashing, double-challenge guard, and market stats.
+
+---
+
+## Deployment
+
+```bash
+cd contracts
+npm run deploy:baseSepolia
+```
+
+Required environment variables in `contracts/.env`:
+```
+DEPLOYER_PRIVATE_KEY=   # Wallet private key with Base Sepolia ETH
+BASE_SEPOLIA_RPC_URL=https://sepolia.base.org
+```

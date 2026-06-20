@@ -45,13 +45,10 @@ describe("Backend API", () => {
       body: JSON.stringify({ query: "What is x402 useful for?", budget: 0.05 }),
     });
 
-    // May be 200 (with sources) or still work even with empty sources
-    expect([200, 500]).toContain(res.status);
-    if (res.status === 200) {
-      const data = await res.json();
-      expect(data.queryId).toBeDefined();
-      expect(Array.isArray(data.decisions)).toBe(true);
-    }
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(data.queryId).toBeDefined();
+    expect(Array.isArray(data.decisions)).toBe(true);
   });
 
   it("GET /api/traction returns stats object", async () => {
