@@ -5,7 +5,9 @@ import { build402Response, verifyX402Payment, QUERY_FEE_MICRO } from "@/lib/x402
 import { runBuyerAgent, getAgentAddress } from "@/lib/agent";
 import { buildEvidencePreimage, hashEvidence, sha256, parseUSDC } from "@/lib/evidence";
 import { payCreator } from "@/lib/payments";
-import { anchorPAY } from "@/lib/anchor";
+import { anchorPAY, checkAnchorReady } from "@/lib/anchor";
+
+let anchorChecked = false;
 import {
   getAllSources,
   insertQuery,
@@ -24,6 +26,8 @@ export const dynamic = "force-dynamic";
  * Step 2: With X-PAYMENT header → verify payment, run agent, return answer + receipts.
  */
 export async function POST(req: NextRequest) {
+  if (!anchorChecked) { anchorChecked = true; void checkAnchorReady(); }
+
   let body: { query?: string; budget?: number } = {};
   try {
     body = await req.json();
@@ -122,22 +126,9 @@ export async function POST(req: NextRequest) {
       txHash = payment.txHash;
       totalPaid += d.source.price;
       budgetRemaining -= d.source.price;
-
-      // Anchor PAY decision on-chain (inline — gives receipt page an immediate BaseScan link)
-      if (d.source.onChainId) {
-        const anchor = await anchorPAY({
-          onChainSourceId: d.source.onChainId,
-          queryHash,
-          evidenceHash,
-        });
-        if (anchor) {
-          updateReceiptOnChain(receiptId, anchor.onChainReceiptId, anchor.txHash);
-          console.log(`[anchor] PAY receipt ${receiptId} → on-chain #${anchor.onChainReceiptId} (${anchor.txHash})`);
-        }
-      }
     }
 
-    // Persist receipt
+    // Persist receipt FIRST — anchor update must come after insert
     const receipt = {
       id: receiptId,
       sourceId: d.source.id,
@@ -163,6 +154,19 @@ export async function POST(req: NextRequest) {
     };
 
     insertReceipt(receipt);
+
+    // Anchor PAY decision on-chain after receipt row exists
+    if (d.decision === "PAY" && d.source.onChainId) {
+      const anchor = await anchorPAY({
+        onChainSourceId: d.source.onChainId,
+        queryHash,
+        evidenceHash,
+      });
+      if (anchor) {
+        updateReceiptOnChain(receiptId, anchor.onChainReceiptId, anchor.txHash);
+        console.log(`[anchor] PAY receipt ${receiptId} → on-chain #${anchor.onChainReceiptId} (${anchor.txHash})`);
+      }
+    }
     updateSourceStats(d.source.id, d.decision);
     receiptIds.push(receiptId);
     receiptsOut.push({

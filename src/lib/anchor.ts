@@ -11,9 +11,25 @@ const RPC      = process.env.BASE_SEPOLIA_RPC_URL        || "https://sepolia.bas
 const ABI = [
   "function registerSource(address payoutWallet, bytes32 contentHash, string metadataURI, uint256 price, uint256 bond) payable returns (uint256 sourceId)",
   "function payCitation(uint256 sourceId, bytes32 queryHash, bytes32 evidenceHash) returns (uint256 receiptId)",
+  "function getAgentStats(address) view returns (tuple(uint256 bond, int256 reputation, uint256 totalDecisions, uint256 totalPaid, bool authorized))",
   "event SourceRegistered(uint256 indexed sourceId, address indexed creator, address payoutWallet, bytes32 contentHash, uint256 price, uint256 bond)",
   "event CitationPaid(uint256 indexed receiptId, uint256 indexed sourceId, address indexed agent, address creator, uint256 amount, bytes32 queryHash, bytes32 evidenceHash)",
 ];
+
+/** Logs agent auth/bond state at startup so misconfiguration is visible immediately. */
+export async function checkAnchorReady(): Promise<void> {
+  const pk = process.env.AGENT_PRIVATE_KEY;
+  if (!pk) { console.warn("[anchor] AGENT_PRIVATE_KEY not set — on-chain anchoring disabled"); return; }
+  try {
+    const provider = new ethers.JsonRpcProvider(RPC);
+    const wallet   = new ethers.Wallet(pk, provider);
+    const contract = new ethers.Contract(CONTRACT, ABI, provider);
+    const stats    = await contract.getAgentStats(wallet.address);
+    if (!stats.authorized) console.warn("[anchor] Agent wallet not authorized on contract — payCitation will revert");
+    else if (stats.bond === 0n) console.warn("[anchor] Agent bond is 0 — run: npx tsx scripts/setup-onchain.ts");
+    else console.log(`[anchor] Agent ready — authorized, bond ${ethers.formatEther(stats.bond)} ETH`);
+  } catch { /* RPC offline — non-fatal */ }
+}
 
 const SOURCE_IFACE = new ethers.Interface([
   "event SourceRegistered(uint256 indexed sourceId, address indexed creator, address payoutWallet, bytes32 contentHash, uint256 price, uint256 bond)",
