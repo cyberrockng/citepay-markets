@@ -33,7 +33,23 @@ export async function payCreator(opts: {
 }): Promise<PaymentResult> {
   const { creatorWallet, amountMicroUsdc, sourceId, receiptId } = opts;
 
-  // Direct on-chain USDC transfer via agent wallet on Arc
+  // Preferred path: Circle Developer-Controlled Wallet (MPC-secured, Circle-managed)
+  const { isDCWEnabled, payCreatorViaDCW } = await import("./circle-dcw");
+  if (isDCWEnabled()) {
+    try {
+      const result = await payCreatorViaDCW({ creatorWallet, amountMicroUsdc, receiptId });
+      return {
+        txHash: result.txHash,
+        amountMicroUsdc,
+        recipient: creatorWallet,
+        status: result.status === "confirmed" ? "confirmed" : "simulated",
+      };
+    } catch {
+      // Fall through to viem path
+    }
+  }
+
+  // Fallback path: direct on-chain USDC transfer via agent wallet on Arc
   if (process.env.AGENT_PRIVATE_KEY) {
     try {
       const account = privateKeyToAccount(
