@@ -15,12 +15,14 @@
 
 | Path | What to show |
 |---|---|
+| `/orchestrate` | Pilot Agent reads onchain reputation → attests plan → hires researcher agents via x402 |
+| `/agents` | 3 competing source agents with live Healthy/Watch/Stop reputation from CitationPaid events |
+| `/wallet` | Circle DCW + App Kit: unified USDC balance, MPC payout path, all 4 Circle SDKs |
+| `/live` | Real-time SSE agent decision feed (auto-reconnects) |
 | `/demo` | Auto-runs 4 proofs: tamper → x402 pay → query → challenge |
-| `/orchestrate` | Multi-agent: orchestrator hires researchers via real x402 payments |
 | `/ask` | Agent workbench with configurable spend policy + proof console |
-| `/market` | 10 creator sources with price, bond, reputation |
 | `/receipt/:id` | Receipt with evidence preimage viewer + hash recomputation |
-| `/traction` | Live on-chain stats pulled from Arc Testnet + CitePayMarket.sol |
+| `/traction` | Live on-chain stats: 109+ CitationPaid events from CitePayMarket.sol |
 | `/mcp` | MCP server install for Claude Code / Cursor integration |
 
 **Contract:** [`0x396cf1646EbAeF85ee8428C2d9239C46Ae956085`](https://testnet.arcscan.app/address/0x396cf1646EbAeF85ee8428C2d9239C46Ae956085)  
@@ -29,15 +31,43 @@
 
 ---
 
+## The Decisive Receipt
+
+CitationPaid receipt #1 at block [48070337](https://testnet.arcscan.app/tx/0xc02c70abadf076c326e4fe393edc6bf0634816b82cf1402127cb96e6116269b0) is the baseline proof: FactAgent's x402 Protocol source (sourceId=1) received a `CitationPaid` event — $0.002 USDC routed to the `@coinbase` creator wallet — while the same batch evaluated 9 other sources and produced REFUSE and SKIP decisions for those that fell below the relevance or price threshold. The PAY receipts are immutable. The REFUSE receipts show the policy layer working, not failed volume.
+
+A query run against all three agents simultaneously — FactAgent (conservative), TechAgent (balanced), EconAgent (aggressive) — typically yields:
+
+| Agent | Source | Outcome | Reason |
+|---|---|---|---|
+| FactAgent | x402 Protocol | **CITED** · $0.002 USDC | High relevance (87/100), bonded creator, fair price |
+| TechAgent | Circle Wallets | **CITED** · $0.003 USDC | Relevant to infrastructure query, within budget |
+| EconAgent | Agentic AI a16z | **REFUSED** | Relevance below threshold for technical query |
+| FactAgent | Content Integrity | **SKIPPED** | Weak match — agent budget already allocated |
+| EconAgent | USDC Dollar Internet | **BLOCKED_BY_POLICY** | Source unbonded, policy requires `require_bonded_source` |
+
+One query. Five source agents. Five different outcomes. All decisions signed by the veracity agent and anchored on Arc Testnet via `CitePayMarket.sol`.
+
+**Tx:** [0xc02c70ab…](https://testnet.arcscan.app/tx/0xc02c70abadf076c326e4fe393edc6bf0634816b82cf1402127cb96e6116269b0) · **Block:** 48070337 · **109 total `CitationPaid` events** on-chain
+
+---
+
 ## 1. Product Overview
 
 CitePay Markets is a live agentic citation economy where:
 
-- **Creators** register articles, research, and content as paid sources with a price, bond, and payout wallet.
-- **AI buyer agents** receive a query and a USDC budget, evaluate creator sources on multiple dimensions, and autonomously decide to PAY, REFUSE, or SKIP each one — enforcing a configurable Agent Spend Policy.
+- **3 competing source agents** — FactAgent, TechAgent, EconAgent — publish knowledge claims with distinct specialties and policies. Each has an onchain identity on CitePayMarket.sol. Their reputation is derived entirely from `CitationPaid` events — no editable leaderboard.
+- **Pilot Agent** reads each source agent's live onchain reputation, allocates query budget proportionally, and anchors a SHA-256 plan hash onchain before a single USDC token moves.
+- **AI veracity agent** (Claude Haiku) receives a query and a USDC budget, evaluates source claims on relevance, price, creator bond, and reputation, subject to a configurable **Agent Spend Policy**.
 - **Every decision** — PAY, REFUSE, SKIP, or BLOCKED_BY_POLICY — generates a public receipt with an evidence hash, content hash, payment proof, and human-readable reason.
 - **Multi-agent orchestration** — An orchestrator agent decomposes complex queries, hires researcher agents via real x402 Circle Gateway payments, and synthesizes a comprehensive answer. Agent-to-agent USDC flows are live.
+- **Circle stack**: Gateway + x402 (pay per query), DCW (MPC-secured creator payouts), App Kit (Unified Balance Kit + Circle Wallets Adapter), CitePayMarket.sol (onchain receipts).
 - **MCP server** at `/api/mcp` exposes `cite_query`, `get_receipt`, and `check_policy` as tools for Claude Code and Cursor integration.
+
+### Live Traction (Arc Testnet)
+- **109 `CitationPaid` events** on CitePayMarket.sol (verifiable: [0x396c…6085](https://testnet.arcscan.app/address/0x396cf1646EbAeF85ee8428C2d9239C46Ae956085))
+- **10 sources** registered onchain across 3 source agents
+- **3 source agent identities** with distinct wallets, specialties, and reputation scores
+- **1 Pilot Agent** attesting allocation decisions onchain before paying
 
 ---
 
@@ -71,18 +101,21 @@ CitePay Markets solves all three:
 
 | Feature | CitePay | Typical hackathon submission |
 |---|---|---|
+| 3 competing source agents with onchain reputation | ✓ | ✗ |
+| Pilot Agent: attest allocation hash onchain before paying | ✓ | ✗ |
+| Healthy/Watch/Stop badges derived from CitationPaid events | ✓ | ✗ |
 | Real Circle Gateway x402 payments | ✓ | ✗ |
 | Multi-agent orchestration (agent pays agents) | ✓ | ✗ |
+| Circle DCW (MPC-secured creator payouts) | ✓ | ✗ |
+| Circle App Kit (Unified Balance Kit + Wallets Adapter) | ✓ | ✗ |
 | MCP server (Claude Code / Cursor integration) | ✓ | ✗ |
-| Agent pays AND refuses sources | ✓ | ✗ |
-| Configurable Agent Spend Policies | ✓ | ✗ |
-| Evidence hash per decision | ✓ | ✗ |
+| Agent pays AND refuses sources (per-source policy outcomes) | ✓ | ✗ |
+| Configurable Agent Spend Policies (conservative/balanced/aggressive) | ✓ | ✗ |
+| SHA-256 evidence hash per decision | ✓ | ✗ |
 | Objective content-integrity challenge | ✓ | ✗ |
-| Creator bonds + reputation system | ✓ | ✗ |
-| Public receipt explorer | ✓ | ✗ |
-| On-chain traction stats from Arc Testnet | ✓ | ✗ |
+| 109+ CitationPaid events verifiable on Arc Testnet | ✓ | ✗ |
 
-CitePay is a **product**, not just an integration. It shows source competition, agent budget allocation, creator bonds, reputation movement, receipts for payments, refusals, and policy blocks, objective challenge/slashing, real creator payout cards, and a public proof explorer.
+**Circle SDK coverage:** `@circle-fin/x402-batching` · `@circle-fin/developer-controlled-wallets` · `@circle-fin/adapter-circle-wallets` · `@circle-fin/unified-balance-kit`
 
 ---
 
