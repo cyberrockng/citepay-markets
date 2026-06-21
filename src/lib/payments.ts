@@ -1,22 +1,22 @@
 /**
- * Creator payout module.
- * Priority order:
- *   1. Direct on-chain USDC transfer via agent wallet (primary — live on Base Sepolia)
- *   2. Circle Programmable Wallets API (CIRCLE_API_KEY set)
- *   3. Fallback: deterministic tx hash when USDC balance is zero
+ * Creator payout module — Arc Testnet.
+ * Pays creators in USDC directly on-chain via the agent wallet.
+ * Falls back to deterministic simulated hash when balance is zero.
  */
 
-import { ethers } from "ethers";
+import { createWalletClient, createPublicClient, http, erc20Abi, parseUnits } from "viem";
+import { privateKeyToAccount } from "viem/accounts";
+import { ARC_USDC, ARC_RPC } from "./x402";
 
-// Base Sepolia USDC contract
-const USDC_ADDRESS = process.env.USDC_CONTRACT_ADDRESS || "0x036CbD53842c5426634e7929541eC2318f3dCF7e";
-const BASE_SEPOLIA_RPC = process.env.BASE_SEPOLIA_RPC_URL || "https://sepolia.base.org";
+const USDC_ADDRESS = (process.env.ARC_USDC_ADDRESS || ARC_USDC) as `0x${string}`;
 
-const USDC_ABI = [
-  "function transfer(address to, uint256 amount) returns (bool)",
-  "function balanceOf(address account) view returns (uint256)",
-  "function decimals() view returns (uint8)",
-];
+// Minimal arc testnet chain def (viem/chains arcTestnet works too, this avoids the import)
+const arcTestnet = {
+  id: 5042002,
+  name: "Arc Testnet",
+  nativeCurrency: { name: "USDC", symbol: "USDC", decimals: 18 },
+  rpcUrls: { default: { http: [ARC_RPC] } },
+} as const;
 
 export interface PaymentResult {
   txHash: string;
@@ -33,72 +33,47 @@ export async function payCreator(opts: {
 }): Promise<PaymentResult> {
   const { creatorWallet, amountMicroUsdc, sourceId, receiptId } = opts;
 
-  // Option 1: Direct on-chain USDC transfer via agent wallet
+  // Direct on-chain USDC transfer via agent wallet on Arc
   if (process.env.AGENT_PRIVATE_KEY) {
     try {
-      const provider = new ethers.JsonRpcProvider(BASE_SEPOLIA_RPC);
-      const wallet = new ethers.Wallet(process.env.AGENT_PRIVATE_KEY, provider);
-      const usdc = new ethers.Contract(USDC_ADDRESS, USDC_ABI, wallet);
-
-      // Check balance before sending
-      const balance = await usdc.balanceOf(wallet.address);
-      if (balance >= BigInt(amountMicroUsdc)) {
-        const tx = await usdc.transfer(creatorWallet, BigInt(amountMicroUsdc));
-        const receipt = await tx.wait();
-        return {
-          txHash: receipt.hash,
-          amountMicroUsdc,
-          recipient: creatorWallet,
-          status: "confirmed",
-        };
-      }
-      // Insufficient USDC balance — fall through to simulation
-    } catch {
-      // RPC or tx error — fall through to simulation
-    }
-  }
-
-  // Option 2: Circle Programmable Wallets API
-  if (process.env.CIRCLE_API_KEY && process.env.CIRCLE_WALLET_ID) {
-    try {
-      const res = await fetch("https://api.circle.com/v1/w3s/developer/transactions/transfer", {
-        method: "POST",
-        headers: {
-          "Authorization": `Bearer ${process.env.CIRCLE_API_KEY}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          walletId: process.env.CIRCLE_WALLET_ID,
-          tokenId: process.env.USDC_TOKEN_ID || "usdc",
-          destinationAddress: creatorWallet,
-          amounts: [String(amountMicroUsdc / 1_000_000)],
-          idempotencyKey: `citepay-${receiptId}`,
-          fee: { type: "levels", config: { feeLevel: "MEDIUM" } },
-        }),
+      const account = privateKeyToAccount(
+        process.env.AGENT_PRIVATE_KEY as `0x${string}`
+      );
+      const publicClient = createPublicClient({
+        chain: arcTestnet,
+        transport: http(ARC_RPC),
+      });
+      const walletClient = createWalletClient({
+        account,
+        chain: arcTestnet,
+        transport: http(ARC_RPC),
       });
 
-      if (res.ok) {
-        const data = await res.json();
-        return {
-          txHash: data.data?.transaction?.txHash || `circle-${receiptId}`,
-          amountMicroUsdc,
-          recipient: creatorWallet,
-          status: "confirmed",
-        };
+      // Check USDC balance (ERC-20 uses 6 decimals on Arc)
+      const balance = await publicClient.readContract({
+        address: USDC_ADDRESS,
+        abi: erc20Abi,
+        functionName: "balanceOf",
+        args: [account.address],
+      });
+
+      if (balance >= BigInt(amountMicroUsdc)) {
+        const hash = await walletClient.writeContract({
+          address: USDC_ADDRESS,
+          abi: erc20Abi,
+          functionName: "transfer",
+          args: [creatorWallet as `0x${string}`, BigInt(amountMicroUsdc)],
+        });
+        await publicClient.waitForTransactionReceipt({ hash });
+        return { txHash: hash, amountMicroUsdc, recipient: creatorWallet, status: "confirmed" };
       }
     } catch {
-      // Fall through to simulation
+      // RPC error or insufficient balance — fall through
     }
   }
 
-  // Option 3: Dev mode — deterministic simulated tx hash
+  // Fallback: deterministic simulated hash (dev / zero-balance)
   const { sha256 } = await import("./evidence");
   const txHash = `0x${sha256(`${creatorWallet}:${amountMicroUsdc}:${receiptId}:${sourceId}`)}`;
-
-  return {
-    txHash,
-    amountMicroUsdc,
-    recipient: creatorWallet,
-    status: "simulated",
-  };
+  return { txHash, amountMicroUsdc, recipient: creatorWallet, status: "simulated" };
 }

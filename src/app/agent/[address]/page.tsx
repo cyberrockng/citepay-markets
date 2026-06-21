@@ -115,7 +115,7 @@ export default function AgentPage({ params }: { params: Promise<{ address: strin
         <h2 className="font-semibold mb-4 text-[#f0f0f5]">Agent Identity</h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
           {[
-            { label: "Network", value: "Base Sepolia (testnet)" },
+            { label: "Network", value: "Arc Testnet (5042002) · Circle Gateway" },
             { label: "Agent Type", value: "CitePay Buyer Agent v1" },
             { label: "Reputation Score", value: `${reputation >= 0 ? "+" : ""}${reputation} (paid − refused)` },
             { label: "Agent Bond", value: "0.001 ETH deposited" },

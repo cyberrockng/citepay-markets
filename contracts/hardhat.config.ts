@@ -15,6 +15,13 @@ const config: HardhatUserConfig = {
     localhost: {
       url: "http://127.0.0.1:8545",
     },
+    arcTestnet: {
+      url: process.env.ARC_RPC_URL || "https://rpc.testnet.arc.network",
+      accounts: process.env.DEPLOYER_PRIVATE_KEY
+        ? [process.env.DEPLOYER_PRIVATE_KEY]
+        : [],
+      chainId: 5042002,
+    },
     baseSepolia: {
       url: process.env.BASE_SEPOLIA_RPC_URL || "https://sepolia.base.org",
       accounts: process.env.DEPLOYER_PRIVATE_KEY
@@ -25,9 +32,18 @@ const config: HardhatUserConfig = {
   },
   etherscan: {
     apiKey: {
+      arcTestnet: "placeholder",
       baseSepolia: process.env.BASESCAN_API_KEY || "",
     },
     customChains: [
+      {
+        network: "arcTestnet",
+        chainId: 5042002,
+        urls: {
+          apiURL: "https://testnet.arcscan.app/api",
+          browserURL: "https://testnet.arcscan.app",
+        },
+      },
       {
         network: "baseSepolia",
         chainId: 84532,

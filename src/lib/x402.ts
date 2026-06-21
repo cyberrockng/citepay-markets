@@ -1,111 +1,133 @@
 import { NextRequest, NextResponse } from "next/server";
 import { sha256 } from "./evidence";
 
-export const QUERY_FEE_USDC = 0.01; // $0.01 USDC to run a query
-export const QUERY_FEE_MICRO = Math.round(QUERY_FEE_USDC * 1_000_000); // 10000 micro-USDC
-export const PAYMENT_RECEIVER = process.env.AGENT_WALLET_ADDRESS || "0x5389688243328c26a92b301faEEAb5fbf9AFf105";
-export const CHAIN_ID = 84532; // Base Sepolia
+// ── Arc Testnet constants ──────────────────────────────────────────────────
+export const ARC_CHAIN_ID     = 5042002;
+export const ARC_NETWORK      = `eip155:${ARC_CHAIN_ID}`;
+export const ARC_USDC         = "0x3600000000000000000000000000000000000000";
+export const ARC_GATEWAY_WALLET = "0x0077777d7EBA4688BDeF3E311b846F25870A19B9";
+export const ARC_RPC          = "https://rpc.testnet.arc.network";
+export const ARC_EXPLORER     = "https://testnet.arcscan.app";
 
-export interface X402PaymentHeader {
-  scheme: string;
-  network: string;
-  maxAmountRequired: string;
-  resource: string;
-  description: string;
-  mimeType: string;
-  payTo: string;
-  maxTimeoutSeconds: number;
-  asset: string;
-  outputSchema: null;
-  extra: { name: string; version: string };
+// Query fee: $0.001 — nanopayment via Circle Gateway on Arc
+export const QUERY_FEE_USDC  = 0.001;
+export const QUERY_FEE_MICRO = Math.round(QUERY_FEE_USDC * 1_000_000); // 1000 micro-USDC
+export const PAYMENT_RECEIVER = (
+  process.env.AGENT_WALLET_ADDRESS || "0x5389688243328c26a92b301faEEAb5fbf9AFf105"
+) as `0x${string}`;
+
+function buildPaymentRequirements() {
+  return {
+    scheme: "exact" as const,
+    network: ARC_NETWORK,
+    asset: ARC_USDC,
+    amount: String(QUERY_FEE_MICRO),
+    payTo: PAYMENT_RECEIVER,
+    maxTimeoutSeconds: 345600,
+    extra: {
+      name: "GatewayWalletBatched",
+      version: "1",
+      verifyingContract: ARC_GATEWAY_WALLET,
+    },
+  };
 }
 
 /**
- * Build the WWW-Authenticate header for x402 protocol.
- * Returns a 402 response with payment details.
+ * Return HTTP 402 with Circle Gateway payment requirements.
+ * Header: PAYMENT-REQUIRED (base64 JSON) — consumed by GatewayClient.
  */
 export function build402Response(resource: string): NextResponse {
-  const paymentDetails: X402PaymentHeader = {
-    scheme: "exact",
-    network: `eip155:${CHAIN_ID}`,
-    maxAmountRequired: String(QUERY_FEE_MICRO),
-    resource,
-    description: "Pay to run a CitePay query. The agent will search creator sources and pay citations on your behalf.",
-    mimeType: "application/json",
-    payTo: PAYMENT_RECEIVER,
-    maxTimeoutSeconds: 300,
-    asset: `eip155:${CHAIN_ID}/erc20:${process.env.USDC_CONTRACT_ADDRESS || "0x036CbD53842c5426634e7929541eC2318f3dCF7e"}`,
-    outputSchema: null,
-    extra: { name: "CitePay Markets", version: "1.0" },
+  const requirements = buildPaymentRequirements();
+  const paymentRequired = {
+    x402Version: 2,
+    resource: {
+      url: resource,
+      description:
+        "Pay $0.001 USDC nanopayment to run a CitePay citation query on Arc.",
+      mimeType: "application/json",
+    },
+    accepts: [requirements],
   };
 
   return new NextResponse(
     JSON.stringify({
       error: "Payment Required",
-      message: "POST /api/ask requires a small USDC query fee via x402.",
-      x402: paymentDetails,
+      message:
+        "POST /api/ask requires a $0.001 USDC nanopayment via Circle Gateway on Arc testnet.",
+      paymentRequired,
+      arc: {
+        network: ARC_NETWORK,
+        usdc: ARC_USDC,
+        gatewayWallet: ARC_GATEWAY_WALLET,
+        explorer: ARC_EXPLORER,
+      },
     }),
     {
       status: 402,
       headers: {
         "Content-Type": "application/json",
+        "PAYMENT-REQUIRED": Buffer.from(JSON.stringify(paymentRequired)).toString("base64"),
         "X-Payment-Required": "true",
-        "WWW-Authenticate": `x402 ${JSON.stringify(paymentDetails)}`,
       },
     }
   );
 }
 
 /**
- * Verify an x402 payment header from the request.
- * In production this calls Circle's payment verification API.
- * Returns { valid, txHash } or { valid: false, error }.
+ * Verify a Circle Gateway nanopayment.
+ *
+ * Primary path: `payment-signature` header (base64 JSON) verified via
+ *   BatchFacilitatorClient from @circle-fin/x402-batching/server.
+ *
+ * Fallback (dev/demo): `X-PAYMENT` header accepted in dev mode so
+ *   the web UI demo still works without a funded Gateway wallet.
  */
-export async function verifyX402Payment(req: NextRequest): Promise<{
+export async function verifyGatewayPayment(req: NextRequest): Promise<{
   valid: boolean;
   txHash?: string;
+  payer?: string;
   error?: string;
 }> {
-  const paymentHeader = req.headers.get("X-PAYMENT") || req.headers.get("x-payment");
+  const paymentSignature = req.headers.get("payment-signature");
+  const legacyPayment    = req.headers.get("X-PAYMENT") || req.headers.get("x-payment");
 
-  if (!paymentHeader) {
-    return { valid: false, error: "Missing X-PAYMENT header" };
+  // Dev fallback: X-PAYMENT for web UI / curl demos
+  const devMode =
+    process.env.NODE_ENV === "development" || process.env.X402_DEV_MODE === "true";
+  if (devMode && legacyPayment && !paymentSignature) {
+    const fakeTx = `0x${sha256(legacyPayment + Date.now()).substring(0, 64)}`;
+    return { valid: true, txHash: fakeTx };
   }
 
-  // Development mode: accept any non-empty payment header
-  if (process.env.NODE_ENV === "development" || process.env.X402_DEV_MODE === "true") {
-    const fakeTxHash = `0x${sha256(paymentHeader + Date.now()).substring(0, 64)}`;
-    return { valid: true, txHash: fakeTxHash };
+  if (!paymentSignature) {
+    return { valid: false, error: "Missing payment-signature header" };
   }
 
   try {
-    const payment = JSON.parse(paymentHeader);
+    const { BatchFacilitatorClient } = await import(
+      "@circle-fin/x402-batching/server"
+    );
+    const facilitator   = new BatchFacilitatorClient();
+    const requirements  = buildPaymentRequirements();
+    const paymentPayload = JSON.parse(
+      Buffer.from(paymentSignature, "base64").toString("utf-8")
+    );
 
-    // Production: verify via Circle API
-    if (process.env.CIRCLE_API_KEY) {
-      const verifyRes = await fetch("https://api.circle.com/v1/w3s/payments/verify", {
-        method: "POST",
-        headers: {
-          "Authorization": `Bearer ${process.env.CIRCLE_API_KEY}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          payment,
-          expectedAmount: String(QUERY_FEE_MICRO),
-          expectedRecipient: PAYMENT_RECEIVER,
-          chainId: CHAIN_ID,
-        }),
-      });
-
-      if (verifyRes.ok) {
-        const data = await verifyRes.json();
-        return { valid: true, txHash: data.txHash || payment.transaction?.hash };
-      }
-      return { valid: false, error: "Circle verification failed" };
+    const verifyResult = await facilitator.verify(paymentPayload, requirements);
+    if (!verifyResult.isValid) {
+      return { valid: false, error: verifyResult.invalidReason ?? "Verification failed" };
     }
 
-    // No Circle key: accept payment structure at face value (demo mode)
-    return { valid: true, txHash: payment.transaction?.hash || `demo-${Date.now()}` };
+    const settleResult = await facilitator.settle(paymentPayload, requirements);
+    if (!settleResult.success) {
+      return { valid: false, error: settleResult.errorReason ?? "Settlement failed" };
+    }
+
+    return {
+      valid: true,
+      txHash: settleResult.transaction ?? undefined,
+      payer:  settleResult.payer ?? verifyResult.payer ?? undefined,
+    };
   } catch (err) {
     return { valid: false, error: String(err) };
   }

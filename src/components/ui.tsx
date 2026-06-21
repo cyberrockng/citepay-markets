@@ -128,7 +128,7 @@ export function ProofPanel({
       )}
       {baseScanTx && (
         <a
-          href={`https://sepolia.basescan.org/tx/${baseScanTx}`}
+          href={`https://testnet.arcscan.app/tx/${baseScanTx}`}
           target="_blank"
           rel="noopener noreferrer"
           className="inline-block mt-2 font-mono text-xs text-[#6366f1] hover:text-indigo-300 break-all"
@@ -183,7 +183,7 @@ export function TxLink({
   const display = label ?? (hash.length > 20 ? hash.slice(0, 10) + "…" + hash.slice(-6) : hash);
   return (
     <a
-      href={`https://sepolia.basescan.org/tx/${hash}`}
+      href={`https://testnet.arcscan.app/tx/${hash}`}
       target="_blank"
       rel="noopener noreferrer"
       className="font-mono text-xs text-[#6366f1] hover:text-indigo-300 break-all"

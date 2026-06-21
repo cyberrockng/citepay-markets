@@ -6,7 +6,7 @@
 import { ethers } from "ethers";
 
 const CONTRACT = process.env.NEXT_PUBLIC_CONTRACT_ADDRESS || "0x396cf1646EbAeF85ee8428C2d9239C46Ae956085";
-const RPC      = process.env.BASE_SEPOLIA_RPC_URL        || "https://sepolia.base.org";
+const RPC      = process.env.ARC_RPC_URL || "https://rpc.testnet.arc.network";
 
 const ABI = [
   "function registerSource(address payoutWallet, bytes32 contentHash, string metadataURI, uint256 price, uint256 bond) payable returns (uint256 sourceId)",

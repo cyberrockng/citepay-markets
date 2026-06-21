@@ -18,7 +18,7 @@ const FLOW_STEPS = [
   { n: "03", title: "Pay query fee in USDC",   desc: "Client attaches X-PAYMENT header and retries the request." },
   { n: "04", title: "Agent scores sources",    desc: "CitePay evaluates creators on relevance, price, bond, and reputation." },
   { n: "05", title: "PAY best sources",        desc: "Winners receive USDC instantly. Weak sources get REFUSE or SKIP." },
-  { n: "06", title: "Public receipt + anchor", desc: "Every decision becomes a signed Policy Receipt, anchored on Base Sepolia." },
+  { n: "06", title: "Public receipt + anchor", desc: "Every decision becomes a signed Policy Receipt, anchored on Arc via Circle Gateway." },
 ];
 
 function useCountUp(target: number, active: boolean, duration = 1200): number {
@@ -74,14 +74,14 @@ export default function LandingPage() {
         <div className="relative z-10">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#111118]/80 backdrop-blur border border-[#1e1e2e] text-[#8b8b9e] text-xs font-mono mb-8">
             <span className="w-1.5 h-1.5 rounded-full bg-[#00ff88] inline-block pulse-dot" />
-            Base Sepolia · x402 + USDC · Smart Contract
+            Arc Testnet · Circle Gateway · Nanopayments · x402
           </div>
           <h1 className="text-5xl sm:text-6xl font-bold mb-5 leading-tight tracking-tight">
             The Policy &amp; Payment Layer<br />
             <span className="gradient-text">for Autonomous AI Citations</span>
           </h1>
           <p className="text-xl text-[#8b8b9e] max-w-2xl mx-auto mb-10 leading-relaxed">
-            Agents enforce configurable spend policies, pay creators in USDC, and publish tamper-evident Policy Receipts anchored on Base Sepolia.
+            Agents enforce configurable spend policies, pay creators in USDC nanopayments via Circle Gateway on Arc, and publish tamper-evident Policy Receipts.
           </p>
           <div className="flex flex-col sm:flex-row gap-3 justify-center flex-wrap">
             <Link href="/demo" className="bg-[#00ff88] hover:bg-[#00e87a] text-black font-bold px-8 py-3.5 rounded-xl transition-all hover:scale-105 card-lift">

@@ -103,7 +103,7 @@ export default function AskPage() {
 
     const paymentProof = {
       scheme: "exact",
-      network: "eip155:84532",
+      network: "eip155:5042002",
       payload: {
         signature: "0x" + Array.from({ length: 130 }, () => Math.floor(Math.random() * 16).toString(16)).join(""),
         transaction: {

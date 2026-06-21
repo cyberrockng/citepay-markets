@@ -15,7 +15,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "CitePay Markets — Proof-of-Paid-Citation for AI Agents",
-  description: "AI agents pay creators in USDC when they cite their work. Every decision is a public, verifiable receipt on Base Sepolia.",
+  description: "AI agents pay creators in USDC nanopayments when they cite their work. Every decision is a public, verifiable receipt settled on Arc via Circle Gateway.",
 };
 
 export default function RootLayout({

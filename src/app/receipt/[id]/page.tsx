@@ -157,7 +157,7 @@ export default function ReceiptPage({ params }: { params: Promise<{ id: string }
           </div>
           {receipt.paymentStatus === "confirmed" && receipt.txHash
             ? <ProofPanel
-                label="Base Sepolia Transaction"
+                label="Arc Testnet Transaction"
                 baseScanTx={receipt.txHash}
                 baseScanTxLabel={receipt.txHash.slice(0, 20) + "…"}
               />

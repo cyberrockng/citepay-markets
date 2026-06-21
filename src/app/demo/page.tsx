@@ -290,7 +290,7 @@ export default function DemoPage() {
             <h2 className="text-xl font-bold text-[#00ff88] mb-3">All four proofs verified</h2>
             <p className="text-[#8b8b9e] text-sm max-w-md mx-auto mb-6">
               An AI agent queried creator content, paid USDC, produced a verifiable receipt,
-              and the challenge mechanism confirmed content integrity — all on Base Sepolia.
+              and the challenge mechanism confirmed content integrity — settled on Arc via Circle Gateway.
             </p>
             <div className="flex justify-center gap-4 flex-wrap">
               <Link
@@ -452,10 +452,10 @@ function StepData({ stepKey, data, microToUsdc, trunc }: {
     <Row label="Source" value={data.sourceTitle} plain />
     <Row label="Amount paid" value={`$${microToUsdc(data.amountPaid)} USDC`} />
     {data.txHash && (
-      <Row label="USDC tx" value={data.txHash} link={`https://sepolia.basescan.org/tx/${data.txHash}`} trunc={trunc} />
+      <Row label="USDC tx" value={data.txHash} link={`https://testnet.arcscan.app/tx/${data.txHash}`} trunc={trunc} />
     )}
     {data.onChainTxHash && (
-      <Row label="Anchor tx" value={data.onChainTxHash} link={`https://sepolia.basescan.org/tx/${data.onChainTxHash}`} trunc={trunc} />
+      <Row label="Anchor tx" value={data.onChainTxHash} link={`https://testnet.arcscan.app/tx/${data.onChainTxHash}`} trunc={trunc} />
     )}
     {data.onChainReceiptId ? <Row label="Contract receipt #" value={String(data.onChainReceiptId)} /> : null}
     <Row label="Evidence hash" value={trunc(data.evidenceHash, 40)} />

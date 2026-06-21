@@ -82,7 +82,7 @@ export default function MarketPage() {
           <BackButton label="Home" />
           <h1 className="text-3xl font-bold mt-4 text-[#f0f0f5]">Creator Source Market</h1>
           <p className="text-[#8b8b9e] mt-1">
-            {totalSources} sources competing for AI citations on Base Sepolia
+            {totalSources} sources competing for AI citations · settled on Arc via Circle Gateway
           </p>
         </div>
         <button

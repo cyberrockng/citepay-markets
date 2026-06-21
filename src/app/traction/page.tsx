@@ -27,7 +27,7 @@ export default function TractionPage() {
         <div>
           <BackButton label="Home" />
           <h1 className="text-3xl font-bold mt-4 text-[#f0f0f5]">Traction Dashboard</h1>
-          <p className="text-[#8b8b9e] mt-1">Real metrics from real agent decisions · live on Base Sepolia · resets on cold start</p>
+          <p className="text-[#8b8b9e] mt-1">Real metrics from real agent decisions · settled on Arc via Circle Gateway · resets on cold start</p>
         </div>
         {ts && (
           <div className="text-xs text-[#4a4a5e] font-mono mt-1">

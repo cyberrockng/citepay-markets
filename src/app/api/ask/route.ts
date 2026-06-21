@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { v4 as uuidv4 } from "uuid";
 import Anthropic from "@anthropic-ai/sdk";
-import { build402Response, verifyX402Payment, QUERY_FEE_MICRO } from "@/lib/x402";
+import { build402Response, verifyGatewayPayment, QUERY_FEE_MICRO } from "@/lib/x402";
 import { runBuyerAgent, getAgentAddress } from "@/lib/agent";
 import { buildEvidencePreimage, hashEvidence, sha256, parseUSDC } from "@/lib/evidence";
 import { payCreator } from "@/lib/payments";
@@ -48,13 +48,16 @@ export async function POST(req: NextRequest) {
   const category = typeof body.category === "string" ? body.category : undefined;
 
   // ── Step 1: Check for payment ─────────────────────────────────────────────
-  const hasPayment = req.headers.has("X-PAYMENT") || req.headers.has("x-payment");
+  const hasPayment =
+    req.headers.has("payment-signature") ||
+    req.headers.has("X-PAYMENT") ||
+    req.headers.has("x-payment");
   if (!hasPayment) {
     return build402Response(req.url);
   }
 
-  // ── Step 2: Verify payment ────────────────────────────────────────────────
-  const { valid, txHash: feesTxHash, error: payError } = await verifyX402Payment(req);
+  // ── Step 2: Verify payment via Circle Gateway (Arc testnet) ──────────────
+  const { valid, txHash: feesTxHash, error: payError } = await verifyGatewayPayment(req);
   if (!valid) {
     return NextResponse.json(
       { error: "Payment verification failed", detail: payError },
