@@ -14,7 +14,7 @@ const USDC_ADDRESS = (process.env.ARC_USDC_ADDRESS || ARC_USDC) as `0x${string}`
 const arcTestnet = {
   id: 5042002,
   name: "Arc Testnet",
-  nativeCurrency: { name: "USDC", symbol: "USDC", decimals: 18 },
+  nativeCurrency: { name: "Ether", symbol: "ETH", decimals: 18 },
   rpcUrls: { default: { http: [ARC_RPC] } },
 } as const;
 

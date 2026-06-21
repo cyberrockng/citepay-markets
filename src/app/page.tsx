@@ -84,17 +84,17 @@ export default function LandingPage() {
             Agents enforce configurable spend policies, pay creators in USDC nanopayments via Circle Gateway on Arc, and publish tamper-evident Policy Receipts.
           </p>
           <div className="flex flex-col sm:flex-row gap-3 justify-center flex-wrap">
-            <Link href="/demo" className="bg-[#00ff88] hover:bg-[#00e87a] text-black font-bold px-8 py-3.5 rounded-xl transition-all hover:scale-105 card-lift">
-              Live Demo →
+            <Link href="/orchestrate" className="bg-[#00ff88] hover:bg-[#00e87a] text-black font-bold px-8 py-3.5 rounded-xl transition-all hover:scale-105 card-lift">
+              Multi-Agent Demo →
             </Link>
             <Link href="/ask"  className="bg-[#6366f1] hover:bg-indigo-500 text-white font-semibold px-8 py-3.5 rounded-xl transition-all hover:scale-105 card-lift">
-              Ask a Question
+              Single Agent
+            </Link>
+            <Link href="/mcp" className="border border-[#6366f1]/40 hover:border-[#6366f1] text-[#6366f1] hover:text-indigo-300 font-semibold px-8 py-3.5 rounded-xl transition-colors">
+              Add to Claude (MCP)
             </Link>
             <Link href="/market" className="border border-[#1e1e2e] hover:border-[#8b8b9e] text-[#8b8b9e] hover:text-[#f0f0f5] font-semibold px-8 py-3.5 rounded-xl transition-colors">
               Source Market
-            </Link>
-            <Link href="/leaderboard" className="border border-[#1e1e2e] hover:border-[#8b8b9e] text-[#8b8b9e] hover:text-[#f0f0f5] font-semibold px-8 py-3.5 rounded-xl transition-colors">
-              Leaderboard
             </Link>
           </div>
         </div>
@@ -125,6 +125,27 @@ export default function LandingPage() {
               </div>
             );
           })}
+        </div>
+
+        {/* Share prompt */}
+        <div className="mt-6 flex flex-col sm:flex-row items-center justify-between gap-3 bg-[#111118] rounded-xl border border-[#1e1e2e] px-5 py-4">
+          <div className="text-sm text-[#8b8b9e]">
+            Built for{" "}
+            <span className="text-[#f0f0f5] font-semibold">Lepton Hackathon</span>
+            {" "}· Jun 15–29 2026 · Arc Testnet · Circle Gateway
+          </div>
+          <div className="flex gap-2">
+            <a
+              href={`https://twitter.com/intent/tweet?text=${encodeURIComponent("AI agents that actually pay creators in USDC when they cite their work 🤖💰\n\nCitePay Markets: multi-agent orchestrator + Circle Gateway nanopayments + on-chain receipts on Arc\n\nTry it → https://citepay-markets.vercel.app\n\n#Lepton #CircleGateway #x402 #Web3AI")}`}
+              target="_blank" rel="noopener noreferrer"
+              className="text-xs px-3 py-1.5 rounded-lg bg-[#1e1e2e] hover:bg-[#2e2e3e] text-[#8b8b9e] hover:text-[#f0f0f5] transition-colors font-mono"
+            >
+              Share on X
+            </a>
+            <Link href="/mcp" className="text-xs px-3 py-1.5 rounded-lg border border-[#6366f1]/30 hover:border-[#6366f1] text-[#6366f1] transition-colors font-mono">
+              Add MCP →
+            </Link>
+          </div>
         </div>
       </section>
 
@@ -230,25 +251,27 @@ export default function LandingPage() {
             One endpoint. Verifiable citations. Real USDC payments.
           </h2>
           <p className="text-[#8b8b9e] text-sm mb-6 leading-relaxed">
-            Any AI agent can POST to <code className="text-[#f0f0f5] bg-[#0a0a0f] px-1.5 py-0.5 rounded">/api/ask</code> with an X-PAYMENT header to get structured, cited answers backed by on-chain receipts.
-            Native MCP support available at <code className="text-[#f0f0f5] bg-[#0a0a0f] px-1.5 py-0.5 rounded">/api/mcp</code>.
+            Any AI agent pays via <strong className="text-[#f0f0f5]">Circle Gateway</strong> using <code className="text-[#f0f0f5] bg-[#0a0a0f] px-1.5 py-0.5 rounded">GatewayClient.pay()</code>, or use the MCP server to call CitePay directly from Claude Code — no wallet setup needed.
           </p>
           <div className="bg-[#0a0a0f] rounded-lg p-4 font-mono text-xs text-[#00ff88] overflow-x-auto border border-[#1e1e2e] mb-6">
-{`curl -X POST /api/ask \\
-  -H "X-PAYMENT: <x402-proof>" \\
-  -d '{ "query": "...", "budget": 0.05, "policy": "balanced" }'
+{`// Option A: Circle Gateway (x402 real payment)
+const client = new GatewayClient({ chain: "arcTestnet", privateKey });
+const { data } = await client.pay("https://citepay-markets.vercel.app/api/ask", {
+  method: "POST", body: JSON.stringify({ query: "...", policy: "balanced" })
+});
 
-← { "answer": "...", "decisions": [...], "receiptIds": [...] }`}
+// Option B: MCP from Claude Code (no wallet needed)
+// Add to ~/.claude.json → use cite_query tool`}
           </div>
           <div className="flex gap-4 flex-wrap">
-            <Link href="/ask"   className="bg-[#6366f1] hover:bg-indigo-500 text-white font-semibold px-5 py-2.5 rounded-lg transition-colors text-sm">
-              Try the workbench
+            <Link href="/orchestrate" className="bg-[#6366f1] hover:bg-indigo-500 text-white font-semibold px-5 py-2.5 rounded-lg transition-colors text-sm">
+              Multi-Agent Demo
             </Link>
-            <Link href="/demo"  className="border border-[#1e1e2e] hover:border-[#8b8b9e] text-[#8b8b9e] hover:text-[#f0f0f5] font-semibold px-5 py-2.5 rounded-lg transition-colors text-sm">
-              Watch the demo
+            <Link href="/mcp" className="border border-[#6366f1]/30 hover:border-[#6366f1] text-[#6366f1] font-semibold px-5 py-2.5 rounded-lg transition-colors text-sm">
+              Add to Claude (MCP)
             </Link>
-            <Link href="/api/mcp" className="border border-[#6366f1]/30 hover:border-[#6366f1] text-[#6366f1] font-semibold px-5 py-2.5 rounded-lg transition-colors text-sm" target="_blank">
-              MCP Server ↗
+            <Link href="/ask" className="border border-[#1e1e2e] hover:border-[#8b8b9e] text-[#8b8b9e] hover:text-[#f0f0f5] font-semibold px-5 py-2.5 rounded-lg transition-colors text-sm">
+              Single Agent
             </Link>
           </div>
         </div>
@@ -290,7 +313,8 @@ export default function LandingPage() {
             </span>
           </div>
           <div className="flex flex-wrap gap-4 text-sm text-[#8b8b9e] justify-center">
-            <Link href="/demo"        className="hover:text-[#f0f0f5] transition-colors">Demo</Link>
+            <Link href="/orchestrate" className="hover:text-[#f0f0f5] transition-colors">Orchestrate</Link>
+            <Link href="/mcp"         className="hover:text-[#6366f1] text-[#6366f1]/70 transition-colors">MCP</Link>
             <Link href="/market"      className="hover:text-[#f0f0f5] transition-colors">Market</Link>
             <Link href="/leaderboard" className="hover:text-[#f0f0f5] transition-colors">Leaderboard</Link>
             <Link href="/traction"    className="hover:text-[#f0f0f5] transition-colors">Traction</Link>

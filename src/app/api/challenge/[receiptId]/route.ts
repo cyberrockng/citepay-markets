@@ -42,10 +42,11 @@ export async function POST(
 
   return NextResponse.json({
     success: true,
-    message: "Challenge resolved. Content hash changed — creator reputation reduced, agent reputation adjusted.",
+    message: "Challenge resolved. Content hash changed — creator reputation slashed, agent reputation adjusted. On Arc mainnet this would trigger on-chain slashing of the creator's bond.",
     receiptId,
     hashAtPayment: receipt.contentHashAtDecision,
     currentHash: source.contentHash,
-    refundAmount: receipt.amountPaid,
+    slashedAmount: receipt.amountPaid,
+    note: "Testnet: reputation slash recorded on-chain; bond forfeiture requires Arc mainnet deployment.",
   });
 }

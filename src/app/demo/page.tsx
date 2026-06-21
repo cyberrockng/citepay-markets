@@ -21,7 +21,7 @@ const STEPS = ["sources", "query", "receipt", "verify", "tamper", "challenge"] a
 
 const STEP_META: Record<string, { title: string; proof?: string }> = {
   sources:   { title: "Load sources" },
-  query:     { title: "Agent queries the market",         proof: "Agent used creator content" },
+  query:     { title: "Agent pays & queries via Circle Gateway", proof: "Agent used creator content" },
   receipt:   { title: "Creator payout confirmed",          proof: "Creator paid in USDC" },
   verify:    { title: "Evidence hash verified",            proof: "Citation decision is verifiable" },
   tamper:    { title: "Creator edits content (simulated)" },
@@ -62,6 +62,8 @@ export default function DemoPage() {
   const [running, setRunning] = useState(false);
   const [done, setDone]     = useState(false);
   const [walletBalance, setWalletBalance] = useState<number | null>(null);
+  const [seeding, setSeeding] = useState(false);
+  const [seedMsg, setSeedMsg] = useState("");
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [policyComparison, setPolicyComparison] = useState<any[] | null>(null);
 
@@ -71,6 +73,22 @@ export default function DemoPage() {
       .then(d => { if (typeof d.balanceUsdc === "number") setWalletBalance(d.balanceUsdc); })
       .catch(() => {});
   }, []);
+
+  async function resetDemo() {
+    setSeeding(true);
+    setSeedMsg("");
+    try {
+      const res = await fetch("/api/seed", { method: "POST" });
+      const d = await res.json();
+      setSeedMsg(res.ok ? `✓ ${d.message}` : `✗ ${d.error}`);
+    } catch {
+      setSeedMsg("✗ Reset failed");
+    } finally {
+      setSeeding(false);
+      setSteps(INIT);
+      setDone(false);
+    }
+  }
 
   function set(key: string, status: Status, data?: Record<string, unknown>, error?: string) {
     setSteps(prev => ({ ...prev, [key]: { status, data, error } }));
@@ -94,11 +112,11 @@ export default function DemoPage() {
       }
       set("sources", "done", { count });
 
-      // ── 2. Send query via x402 ────────────────────────────────────────────
+      // ── 2. Send query via Circle Gateway (real USDC payment) ─────────────
       set("query", "running");
-      const askRes = await fetch("/api/ask", {
+      const askRes = await fetch("/api/demo-query", {
         method: "POST",
-        headers: { "Content-Type": "application/json", "X-PAYMENT": "demo-judge-proof" },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           query: "What is x402 and how does it enable micropayments for AI agents?",
           budget: 0.05,
@@ -111,13 +129,16 @@ export default function DemoPage() {
       const first = payDecisions[0];
 
       set("query", "done", {
-        queryId:     ask.queryId,
-        answer:      ask.answer,
-        pay:         payDecisions.length,
-        refuse:      decisions.filter((d: { decision: string }) => d.decision === "REFUSE").length,
-        skip:        decisions.filter((d: { decision: string }) => d.decision === "SKIP").length,
-        totalPaid:   ask.totalPaid,
-        payDecision: first,
+        queryId:        ask.queryId,
+        answer:         ask.answer,
+        pay:            payDecisions.length,
+        refuse:         decisions.filter((d: { decision: string }) => d.decision === "REFUSE").length,
+        skip:           decisions.filter((d: { decision: string }) => d.decision === "SKIP").length,
+        totalPaid:      ask.totalPaid,
+        payDecision:    first,
+        gatewayTx:      ask._demo?.settleTx ?? null,
+        gatewayAmount:  ask._demo?.formattedAmount ?? null,
+        buyerAddress:   ask._demo?.buyerAddress ?? null,
       });
 
       // Build policy comparison from scored decisions (client-side, no extra API calls)
@@ -251,18 +272,33 @@ export default function DemoPage() {
           </div>
         )}
 
-        {/* Run Button */}
-        <button
-          onClick={runDemo}
-          disabled={running}
-          className={`w-full py-4 rounded-xl font-bold text-lg mb-8 transition-all ${
-            running
-              ? "bg-[#111118] text-[#4a4a5e] cursor-not-allowed border border-[#1e1e2e]"
-              : "bg-[#6366f1] hover:bg-indigo-500 text-white"
-          }`}
-        >
-          {running ? "Running demo…" : done ? "▶ Run Demo Again" : "▶ Start Demo"}
-        </button>
+        {/* Run + Reset Buttons */}
+        <div className="flex gap-3 mb-8">
+          <button
+            onClick={runDemo}
+            disabled={running || seeding}
+            className={`flex-1 py-4 rounded-xl font-bold text-lg transition-all ${
+              running || seeding
+                ? "bg-[#111118] text-[#4a4a5e] cursor-not-allowed border border-[#1e1e2e]"
+                : "bg-[#6366f1] hover:bg-indigo-500 text-white"
+            }`}
+          >
+            {running ? "Running demo…" : done ? "▶ Run Demo Again" : "▶ Start Demo"}
+          </button>
+          <button
+            onClick={resetDemo}
+            disabled={running || seeding}
+            title="Reset database to 10 seed sources"
+            className="px-4 py-4 rounded-xl border border-[#1e1e2e] bg-[#111118] hover:border-[#2e2e3e] text-[#4a4a5e] hover:text-[#8b8b9e] text-sm transition-all disabled:cursor-not-allowed"
+          >
+            {seeding ? "Resetting…" : "↺ Reset DB"}
+          </button>
+        </div>
+        {seedMsg && (
+          <p className={`text-xs font-mono mb-4 ${seedMsg.startsWith("✓") ? "text-[#00ff88]" : "text-red-400"}`}>
+            {seedMsg}
+          </p>
+        )}
 
         {/* Step Timeline */}
         <div className="space-y-3">
@@ -443,6 +479,12 @@ function StepData({ stepKey, data, microToUsdc, trunc }: {
     <Row label="Query" value="What is x402 and how does it enable micropayments for AI agents?" plain />
     <Row label="Decisions" value={`${data.pay} PAY · ${data.refuse} REFUSE · ${data.skip} SKIP`} />
     <Row label="Total paid" value={`$${microToUsdc(data.totalPaid)} USDC`} />
+    {data.gatewayAmount && (
+      <Row label="Gateway fee" value={`${data.gatewayAmount} USDC via Circle Gateway`} />
+    )}
+    {data.gatewayTx && (
+      <Row label="Gateway tx" value={data.gatewayTx} link={`https://testnet.arcscan.app/tx/${data.gatewayTx}`} trunc={trunc} />
+    )}
     {data.payDecision && (
       <Row label="Top PAY source" value={data.payDecision.source} plain />
     )}
@@ -479,7 +521,7 @@ function StepData({ stepKey, data, microToUsdc, trunc }: {
     <Row label="Result"          value="Challenge succeeded" />
     <Row label="Hash at payment" value={trunc(data.hashBefore, 40)} />
     <Row label="Hash now"        value={trunc(data.hashAfter, 40)} />
-    <Row label="Outcome"         value="Creator reputation −3 · Agent reputation −1" />
+    <Row label="Outcome"         value="Creator reputation −1 · Agent reputation −1 · Bond forfeiture logged" />
     <Row label="Receipt"         value={`/receipt/${data.receiptId}`} link={`/receipt/${data.receiptId}`} trunc={trunc} />
   </>);
 

@@ -3,10 +3,11 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 const NAV = [
-  { href: "/",           label: "Home",        icon: "◈" },
-  { href: "/market",     label: "Market",      icon: "◉" },
-  { href: "/ask",        label: "Ask",         icon: "✦" },
-  { href: "/leaderboard",label: "Leaders",     icon: "↑" },
+  { href: "/",            label: "Home",    icon: "◈" },
+  { href: "/orchestrate", label: "Multi",   icon: "⬡" },
+  { href: "/ask",         label: "Ask",     icon: "✦" },
+  { href: "/mcp",         label: "MCP",     icon: "⬟" },
+  { href: "/market",      label: "Market",  icon: "◉" },
 ];
 
 export function MobileNav() {

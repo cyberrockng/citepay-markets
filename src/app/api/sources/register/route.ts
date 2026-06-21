@@ -6,6 +6,15 @@ import { registerSourceOnChain } from "@/lib/anchor";
 import type { Source } from "@/types";
 
 export async function POST(req: NextRequest) {
+  // Rate-limit: require X-API-Key when REGISTER_API_KEY is set
+  const registerKey = process.env.REGISTER_API_KEY;
+  if (registerKey) {
+    const provided = req.headers.get("x-api-key");
+    if (provided !== registerKey) {
+      return NextResponse.json({ error: "Unauthorized — X-API-Key required" }, { status: 401 });
+    }
+  }
+
   let body: Partial<Source> & { content?: string } = {};
   try {
     body = await req.json();

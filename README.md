@@ -1,22 +1,31 @@
 # CitePay Markets
 
-> **CitePay Markets is the policy and payment layer for autonomous AI citations. Agents enforce configurable Agent Spend Policies, pay creators in USDC, and publish tamper-evident Policy Receipts anchored on Base Sepolia.**
+> **CitePay Markets is the policy and payment layer for autonomous AI citations. Agents enforce configurable Agent Spend Policies, pay creators in real USDC via Circle Gateway on Arc Testnet, and publish tamper-evident Policy Receipts anchored on-chain.**
 
 [![CI](https://github.com/cyberrockng/citepay-markets/actions/workflows/ci.yml/badge.svg)](https://github.com/cyberrockng/citepay-markets/actions/workflows/ci.yml)
-[![Base Sepolia](https://img.shields.io/badge/network-Base%20Sepolia-blue)](https://sepolia.basescan.org)
-[![x402](https://img.shields.io/badge/payments-x402%20%2B%20Circle%20USDC-green)](https://x402.org)
+[![Arc Testnet](https://img.shields.io/badge/network-Arc%20Testnet-blue)](https://testnet.arcscan.app)
+[![x402](https://img.shields.io/badge/payments-x402%20%2B%20Circle%20Gateway-green)](https://x402.org)
+[![MCP](https://img.shields.io/badge/MCP-Claude%20Code%20%2F%20Cursor-purple)](https://citepay-markets.vercel.app/mcp)
 
 ---
 
 ## Judge Quick Start
 
-1. Open the live app → **[citepay-markets.vercel.app](https://citepay-markets.vercel.app)** — or the alias **[citepay-markets-blrtq2g0o-cyberrockng-s-projects.vercel.app](https://citepay-markets-blrtq2g0o-cyberrockng-s-projects.vercel.app)**
-2. Click **Run Demo** on the `/demo` page — four proofs run automatically
-3. Open any generated receipt — verify the evidence hash client-side
-4. Confirm the Base Sepolia tx link on any `USDC payout: confirmed on-chain` receipt
-5. Click **Submit challenge** after the tamper step — watch the receipt flip to `CHALLENGED`
+**Live app:** [citepay-markets.vercel.app](https://citepay-markets.vercel.app)
 
-Contract: [`0x396cf1646EbAeF85ee8428C2d9239C46Ae956085`](https://sepolia.basescan.org/address/0x396cf1646EbAeF85ee8428C2d9239C46Ae956085) · Network: Base Sepolia (chainId 84532)
+| Path | What to show |
+|---|---|
+| `/demo` | Auto-runs 4 proofs: tamper → x402 pay → query → challenge |
+| `/orchestrate` | Multi-agent: orchestrator hires researchers via real x402 payments |
+| `/ask` | Agent workbench with configurable spend policy + proof console |
+| `/market` | 10 creator sources with price, bond, reputation |
+| `/receipt/:id` | Receipt with evidence preimage viewer + hash recomputation |
+| `/traction` | Live on-chain stats pulled from Arc Testnet + CitePayMarket.sol |
+| `/mcp` | MCP server install for Claude Code / Cursor integration |
+
+**Contract:** [`0x396cf1646EbAeF85ee8428C2d9239C46Ae956085`](https://testnet.arcscan.app/address/0x396cf1646EbAeF85ee8428C2d9239C46Ae956085)  
+**Network:** Arc Testnet (chainId 5042002)  
+**Agent wallet:** `0x5389688243328c26a92b301faEEAb5fbf9AFf105`
 
 ---
 
@@ -25,9 +34,10 @@ Contract: [`0x396cf1646EbAeF85ee8428C2d9239C46Ae956085`](https://sepolia.basesca
 CitePay Markets is a live agentic citation economy where:
 
 - **Creators** register articles, research, and content as paid sources with a price, bond, and payout wallet.
-- **AI buyer agents** receive a query and a USDC budget, evaluate creator sources on multiple dimensions, and autonomously decide to PAY, REFUSE, or SKIP each one.
-- **Every decision** — PAY, REFUSE, or SKIP — generates a public receipt with an evidence hash, content hash, payment proof, and human-readable reason.
-- **Judges and users** can click any receipt, verify the evidence hash, and see exactly why the agent made each choice.
+- **AI buyer agents** receive a query and a USDC budget, evaluate creator sources on multiple dimensions, and autonomously decide to PAY, REFUSE, or SKIP each one — enforcing a configurable Agent Spend Policy.
+- **Every decision** — PAY, REFUSE, SKIP, or BLOCKED_BY_POLICY — generates a public receipt with an evidence hash, content hash, payment proof, and human-readable reason.
+- **Multi-agent orchestration** — An orchestrator agent decomposes complex queries, hires researcher agents via real x402 Circle Gateway payments, and synthesizes a comprehensive answer. Agent-to-agent USDC flows are live.
+- **MCP server** at `/api/mcp` exposes `cite_query`, `get_receipt`, and `check_policy` as tools for Claude Code and Cursor integration.
 
 ---
 
@@ -47,13 +57,13 @@ This creates three problems:
 
 CitePay Markets solves all three:
 
-1. A user or agent pays a small USDC fee via **x402** to submit a query.
+1. A user or agent pays a small USDC fee via **Circle Gateway x402** to submit a query.
 2. CitePay's **buyer agent** (Claude Haiku) searches the creator source market.
-3. The agent scores each source on **relevance, price, creator bond, and reputation**.
-4. The agent **pays** the best sources in USDC, **refuses** overpriced or weak ones, and **skips** irrelevant ones.
+3. The agent scores each source on **relevance, price, creator bond, and reputation**, subject to a configurable **Agent Spend Policy**.
+4. The agent **pays** the best sources in USDC, **refuses** overpriced or weak ones, **skips** irrelevant ones, and **blocks** those that violate policy rules.
 5. Every decision gets a **public receipt** with evidence preimage, evidence hash, content hash, and payment proof.
 6. Creators see earnings on their **dashboard** and share a **payout card**.
-7. The **traction dashboard** shows real-time market metrics: creators paid, USDC routed, receipts generated.
+7. The **traction dashboard** shows live on-chain stats: creators paid, USDC routed, receipts generated — sourced from Arc Testnet Transfer events.
 
 ---
 
@@ -61,115 +71,90 @@ CitePay Markets solves all three:
 
 | Feature | CitePay | Typical hackathon submission |
 |---|---|---|
+| Real Circle Gateway x402 payments | ✓ | ✗ |
+| Multi-agent orchestration (agent pays agents) | ✓ | ✗ |
+| MCP server (Claude Code / Cursor integration) | ✓ | ✗ |
 | Agent pays AND refuses sources | ✓ | ✗ |
+| Configurable Agent Spend Policies | ✓ | ✗ |
 | Evidence hash per decision | ✓ | ✗ |
 | Objective content-integrity challenge | ✓ | ✗ |
 | Creator bonds + reputation system | ✓ | ✗ |
-| x402 HTTP-native payment protocol | ✓ | Rare |
 | Public receipt explorer | ✓ | ✗ |
-| Source competition board | ✓ | ✗ |
-| Agent budget allocation | ✓ | ✗ |
-| Creator share cards | ✓ | ✗ |
+| On-chain traction stats from Arc Testnet | ✓ | ✗ |
 
-CitePay is a **product**, not just an integration. It shows source competition, agent budget allocation, creator bonds, reputation movement, receipts for both payments and refusals, objective challenge/slashing, real creator payout cards, and a public proof explorer.
+CitePay is a **product**, not just an integration. It shows source competition, agent budget allocation, creator bonds, reputation movement, receipts for payments, refusals, and policy blocks, objective challenge/slashing, real creator payout cards, and a public proof explorer.
 
 ---
 
 ## 5. Architecture
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                      User / AI Agent                        │
-└──────────────────────┬──────────────────────────────────────┘
-                       │  POST /api/ask (no payment)
-                       ▼
-              ┌─────────────────┐
-              │  Next.js API    │──── 402 Payment Required
-              │  /api/ask       │     WWW-Authenticate: x402 {...}
-              └────────┬────────┘
-                       │  POST /api/ask (X-PAYMENT header)
-                       ▼
-              ┌─────────────────┐
-              │  x402 Verify    │──── Circle API (prod)
-              │  src/lib/x402   │     or dev-mode accept
-              └────────┬────────┘
-                       │
-                       ▼
-              ┌─────────────────────────────────────┐
-              │         AI Buyer Agent               │
-              │    src/lib/agent.ts                  │
-              │                                      │
-              │  Scores each source (Claude Haiku):  │
-              │  • relevance    45%                  │
-              │  • price        25%                  │
-              │  • bond         15%                  │
-              │  • reputation   15%                  │
-              │  • freshness    modifier             │
-              │  • dedup        modifier             │
-              └──┬──────────────┬──────────┬─────────┘
-                 │ PAY          │ REFUSE   │ SKIP
-                 ▼              ▼          ▼
-        ┌──────────────┐  ┌──────────┐ ┌──────────┐
-        │ payCreator() │  │ Receipt  │ │ Receipt  │
-        │ Circle USDC  │  │ (no pay) │ │ (no pay) │
-        └──────┬───────┘  └──────────┘ └──────────┘
-               │
-               ▼
-        ┌──────────────────────────────────┐
-        │   SQLite (better-sqlite3)         │
-        │   sources / receipts / queries    │
-        │   traction / share_cards          │
-        └──────────────────────────────────┘
-               │
-               ▼
-        ┌──────────────────────┐
-        │  Answer + Citations  │
-        │  + Receipt IDs       │
-        └──────────────────────┘
+┌─────────────────────────────────────────────────────────────────┐
+│                      User / AI Agent / MCP Client               │
+└──────────┬───────────────────────┬──────────────────────────────┘
+           │                       │
+           │ POST /api/ask         │ POST /api/orchestrate
+           ▼                       ▼
+  ┌─────────────────┐    ┌──────────────────────────────┐
+  │  x402 Gateway   │    │  Orchestrator Agent          │
+  │  /api/ask       │    │  Claude Haiku                │
+  │                 │    │  decomposes query →          │
+  │  402 → pay via  │    │  hires researcher agents     │
+  │  Circle Gateway │    │  via x402 payments →         │
+  └────────┬────────┘    │  synthesizes answer          │
+           │              └────────────┬─────────────────┘
+           │                           │ x402 per sub-query
+           ▼                           ▼
+  ┌─────────────────────────────────────────────────────────┐
+  │                  AI Buyer Agent (Claude Haiku)           │
+  │  src/lib/agent.ts                                        │
+  │                                                          │
+  │  Scores each source:                                     │
+  │  • relevance    45%  (Claude Haiku relevance score)      │
+  │  • price        25%  (price vs budget)                   │
+  │  • bond         15%  (creator bonded?)                   │
+  │  • reputation   15%  (past decisions)                    │
+  │  + freshness modifier · dedup penalty                    │
+  │                                                          │
+  │  Agent Spend Policy: conservative / balanced / aggressive│
+  │  → maxPricePerCitation, minRelevanceScore, requireBonded │
+  └──┬──────────────┬──────────┬──────────────┬─────────────┘
+     │ PAY          │ REFUSE   │ SKIP         │ BLOCKED_BY_POLICY
+     ▼              ▼          ▼              ▼
+  payCreator()   Receipt    Receipt        Policy Receipt
+  Circle USDC    (no pay)   (no pay)       (policy reason)
+  Arc Testnet
+     │
+     ▼
+  ┌──────────────────────────────────────┐
+  │   SQLite (better-sqlite3)             │
+  │   sources / receipts / queries        │
+  │   traction / share_cards             │
+  │   Auto-seeded on cold start          │
+  └──────────────────────────────────────┘
+     │
+     ▼
+  ┌──────────────────────────────────────┐
+  │  CitePayMarket.sol (Arc Testnet)     │
+  │  On-chain receipts + reputation      │
+  │  Events: Transfer logs for traction  │
+  └──────────────────────────────────────┘
 ```
 
 **Tech stack:**
-- **Frontend**: Next.js 16.2.9 (App Router, Turbopack), Tailwind CSS 4
+- **Frontend**: Next.js App Router, Tailwind CSS 4
 - **Backend**: Next.js API routes, better-sqlite3 (Node 24)
-- **AI**: Anthropic Claude Haiku (relevance scoring + answer generation)
-- **Payments**: x402 protocol + Circle Programmable Wallets (USDC on Base Sepolia)
-- **Contract**: Solidity 0.8.24, Hardhat, Base Sepolia (chainId 84532)
+- **AI**: Anthropic Claude Haiku (relevance scoring + answer generation + orchestration)
+- **Payments**: x402 protocol + Circle Gateway (BatchFacilitatorClient) + GatewayClient — real USDC on Arc Testnet
+- **Contract**: Solidity 0.8.24, deployed on Arc Testnet (chainId 5042002)
+- **MCP**: JSON-RPC 2.0 server at `/api/mcp` — `cite_query`, `get_receipt`, `check_policy`
 - **CI**: GitHub Actions
 
 ---
 
-## 6. Agent Flow
+## 6. Circle Gateway Payment Flow
 
-```
-runBuyerAgent(query, budget, sources)
-  │
-  ├─ For each source (concurrent):
-  │   ├─ Call Claude Haiku → relevance score 0–100 + excerpt
-  │   ├─ Compute price score  = (1 - price/maxPrice) * 80 + 20
-  │   ├─ Compute bond score   = bonded ? 20 : 0
-  │   ├─ Compute rep score    = clamp(reputation * 3 + 15, 0, 30)
-  │   ├─ Apply freshness mod  = recent sources get +2 bonus
-  │   ├─ Apply dedup penalty  = same-domain source gets -10
-  │   └─ total = relevance*0.45 + price*0.25 + bond*0.15 + rep*0.15
-  │
-  ├─ Sort sources by total score descending
-  │
-  └─ For each source (in order):
-      ├─ score ≥ 45 AND price ≤ budgetRemaining → PAY
-      │     budgetRemaining -= price
-      ├─ score ≥ 25                             → REFUSE
-      └─ otherwise                              → SKIP
-```
-
-Each decision includes:
-- Human-readable `reason` string
-- `excerptUsed` from Claude's relevance assessment
-- Full `ScoreBreakdown` (relevance, price, bond, reputation, total)
-- `evidenceHash` = SHA-256 of the evidence preimage
-
----
-
-## 7. x402 Payment Flow
+All payments use Circle's `GatewayClient` (buyer side) and `BatchFacilitatorClient` (verifier side).
 
 ```
 Step 1 — Unpaid request
@@ -178,38 +163,107 @@ Step 1 — Unpaid request
 
   Response: 402 Payment Required
   Headers:
-    WWW-Authenticate: x402 {"scheme":"exact","network":"eip155:84532",
-      "maxAmountRequired":"10000","payTo":"0x...","asset":"eip155:84532/erc20:0x036C..."}
-  Body: { error: "Payment Required", x402: { ... } }
+    WWW-Authenticate: x402 {"accepts":[{"scheme":"exact","network":"eip155:5042002",
+      "maxAmountRequired":"1000","payTo":"0x5389...","asset":"..."}]}
 
-Step 2 — Client pays 0.01 USDC on Base Sepolia
-  (transfer to CitePay receiver wallet)
+Step 2 — Client pays via Circle GatewayClient
+  const client = new GatewayClient({ privateKey, rpcUrl, chainId: 5042002, usdcAddress });
+  const res = await client.pay(askUrl, { method: "POST", body: JSON.stringify({ query, budget }) });
+  // GatewayClient signs EIP-3009 authorization, sends Payment-Signature header
 
-Step 3 — Paid request
-  POST /api/ask
-  Headers:
-    X-PAYMENT: {"scheme":"exact","network":"eip155:84532",
-      "payload":{"signature":"0x...","transaction":{"hash":"0x..."}}}
-  Body: { query: "...", budget: 0.05 }
+Step 3 — Server verifies + settles
+  const facilitator = new BatchFacilitatorClient({ url: "https://gateway-api-testnet.circle.com" });
+  await facilitator.verify(paymentPayload, requirements);
+  await facilitator.settle(paymentPayload, requirements);
+  // Real USDC transfer settled on Arc Testnet via Circle Gateway
 
-  verifyX402Payment():
-    • Production: POST https://api.circle.com/v1/w3s/payments/verify
-    • Dev mode  : X402_DEV_MODE=true → accept any non-empty header
-
-  Response: 200
-  Body: { queryId, answer, decisions: [...], receipts: [...], totalPaid }
+Step 4 — Agent runs, pays creators
+  runBuyerAgent(query, budget, policy) → PAY / REFUSE / SKIP per source
+  payCreator() → ERC-20 USDC transfer on Arc Testnet
 ```
 
-Query fee: **0.01 USDC** (10,000 micro-USDC)  
-Agent budget: **0.01–1.00 USDC** (set by caller)  
-Network: **Base Sepolia** (chainId 84532)  
-Asset: **USDC** `0x036CbD53842c5426634e7929541eC2318f3dCF7e`
+**Query fee:** 1,000 micro-USDC ($0.001)  
+**Creator payments:** 1,500–4,000 micro-USDC per citation ($0.0015–$0.004)  
+**Network:** Arc Testnet (chainId 5042002)  
+**USDC precompile:** `0x3600000000000000000000000000000000000000`
 
 ---
 
-## 8. Contract Overview
+## 7. Multi-Agent Orchestration
 
-**CitePayMarket.sol** — Solidity 0.8.24 on Base Sepolia
+`POST /api/orchestrate` runs a real agent-to-agent payment chain:
+
+```
+You → Orchestrator (Claude Haiku)
+        decomposeQuery() → ["sub-question 1", "sub-question 2", "sub-question 3"]
+        ↓ parallel (for each sub-question)
+        orchestratorClient.pay(askUrl, { body: JSON.stringify(subQuery) })
+        ← Researcher Agent responds with answer + decisions + receipts
+        ↓
+        synthesize(originalQuery, subResults) → Claude Haiku → final answer
+
+Returns:
+  finalAnswer         — synthesized from all sub-agents
+  subQueries[]        — per-agent: subQuery, answer, decisions[], totalPaid, gatewayAmountMicro
+  agentTrace[]        — full execution trace with [Orchestrator] / [Researcher Agent] labels
+  stats:
+    subQueriesDispatched     — number of agents hired
+    totalGatewayFeeMicro     — USDC paid in x402 fees
+    totalCreatorPaymentsMicro — USDC paid to creators
+    citationsPurchased       — total PAY decisions
+    orchestratorWallet       — verifiable on Arc Testnet
+```
+
+Every sub-agent payment is a real Circle Gateway x402 transaction. The orchestrator wallet address is included in the response so the chain can be verified on the Arc explorer.
+
+---
+
+## 8. MCP Server
+
+`/api/mcp` is a JSON-RPC 2.0 MCP server. Install it in Claude Code or Cursor and the AI can autonomously cite sources, check policies, and retrieve receipts.
+
+**Claude Code / Claude Desktop:**
+```json
+{
+  "mcpServers": {
+    "citepay": {
+      "command": "npx",
+      "args": ["-y", "mcp-remote", "https://citepay-markets.vercel.app/api/mcp"]
+    }
+  }
+}
+```
+
+**Cursor / HTTP clients:**
+```json
+{ "url": "https://citepay-markets.vercel.app/api/mcp" }
+```
+
+**Available tools:**
+- `cite_query` — runs the full buyer agent, pays creators, returns answer + receipts
+- `get_receipt` — retrieves a receipt by ID with hash verification
+- `check_policy` — checks what a spend policy would do for a given source
+
+---
+
+## 9. Agent Spend Policies
+
+Every query runs under a named policy preset:
+
+| Policy | Max price | Min relevance | Bonded only | Spend cap |
+|---|---|---|---|---|
+| `conservative` | $0.002 | 70 | ✓ | $0.01 |
+| `balanced` | $0.005 | 40 | ✗ | none |
+| `aggressive` | $0.01 | 20 | ✗ | none |
+
+Sources that violate policy rules produce a `BLOCKED_BY_POLICY` decision with a policy receipt explaining which rule triggered. Policy receipts are public and auditable just like PAY receipts.
+
+---
+
+## 10. Contract Overview
+
+**CitePayMarket.sol** — deployed on Arc Testnet  
+Address: [`0x396cf1646EbAeF85ee8428C2d9239C46Ae956085`](https://testnet.arcscan.app/address/0x396cf1646EbAeF85ee8428C2d9239C46Ae956085)
 
 | Function | Description |
 |---|---|
@@ -224,20 +278,16 @@ Asset: **USDC** `0x036CbD53842c5426634e7929541eC2318f3dCF7e`
 | `getReceipt(receiptId)` | Read receipt details |
 | `getMarketStats()` | Aggregated market metrics |
 
-**Events emitted:** `SourceRegistered`, `CitationPaid`, `CitationRefused`, `CitationSkipped`, `SourceHashUpdated`, `HashChallengeResolved`, `SourceReputationChanged`, `AgentReputationChanged`
-
-See [docs/CONTRACTS.md](docs/CONTRACTS.md) for full specification.
-
 ---
 
-## 9. Receipt Format
+## 11. Receipt Format
 
 Every agent decision produces a receipt:
 
 ```json
 {
   "id": "uuid",
-  "decision": "PAY | REFUSE | SKIP",
+  "decision": "PAY | REFUSE | SKIP | BLOCKED_BY_POLICY",
   "query": "What makes x402 useful for AI agents?",
   "queryHash": "sha256(query)",
   "sourceTitle": "x402: HTTP-Native Payments",
@@ -261,10 +311,13 @@ Every agent decision produces a receipt:
       "budgetRemainingBefore": "0.050 USDC"
     },
     "reason": "High relevance, bonded creator, fair price.",
-    "timestamp": "2026-06-19T..."
+    "timestamp": "2026-06-21T..."
   },
   "contentHashAtDecision": "sha256(sourceContentAtPaymentTime)",
   "scores": { "relevance": 85, "price": 68, "bond": 20, "reputation": 30, "total": 62 },
+  "policyProfile": "balanced",
+  "policyRulesPassed": ["maxPrice", "minRelevance"],
+  "policyRulesFailed": [],
   "budgetBefore": 50000,
   "budgetAfter": 48000,
   "challenged": false
@@ -273,11 +326,9 @@ Every agent decision produces a receipt:
 
 Evidence hash is recomputable: `SHA-256(JSON.stringify(evidencePreimage))`.
 
-See [docs/RECEIPT_SPEC.md](docs/RECEIPT_SPEC.md) for full specification.
-
 ---
 
-## 10. Objective Slashing
+## 12. Objective Slashing
 
 Slashing is **objective-only**. The only automatic slash condition:
 
@@ -288,19 +339,14 @@ Slashing is **objective-only**. The only automatic slash condition:
 2. Creator later updates the source, changing its content hash.
 3. Anyone calls `POST /api/challenge/:receiptId`.
 4. System compares `source.contentHash` vs `receipt.contentHashAtDecision`.
-5. If hashes differ → challenge succeeds: receipt marked challenged, creator reputation drops, agent reputation drops slightly.
-6. If hashes are the same → challenge rejected with clear error message.
+5. If hashes differ → challenge succeeds: receipt marked challenged, creator reputation drops, agent reputation adjusted.
+6. On Arc Mainnet: bond forfeiture is triggered. On Testnet: reputation slash is recorded, honest note is returned.
 
-**What is NOT a valid challenge:**
-- Subjective quality judgment ("the source wasn't good enough")
-- AI opinion that the content changed in meaning but not hash
-- Price disputes after payment
-
-See [docs/SECURITY.md](docs/SECURITY.md) for the full security model.
+**What is NOT a valid challenge:** subjective quality judgment, AI opinion, price disputes after payment.
 
 ---
 
-## 11. Local Setup
+## 13. Local Setup
 
 **Prerequisites:** Node.js 20–24, npm 10+
 
@@ -314,302 +360,118 @@ npm install
 
 # 3. Configure environment
 cp .env.example .env.local
-# Open .env.local and add your ANTHROPIC_API_KEY
+# Add ANTHROPIC_API_KEY and AGENT_PRIVATE_KEY (funded Arc Testnet wallet)
 
 # 4. Start dev server
 npm run dev
 # → http://localhost:3000
 
-# 5. Seed creator sources (in a second terminal)
-npm run seed
-# → registers 10 real creator sources
-
-# 6. Open the app
-# → http://localhost:3000/market   (view sources)
-# → http://localhost:3000/ask      (run a query)
-# → http://localhost:3000/traction (live metrics)
+# 5. App pages
+# → http://localhost:3000/market      (creator source registry)
+# → http://localhost:3000/ask         (agent workbench)
+# → http://localhost:3000/orchestrate (multi-agent demo)
+# → http://localhost:3000/mcp         (MCP install guide)
+# → http://localhost:3000/traction    (live metrics)
 ```
 
 ---
 
-## 12. Environment Variables
+## 14. Environment Variables
 
 ```bash
 # ── Required ──────────────────────────────────────────────────
-ANTHROPIC_API_KEY=sk-ant-...        # Claude Haiku for relevance scoring
+ANTHROPIC_API_KEY=sk-ant-...        # Claude Haiku for scoring + orchestration
 
-# ── Dev mode (skip Circle verification) ───────────────────────
-X402_DEV_MODE=true                  # Accept any X-PAYMENT header in dev
-NODE_ENV=development
+# ── Agent wallet (Arc Testnet) ────────────────────────────────
+AGENT_PRIVATE_KEY=0x...             # Funded Arc Testnet wallet for creator payouts
+                                    # Also used as orchestrator wallet
 
-# ── Circle (production USDC payouts) ──────────────────────────
-CIRCLE_API_KEY=                     # Circle API key for real transfers
-CIRCLE_WALLET_ID=                   # Circle wallet ID for creator payouts
-USDC_TOKEN_ID=usdc
+# ── Demo buyer (Circle Gateway) ───────────────────────────────
+DEMO_BUYER_KEY=0x...                # Separate buyer wallet (must differ from agent)
+                                    # Auto-refilled from agent wallet via depositFor()
 
-# ── Agent wallet (primary USDC payout path) ───────────────────
-AGENT_PRIVATE_KEY=                  # Private key of funded Base Sepolia wallet
-BASE_SEPOLIA_RPC_URL=https://sepolia.base.org
-DEPLOYER_PRIVATE_KEY=               # For contract deployment only
-BASESCAN_API_KEY=                   # For contract verification (optional)
+# ── Arc Testnet (optional overrides) ──────────────────────────
+ARC_RPC_URL=https://rpc.testnet.arc.network
+ARC_USDC_ADDRESS=0x3600000000000000000000000000000000000000
 
-# ── Contract ──────────────────────────────────────────────────
-NEXT_PUBLIC_CONTRACT_ADDRESS=       # Deployed CitePayMarket address
-AGENT_WALLET_ADDRESS=0x...          # Agent wallet (authorized in contract)
-USDC_CONTRACT_ADDRESS=0x036CbD53842c5426634e7929541eC2318f3dCF7e
+# ── Security (optional) ───────────────────────────────────────
+SEED_KEY=...                        # Protects POST /api/seed (DB reset endpoint)
+REGISTER_API_KEY=...                # Protects POST /api/sources/register (spam guard)
 ```
 
-Copy `.env.example` to `.env.local` — never commit `.env.local`.
+**Never commit `.env.local`.** The app runs without `AGENT_PRIVATE_KEY` — creator payouts fall back to deterministic simulated hashes so receipts remain structurally valid.
 
 ---
 
-## 13. Deployment Instructions
-
-### Deploy to Vercel
-
-```bash
-# Install Vercel CLI
-npm i -g vercel
-
-# Login
-vercel login
-
-# Deploy (preview)
-vercel
-
-# Deploy to production
-vercel --prod
-```
-
-Set these environment variables in the Vercel dashboard (Settings → Environment Variables):
-- `ANTHROPIC_API_KEY` (required)
-- `CIRCLE_API_KEY` + `CIRCLE_WALLET_ID` (for real payouts)
-- `NEXT_PUBLIC_CONTRACT_ADDRESS` (after contract deploy)
-- `AGENT_WALLET_ADDRESS`
-- `USDC_CONTRACT_ADDRESS=0x036CbD53842c5426634e7929541eC2318f3dCF7e`
-
-> Note: CitePay uses SQLite in `/tmp` on Vercel. The 10 creator sources and their on-chain IDs are baked into the seed and re-created on every cold start. Receipts and query history accumulate on warm instances and reset on cold starts. For persistent receipt history across deployments, migrate to a managed DB (Postgres/Turso).
-
-### Deploy contract to Base Sepolia
-
-```bash
-cd contracts
-npm install
-
-# Set DEPLOYER_PRIVATE_KEY in contracts/.env
-npx hardhat run scripts/deploy.ts --network baseSepolia
-
-# Verify on Basescan
-npx hardhat verify --network baseSepolia <CONTRACT_ADDRESS>
-```
-
----
-
-## 14. Test Commands
-
-```bash
-# Unit tests — agent scoring + evidence hash (no server needed)
-npm run test:unit
-
-# Backend API tests (requires running server at localhost:3000)
-npm run dev &
-npm run test:api
-
-# Contract tests (Hardhat)
-cd contracts && npm install && npm test
-
-# TypeScript check
-npx tsc --noEmit
-
-# Lint
-npm run lint
-
-# Build
-npm run build
-```
-
-CI runs all of the above automatically on every push via `.github/workflows/ci.yml`.
-
----
-
-## 15. Demo Script
-
-**Full 3-minute walkthrough:**
-
-**0:00–0:20 — Problem**
-> "AI agents increasingly use creator content to answer questions — but creators are never paid. Citations are invisible. CitePay turns citations into accountable payments."
-
-**0:20–0:45 — Market**
-- Open `/market`
-- Show 10 creator sources: price, bond status, reputation score, payout wallet
-- Point out: some are bonded (trusted), some aren't
-
-**0:45–1:10 — x402 Query Payment**
-- Open `/ask`
-- Type: "How does x402 work for AI agents?" Budget: $0.05
-- Click "Ask →"
-- Proof console shows: `→ POST /api/ask` → `← 402 Payment Required` → payment constructed → retry
-
-**1:10–1:45 — Agent Decision**
-- Source competition board appears
-- Show: agent PAY'd 3 sources, REFUSED 5, SKIPPED 2
-- Point out: score breakdown (relevance %, total), reason column
-- "The agent is not blindly paying — it's making real decisions"
-
-**1:45–2:10 — Answer and Receipts**
-- Final answer shown with inline citations
-- Click a PAY receipt → `/receipt/:id`
-- Show: amount paid, txHash, score breakdown, reason
-
-**2:10–2:35 — Proof and Accountability**
-- Receipt page: evidence preimage JSON visible
-- "Evidence hash: SHA-256 of this payload — anyone can recompute it"
-- Show content hash at decision
-- Point to challenge link: "If creator changes content after payment, this triggers an objective slash"
-
-**2:35–2:55 — Traction**
-- Open `/traction`
-- Show: creators paid, USDC routed, total decisions, receipts generated
-- "All real data from the agent decisions you just saw"
-
-**2:55–3:00 — Close**
-> "CitePay is the citation economy for AI agents: pay creators, prove citations, and make agent spending accountable."
-
----
-
-## 16. Contract Addresses
-
-| Contract | Network | Address |
-|---|---|---|
-| CitePayMarket | Base Sepolia (84532) | [`0x396cf1646EbAeF85ee8428C2d9239C46Ae956085`](https://sepolia.basescan.org/address/0x396cf1646EbAeF85ee8428C2d9239C46Ae956085) |
-| USDC | Base Sepolia | `0x036CbD53842c5426634e7929541eC2318f3dCF7e` |
-
-Contract source: [`contracts/contracts/CitePayMarket.sol`](contracts/contracts/CitePayMarket.sol)
-
----
-
-## 17. Live App
-
-**GitHub:** https://github.com/cyberrockng/citepay-markets
-
-Run locally: `npm run dev` → http://localhost:3000
-
-See [section 13](#13-deployment-instructions) for Vercel deployment steps.
-
----
-
-## 18. Pages
-
-**Pages:**
-- `/` — Landing: hero, how it works, live market stats
-- `/ask` — Proof console + source competition board
-- `/market` — Creator source registry
-- `/receipt/:id` — Full receipt with evidence preimage viewer
-- `/creator/:wallet` — Creator earnings dashboard
-- `/agent/:address` — Agent decision history
-- `/source/:id` — Source detail and receipt history
-- `/traction` — Live traction metrics dashboard
-
----
-
-## 19. Known Limitations
-
-- **SQLite persistence**: Sources are auto-seeded (with baked on-chain IDs) on every cold start. Receipts accumulate on warm Vercel instances and reset on cold starts. Suitable for demo; production needs a managed DB.
-- **Payout fallback**: Creator payouts are real on-chain USDC transfers when `AGENT_PRIVATE_KEY` is set and the wallet is funded. If neither `AGENT_PRIVATE_KEY` nor `CIRCLE_API_KEY` is configured, the system generates a deterministic SHA-256 txHash so receipts remain structurally valid during local development.
-- **Dev mode x402**: `X402_DEV_MODE=true` accepts any `X-PAYMENT` header. Production requires Circle payment verification.
-- **Relevance scoring**: Claude Haiku scores relevance from title + description only (not full content fetch). Scores are probabilistic.
-- **Contract deployment**: CitePayMarket.sol deployed to Base Sepolia at [`0x396cf1646EbAeF85ee8428C2d9239C46Ae956085`](https://sepolia.basescan.org/address/0x396cf1646EbAeF85ee8428C2d9239C46Ae956085). The backend mirrors all data to SQLite for fast reads.
-- **Base Sepolia only**: All payments are testnet USDC with no real monetary value.
-
----
-
-## 20. Next Phase
-
-| Phase | Feature | Why |
-|---|---|---|
-| 1 | **Passkey onboarding for creators** | Remove private-key requirement; any creator registers a source with a browser passkey |
-| 1 | **Gasless source registration** | Sponsor gas via Coinbase Paymaster so creators never need ETH |
-| 2 | **Sponsored citation payments** | Platform or brand funds the agent wallet; creators get paid without end-user wallets |
-| 2 | **Managed persistent database** | Replace per-instance SQLite with Vercel Postgres or Turso for full receipt history across deployments |
-| 2 | **Production x402 verification** | Enable Circle API payment verification and remove `X402_DEV_MODE`; enforce real query-fee payments |
-| 3 | **Policy marketplace** | Publish, share, and fork Agent Spend Policies as named on-chain objects |
-| 3 | **zkProof receipts** | Zero-knowledge proof that evidence hash matches preimage without revealing query content |
-| 3 | **Cross-chain expansion** | Base Mainnet, Optimism, Arbitrum |
-
----
-
-## 21. Agent API
-
-Any AI application can use CitePay as citation infrastructure. The single endpoint is:
-
-```
-POST /api/ask
-```
-
-**How it works:** The server returns HTTP 402 on the first call. The client retries with an `X-PAYMENT` header. The agent then scores all registered sources, pays the best ones in USDC, and returns a structured answer with receipt IDs.
-
-```bash
-curl -X POST https://your-citepay-url/api/ask \
-  -H "Content-Type: application/json" \
-  -H "X-PAYMENT: dev-proof" \
-  -d '{"query": "What is x402?", "budget": 0.05}'
-```
-
-**Response includes:**
-- `answer` — Claude Haiku answer citing only paid sources
-- `decisions` — array of PAY / REFUSE / SKIP with scores, reason, txHash, evidenceHash
-- `receiptIds` — public receipt URLs for every decision
-- `totalPaid` — micro-USDC paid this query
-
-Every receipt is independently verifiable: `SHA-256(JSON.stringify(evidencePreimage))` equals the stored `evidenceHash` — recomputable by anyone.
-
-See [`docs/AGENT_API.md`](docs/AGENT_API.md) for full request/response schema, curl examples, and source registration.
-
----
-
-## 22. Creator Monetization Flow
-
-Creators earn USDC every time an AI agent cites their work.
-
-```
-1. Register source   →  POST /api/sources/register  (or /market UI)
-                         Fields: title, url, price (USDC), bond, content
-                         Content is hashed — any post-payment edit is challengeable
-
-2. Set price         →  price field in micro-USDC (2000 = $0.002 per citation)
-                         Bond increases credibility score and agent willingness to pay
-
-3. Agent pays        →  POST /api/ask triggers automatic scoring + payout
-                         Real ERC-20 USDC transfer to payoutWallet on Base Sepolia
-                         On-chain receipt written to CitePayMarket.sol
-
-4. View earnings     →  /creator/:wallet
-                         Shows all paid citations, total USDC earned, source reputation
-```
-
-**Creator dashboard:** `/creator/<your-wallet-address>` — linked from every source row on the market page.
-
-**Share card:** Every PAY receipt includes a one-click share card so creators can post proof of payment on X or Farcaster.
-
----
-
-## API Reference
+## 15. API Reference
 
 | Method | Route | Description |
 |---|---|---|
 | GET | `/api/health` | Health check |
 | GET | `/api/sources` | List all creator sources |
-| POST | `/api/sources/register` | Register a new source |
-| POST | `/api/ask` | x402 pay-to-query (returns 402 without X-PAYMENT) |
+| POST | `/api/sources/register` | Register a new source (optional `X-Api-Key` auth) |
+| POST | `/api/ask` | x402 pay-to-query endpoint — returns 402 without payment |
+| POST | `/api/demo-query` | Web UI proxy — Circle Gateway payment server-side, auto-refill |
+| POST | `/api/orchestrate` | Multi-agent orchestrator — hires researcher agents via x402 |
+| POST | `/api/mcp` | MCP JSON-RPC 2.0 server |
 | GET | `/api/query/:queryId` | Get query record + receipts |
 | GET | `/api/receipt/:receiptId` | Get receipt + hash validity |
 | GET | `/api/creator/:wallet` | Creator earnings + sources |
 | GET | `/api/agent/:address` | Agent decision history |
 | GET | `/api/traction` | Live traction metrics |
+| GET | `/api/onchain-stats` | On-chain stats from Arc Testnet Transfer events |
 | POST | `/api/challenge/:receiptId` | Submit objective hash-change challenge |
+| POST | `/api/seed` | Reset + re-seed DB (requires `SEED_KEY` if set) |
 
 ---
 
-*Built on Base Sepolia with x402 + Circle USDC + Claude Haiku.*
+## 16. Pages
 
-**Proof transparency:** All agent decisions use real x402 payment headers and SHA-256 evidence hashes. When `AGENT_PRIVATE_KEY` is set and the wallet holds USDC, creator payouts are real on-chain ERC-20 transfers on Base Sepolia — the demo wallet (`0x5389688243328c26a92b301faEEAb5fbf9AFf105`) was funded via a Uniswap V3 swap (tx [`0xad6e7c5...`](https://sepolia.basescan.org/tx/0xad6e7c56af23961247fb0c3ee8a4a07543f7f44f6add71081cd0fa5f7ccdbb71)). Without `AGENT_PRIVATE_KEY` or when balance is zero the system falls back to a deterministic SHA-256 tx hash so receipts remain structurally valid during development. `X402_DEV_MODE=true` relaxes only the 402 handshake header check; it does not affect the USDC transfer path. Traction metrics come exclusively from actual agent runs — no seeded or fabricated data. The deployed contract (`0x396cf1646EbAeF85ee8428C2d9239C46Ae956085`) serves as on-chain proof of deployment; the backend mirrors receipts to SQLite for fast reads.
+- `/` — Landing: hero, how it works, live market stats, CTAs to all key flows
+- `/ask` — Agent workbench: policy selector, proof console, source competition board
+- `/orchestrate` — Multi-agent orchestrator: agent flow diagram, stats, per-agent tabs
+- `/demo` — 4-step interactive demo: tamper → pay → query → challenge
+- `/market` — Creator source registry with price, bond, reputation
+- `/receipt/:id` — Full receipt with evidence preimage viewer + hash recomputation
+- `/creator/:wallet` — Creator earnings dashboard + payout cards
+- `/agent/:address` — Agent decision history
+- `/source/:id` — Source detail and receipt history
+- `/traction` — Live on-chain metrics from Arc Testnet
+- `/mcp` — MCP server install guide for Claude Code / Cursor
+- `/leaderboard` — Creator leaderboard by earnings
+
+---
+
+## 17. Known Limitations
+
+- **SQLite persistence**: Sources are auto-seeded (with baked on-chain IDs) on every cold start. Receipts accumulate on warm Vercel instances and reset on cold starts. Suitable for demo; production needs a managed DB.
+- **Testnet only**: All payments are Arc Testnet USDC with no real monetary value. Circle Gateway testnet settles on Arc chainId 5042002.
+- **Relevance scoring**: Claude Haiku scores relevance from title + description only (not full content fetch). Scores are probabilistic.
+- **Bond forfeiture**: Objective slashing on challenge records reputation changes; actual bond forfeiture via `challengeHashChanged()` requires Arc Mainnet deployment.
+
+---
+
+## 18. Next Phase
+
+| Phase | Feature |
+|---|---|
+| 1 | Passkey onboarding for creators — remove private-key requirement |
+| 1 | Gasless source registration via Coinbase Paymaster |
+| 2 | Managed persistent DB (Vercel Postgres / Turso) for full receipt history |
+| 2 | Arc Mainnet deployment with real bond forfeiture |
+| 3 | Policy marketplace — publish, share, fork Agent Spend Policies |
+| 3 | zkProof receipts — prove evidence hash matches preimage without revealing query |
+| 3 | Cross-chain expansion: Base Mainnet, Optimism |
+
+---
+
+## 19. Contract Addresses
+
+| Contract | Network | Address |
+|---|---|---|
+| CitePayMarket | Arc Testnet (5042002) | [`0x396cf1646EbAeF85ee8428C2d9239C46Ae956085`](https://testnet.arcscan.app/address/0x396cf1646EbAeF85ee8428C2d9239C46Ae956085) |
+| USDC precompile | Arc Testnet | `0x3600000000000000000000000000000000000000` |
+
+---
+
+*Built for the Lepton Hackathon (Jun 15–29 2026) with x402 + Circle Gateway + Claude Haiku on Arc Testnet.*

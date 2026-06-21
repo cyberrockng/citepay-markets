@@ -128,10 +128,10 @@ function migrate(db: Database.Database) {
 // ─── Auto-seed (production cold start) ───────────────────────────────────────
 
 // on_chain_id values are permanent — assigned when sources were registered on
-// CitePayMarket.sol (0x396cf1646EbAeF85ee8428C2d9239C46Ae956085, Base Sepolia)
+// CitePayMarket.sol (0x396cf1646EbAeF85ee8428C2d9239C46Ae956085, Arc Testnet)
 const SEED_SOURCES = [
   { onChainId: 1,  category: "Protocol",       title: "x402: HTTP-Native Payments for AI Agents", url: "https://x402.org", creatorName: "Coinbase Developer Platform", creatorHandle: "@coinbase", payoutWallet: "0x3a0FfFE64537148b3766dA52D983058F98A4e3ce", price: 2000, bond: 10000, contentHash: "70f01a7977012702b243e6a6c2509f6a603b7a61e0241a6f0c3ce845949e1d57", description: "x402 is an open protocol for machine-native payments using HTTP 402 Payment Required. It enables AI agents and automated systems to pay for resources autonomously using USDC on Base." },
-  { onChainId: 2,  category: "Infrastructure", title: "Circle's Programmable Wallets: Powering Agentic Finance", url: "https://developers.circle.com/w3s/programmable-wallets", creatorName: "Circle Developer Docs", creatorHandle: "@circle", payoutWallet: "0x72101E4882159f3e0B3c176951AcA7816A1710e2", price: 3000, bond: 10000, contentHash: "33a7a9314b96f7dbea847c48f7d7cb5ed74537485913516e043b565795a930b5", description: "Circle's Programmable Wallets enable developers to create and manage wallets at scale. USDC transfers on Base Sepolia are instant and near-zero cost, making them ideal for micro-payments between AI agents and content creators." },
+  { onChainId: 2,  category: "Infrastructure", title: "Circle's Programmable Wallets: Powering Agentic Finance", url: "https://developers.circle.com/w3s/programmable-wallets", creatorName: "Circle Developer Docs", creatorHandle: "@circle", payoutWallet: "0x72101E4882159f3e0B3c176951AcA7816A1710e2", price: 3000, bond: 10000, contentHash: "33a7a9314b96f7dbea847c48f7d7cb5ed74537485913516e043b565795a930b5", description: "Circle's Programmable Wallets enable developers to create and manage wallets at scale. USDC transfers on Arc Testnet are instant and near-zero cost, making them ideal for micro-payments between AI agents and content creators." },
   { onChainId: 3,  category: "Research",       title: "Agentic AI: How Autonomous Agents Will Transform Commerce", url: "https://a16z.com/agentic-ai", creatorName: "Andreessen Horowitz", creatorHandle: "@a16z", payoutWallet: "0xbe575CcebE08895e61c8E45652ff63E4a663d4D9", price: 4000, bond: 5000, contentHash: "2b02947de287cdddc2d2440d37cc1c5961cb7d70f3407e609f400d757b58dac6", description: "Agentic AI systems — autonomous agents that plan, act, and pay for resources — represent a fundamental shift in how software works. These agents need on-chain payment rails to operate at scale without human intervention." },
   { onChainId: 4,  category: "Research",       title: "The Creator Economy in the Age of AI: Who Gets Paid?", url: "https://mirror.xyz/citepay/creator-economy-ai", creatorName: "Research by CitePay", creatorHandle: "@citepay", payoutWallet: "0xfccead074A3485751351f6b9FF893866A26632AF", price: 2000, bond: 0, contentHash: "256329962cf8c93150940eb17d0a305c284d2b6c0a406a04add51ac658cffb92", description: "As large language models increasingly answer questions by drawing on creator content without attribution or compensation, a new payment layer is needed. CitePay Markets solves this by making citations accountable and paid." },
   { onChainId: 5,  category: "Infrastructure", title: "Base: The Onchain Platform for Everyone", url: "https://base.org", creatorName: "Base Documentation", creatorHandle: "@base", payoutWallet: "0x6ed34b116B5040072619f83Dc25f64C70584e1F6", price: 1500, bond: 10000, contentHash: "d282cc888b86dbd8028f9f6af714587c56a00f7264430541e233df145250acb6", description: "Base is a secure, low-cost, developer-friendly Ethereum L2. With near-zero gas fees and USDC native support, Base is the ideal chain for micro-payment applications like AI citation markets." },
@@ -141,6 +141,16 @@ const SEED_SOURCES = [
   { onChainId: 9,  category: "Infrastructure", title: "USDC: The Dollar for the Internet", url: "https://www.circle.com/usdc", creatorName: "Circle", creatorHandle: "@circle", payoutWallet: "0xa9EB31434d3eA3679f36f051492451f3f5912a7C", price: 1000, bond: 10000, contentHash: "fac45fcf9ee419e9010f1335ea6f744d2ccd9533f68babea3162e6412a3651df", description: "USDC is a fully reserved, dollar-backed stablecoin that settles instantly on Base. Its programmatic accessibility makes it the default currency for AI agent payments, enabling autonomous financial transactions at internet scale." },
   { onChainId: 10, category: "AI/Agents",      title: "The Case for AI Agent Accountability: Evidence Logs and Receipts", url: "https://anthropic.com/research/model-cards", creatorName: "Anthropic", creatorHandle: "@anthropic", payoutWallet: "0x9925e934B9aB91353F8525135A83112dF3FC567a", price: 3000, bond: 15000, contentHash: "5e49d22dddff4c0357ce8d8c5bf22a75665185ee6cd7c96cd5308b91dac26f13", description: "AI agents that interact with the world on behalf of users must maintain auditable logs of their decisions. A public receipt for every payment, refusal, or skip creates accountability and enables objective dispute resolution." },
 ];
+
+export function reseedDb(): { sourcesInserted: number } {
+  const db = getDb();
+  db.exec("DELETE FROM sources");
+  db.exec("DELETE FROM receipts");
+  db.exec("DELETE FROM queries");
+  db.exec("UPDATE traction SET value = 0");
+  seedIfEmpty(db);
+  return { sourcesInserted: SEED_SOURCES.length };
+}
 
 function seedIfEmpty(db: Database.Database) {
   const count = (db.prepare("SELECT COUNT(*) as n FROM sources").get() as { n: number }).n;

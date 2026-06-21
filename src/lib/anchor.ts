@@ -1,6 +1,6 @@
 /**
  * On-chain anchor module.
- * Writes PAY decisions to CitePayMarket.sol on Base Sepolia so every
+ * Writes PAY decisions to CitePayMarket.sol on Arc Testnet so every
  * paid citation has a verifiable on-chain record alongside the SQLite receipt.
  */
 import { ethers } from "ethers";

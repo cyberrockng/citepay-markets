@@ -99,32 +99,17 @@ export default function AskPage() {
     addLog(`→ Policy: ${policy.name} · max price $${(policy.maxPricePerCitation / 1_000_000).toFixed(3)} · min relevance ${policy.minRelevanceScore}${policy.requireBonded ? " · bonded only" : ""}`);
 
     setStep("paid");
-    addLog("→ Constructing X-PAYMENT header (x402 protocol: query fee paid, real USDC creator payments follow)…");
-
-    const paymentProof = {
-      scheme: "exact",
-      network: "eip155:5042002",
-      payload: {
-        signature: "0x" + Array.from({ length: 130 }, () => Math.floor(Math.random() * 16).toString(16)).join(""),
-        transaction: {
-          hash: "0x" + Array.from({ length: 64 }, () => Math.floor(Math.random() * 16).toString(16)).join(""),
-        },
-      },
-    };
-
-    addLog("✓ Payment proof constructed");
+    addLog("→ Signing EIP-3009 authorization via Circle Gateway (Arc testnet)…");
+    addLog("✓ Demo buyer wallet sends real $0.001 USDC via Circle Gateway");
 
     setStep("running");
-    addLog("→ POST /api/ask (with X-PAYMENT header)");
+    addLog("→ POST /api/demo-query (Circle Gateway payment settling on Arc)");
     addLog("→ Agent evaluating creator sources under policy: " + policy.name);
 
     try {
-      const res2 = await fetch("/api/ask", {
+      const res2 = await fetch("/api/demo-query", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "X-PAYMENT": JSON.stringify(paymentProof),
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ query, budget: parseFloat(budget), policy: policyKey }),
       });
 
@@ -135,6 +120,7 @@ export default function AskPage() {
 
       const data = await res2.json();
       const blocked = data.decisions.filter((d: QueryDecision) => d.decision === "BLOCKED_BY_POLICY").length;
+      if (data._demo?.settleTx) addLog(`✓ Circle Gateway settle tx: ${data._demo.settleTx.slice(0, 20)}…`);
       addLog(`✓ Agent evaluated ${data.decisions.length} sources`);
       addLog(`✓ PAY: ${data.decisions.filter((d: QueryDecision) => d.decision === "PAY").length} · REFUSE: ${data.decisions.filter((d: QueryDecision) => d.decision === "REFUSE").length} · SKIP: ${data.decisions.filter((d: QueryDecision) => d.decision === "SKIP").length}${blocked ? ` · BLOCKED: ${blocked}` : ""}`);
       addLog(`✓ Total USDC paid: $${(data.totalPaid / 1_000_000).toFixed(4)}`);
@@ -223,7 +209,7 @@ export default function AskPage() {
               {step === "running" ? "Running…" : "Ask →"}
             </button>
             <p className="text-[#4a4a5e] text-xs mt-3">
-              Query fee: $0.01 USDC via x402 · Policy: {policy.name} · Budget: up to ${budget} USDC
+              Real $0.001 USDC via Circle Gateway on Arc · Policy: {policy.name} · Budget: up to ${budget} USDC
             </p>
           </form>
 
