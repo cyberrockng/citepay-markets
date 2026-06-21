@@ -6,6 +6,7 @@ import { runBuyerAgent, getAgentAddress } from "@/lib/agent";
 import { buildEvidencePreimage, hashEvidence, sha256, parseUSDC } from "@/lib/evidence";
 import { payCreator } from "@/lib/payments";
 import { anchorPAY, checkAnchorReady } from "@/lib/anchor";
+import { resolvePolicy } from "@/lib/policy";
 import {
   getAllSources,
   insertQuery,
@@ -28,7 +29,7 @@ export const dynamic = "force-dynamic";
 export async function POST(req: NextRequest) {
   if (!anchorChecked) { anchorChecked = true; void checkAnchorReady(); }
 
-  let body: { query?: string; budget?: number } = {};
+  let body: { query?: string; budget?: number; policy?: string | Record<string, unknown> } = {};
   try {
     body = await req.json();
   } catch {
@@ -42,6 +43,7 @@ export async function POST(req: NextRequest) {
 
   const budgetUsdc = typeof body.budget === "number" ? body.budget : 0.05;
   const budgetMicro = parseUSDC(Math.max(0.01, Math.min(1.0, budgetUsdc)));
+  const policy = resolvePolicy(body.policy as string | undefined);
 
   // ── Step 1: Check for payment ─────────────────────────────────────────────
   const hasPayment = req.headers.has("X-PAYMENT") || req.headers.has("x-payment");
@@ -83,7 +85,7 @@ export async function POST(req: NextRequest) {
   const sources = getAllSources().filter((s) => s.active);
   let decisions;
   try {
-    decisions = await runBuyerAgent(query, budgetMicro, sources);
+    decisions = await runBuyerAgent(query, budgetMicro, sources, policy);
   } catch (err) {
     updateQuery(queryId, { status: "failed" });
     return NextResponse.json({ error: "Agent error", detail: String(err) }, { status: 500 });
@@ -116,7 +118,7 @@ export async function POST(req: NextRequest) {
     });
     const evidenceHash = hashEvidence(preimage);
 
-    // Pay creator if decision is PAY
+    // Pay creator if decision is PAY (not BLOCKED_BY_POLICY)
     if (d.decision === "PAY") {
       const payment = await payCreator({
         creatorWallet: d.source.payoutWallet,
@@ -150,6 +152,10 @@ export async function POST(req: NextRequest) {
       reason: d.reason,
       txHash,
       paymentStatus,
+      policyProfile: d.policyProfile,
+      policyRulesPassed: d.policyRulesPassed,
+      policyRulesFailed: d.policyRulesFailed,
+      policyReason: d.policyReason,
       budgetBefore: budgetRemaining + (d.decision === "PAY" ? d.source.price : 0),
       budgetAfter: budgetRemaining,
       challenged: false,
@@ -180,9 +186,16 @@ export async function POST(req: NextRequest) {
       scores: d.scores,
       reason: d.reason,
       amountPaid: d.decision === "PAY" ? d.source.price : 0,
+      sourcePrice: d.source.price,
+      sourceBonded: d.source.bonded,
+      sourceOnChainId: d.source.onChainId ?? null,
       txHash,
       evidenceHash,
       receiptUrl: `/receipt/${receiptId}`,
+      policyProfile: d.policyProfile,
+      policyRulesPassed: d.policyRulesPassed,
+      policyRulesFailed: d.policyRulesFailed,
+      policyReason: d.policyReason,
     });
   }
 
@@ -236,6 +249,7 @@ Provide a concise answer with inline citations.`,
     queryFeeTxHash: feesTxHash,
     receiptIds,
     queryUrl: `/api/query/${queryId}`,
+    policyProfile: policy.name,
   });
 }
 

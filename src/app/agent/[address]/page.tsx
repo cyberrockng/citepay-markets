@@ -12,6 +12,7 @@ interface AgentData {
   paidCount: number;
   refusedCount: number;
   skipCount: number;
+  policyBlockedCount: number;
   totalPaid: number;
   receipts: Receipt[];
 }
@@ -46,6 +47,7 @@ export default function AgentPage({ params }: { params: Promise<{ address: strin
   const skipRatio = data && data.totalDecisions > 0
     ? Math.round((data.skipCount / data.totalDecisions) * 100)
     : 0;
+  const policyBlockedCount = data?.policyBlockedCount ?? 0;
 
   return (
     <PageShell maxWidth="max-w-4xl">
@@ -63,7 +65,7 @@ export default function AgentPage({ params }: { params: Promise<{ address: strin
           value={`$${((data?.totalPaid ?? 0) / 1_000_000).toFixed(4)}`}
           accent="text-[#00ff88]"
         />
-        <StatCard label="Pay Ratio" value={`${payRatio}%`} accent="text-[#6366f1]" />
+        <StatCard label="Policy Blocks" value={policyBlockedCount} accent="text-orange-400" sub="blocked by policy" />
         <StatCard
           label="Reputation"
           value={`${reputation >= 0 ? "+" : ""}${reputation}`}
@@ -74,18 +76,22 @@ export default function AgentPage({ params }: { params: Promise<{ address: strin
       {/* Decision Breakdown */}
       <div className="bg-[#111118] rounded-xl p-6 border border-[#1e1e2e] mb-6">
         <h2 className="font-semibold mb-5 text-[#f0f0f5]">Decision Breakdown</h2>
-        <div className="grid grid-cols-3 gap-6 text-center mb-5">
+        <div className="grid grid-cols-4 gap-4 text-center mb-5">
           <div>
             <div className="text-2xl font-bold text-[#00ff88]">{data?.paidCount ?? 0}</div>
-            <div className="text-[#8b8b9e] text-xs mt-1">PAY</div>
+            <div className="text-[#8b8b9e] text-xs mt-1">Paid</div>
           </div>
           <div>
             <div className="text-2xl font-bold text-red-400">{data?.refusedCount ?? 0}</div>
-            <div className="text-[#8b8b9e] text-xs mt-1">REFUSE</div>
+            <div className="text-[#8b8b9e] text-xs mt-1">Refused</div>
           </div>
           <div>
             <div className="text-2xl font-bold text-[#8b8b9e]">{data?.skipCount ?? 0}</div>
-            <div className="text-[#8b8b9e] text-xs mt-1">SKIP</div>
+            <div className="text-[#8b8b9e] text-xs mt-1">Skipped</div>
+          </div>
+          <div>
+            <div className="text-2xl font-bold text-orange-400">{policyBlockedCount}</div>
+            <div className="text-[#8b8b9e] text-xs mt-1">Blocked by Policy</div>
           </div>
         </div>
         {data && data.totalDecisions > 0 && (
@@ -104,18 +110,19 @@ export default function AgentPage({ params }: { params: Promise<{ address: strin
         )}
       </div>
 
-      {/* Network Info */}
+      {/* Agent Identity */}
       <div className="bg-[#111118] rounded-xl p-6 border border-[#1e1e2e] mb-6">
-        <h2 className="font-semibold mb-4 text-[#f0f0f5]">Agent Info</h2>
+        <h2 className="font-semibold mb-4 text-[#f0f0f5]">Agent Identity</h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
           {[
             { label: "Network", value: "Base Sepolia (testnet)" },
             { label: "Agent Type", value: "CitePay Buyer Agent v1" },
-            {
-              label: "Reputation Score",
-              value: `${reputation >= 0 ? "+" : ""}${reputation} (paid − refused)`,
-            },
+            { label: "Reputation Score", value: `${reputation >= 0 ? "+" : ""}${reputation} (paid − refused)` },
             { label: "Agent Bond", value: "0.001 ETH deposited" },
+            { label: "Citations Paid", value: String(data?.paidCount ?? 0) },
+            { label: "Citations Refused", value: String(data?.refusedCount ?? 0) },
+            { label: "Policy Blocks", value: `${policyBlockedCount} (policy-enforced, no reputation impact)` },
+            { label: "Total USDC Routed", value: `$${((data?.totalPaid ?? 0) / 1_000_000).toFixed(4)}` },
           ].map(({ label, value }) => (
             <div key={label}>
               <div className="text-[#8b8b9e] text-xs mb-0.5">{label}</div>

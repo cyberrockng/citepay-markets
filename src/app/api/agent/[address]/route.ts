@@ -14,6 +14,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ add
     const paid = receipts.filter((r) => r.decision === "PAY");
     const refused = receipts.filter((r) => r.decision === "REFUSE");
     const skips = receipts.filter((r) => r.decision === "SKIP");
+    const policyBlocked = receipts.filter((r) => r.decision === "BLOCKED_BY_POLICY");
     const totalPaid = paid.reduce((s, r) => s + r.amountPaid, 0);
 
     return NextResponse.json({
@@ -22,6 +23,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ add
       paidCount: paid.length,
       refusedCount: refused.length,
       skipCount: skips.length,
+      policyBlockedCount: policyBlocked.length,
       totalPaid,
       receipts,
     });

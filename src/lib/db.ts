@@ -113,7 +113,11 @@ function migrate(db: Database.Database) {
     "ALTER TABLE sources  ADD COLUMN on_chain_id         INTEGER DEFAULT NULL",
     "ALTER TABLE receipts ADD COLUMN on_chain_receipt_id INTEGER DEFAULT NULL",
     "ALTER TABLE receipts ADD COLUMN on_chain_tx_hash    TEXT    DEFAULT NULL",
-    "ALTER TABLE receipts ADD COLUMN payment_status      TEXT    DEFAULT NULL",
+    "ALTER TABLE receipts ADD COLUMN payment_status        TEXT    DEFAULT NULL",
+    "ALTER TABLE receipts ADD COLUMN policy_profile        TEXT    DEFAULT NULL",
+    "ALTER TABLE receipts ADD COLUMN policy_rules_passed   TEXT    DEFAULT NULL",
+    "ALTER TABLE receipts ADD COLUMN policy_rules_failed   TEXT    DEFAULT NULL",
+    "ALTER TABLE receipts ADD COLUMN policy_reason         TEXT    DEFAULT NULL",
   ]) {
     try { db.exec(sql); } catch { /* column already exists */ }
   }
@@ -180,13 +184,14 @@ export function getSourceById(id: string): Source | null {
   return row ? rowToSource(row) : null;
 }
 
-export function updateSourceStats(id: string, decision: "PAY" | "REFUSE" | "SKIP"): void {
+export function updateSourceStats(id: string, decision: "PAY" | "REFUSE" | "SKIP" | "BLOCKED_BY_POLICY"): void {
   const db = getDb();
   if (decision === "PAY") {
     db.prepare("UPDATE sources SET paid_count = paid_count + 1, reputation = reputation + 1 WHERE id = ?").run(id);
   } else if (decision === "REFUSE") {
     db.prepare("UPDATE sources SET refused_count = refused_count + 1, reputation = reputation - 1 WHERE id = ?").run(id);
   } else {
+    // SKIP and BLOCKED_BY_POLICY: no reputation change
     db.prepare("UPDATE sources SET skip_count = skip_count + 1 WHERE id = ?").run(id);
   }
 }
@@ -235,13 +240,18 @@ export function insertReceipt(r: Receipt): void {
     INSERT INTO receipts (id, source_id, query_id, agent_address, creator_wallet,
       decision, query, query_hash, source_title, source_url, amount_paid,
       evidence_hash, evidence_preimage, content_hash_at_decision, scores, reason,
-      tx_hash, payment_status, budget_before, budget_after, challenged, created_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      tx_hash, payment_status, policy_profile, policy_rules_passed, policy_rules_failed,
+      policy_reason, budget_before, budget_after, challenged, created_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).run(
     r.id, r.sourceId, r.queryId, r.agentAddress, r.creatorWallet,
     r.decision, r.query, r.queryHash, r.sourceTitle, r.sourceUrl, r.amountPaid,
     r.evidenceHash, JSON.stringify(r.evidencePreimage), r.contentHashAtDecision,
     JSON.stringify(r.scores), r.reason, r.txHash, r.paymentStatus ?? null,
+    r.policyProfile ?? null,
+    r.policyRulesPassed ? JSON.stringify(r.policyRulesPassed) : null,
+    r.policyRulesFailed ? JSON.stringify(r.policyRulesFailed) : null,
+    r.policyReason ?? null,
     r.budgetBefore, r.budgetAfter, r.challenged ? 1 : 0, r.createdAt
   );
 }
@@ -291,6 +301,10 @@ function rowToReceipt(r: Record<string, unknown>): Receipt {
     reason: r.reason as string,
     txHash: r.tx_hash as string | null,
     paymentStatus: (r.payment_status as "confirmed" | "simulated" | null) ?? null,
+    policyProfile: (r.policy_profile as string | null) ?? null,
+    policyRulesPassed: r.policy_rules_passed ? JSON.parse(r.policy_rules_passed as string) : null,
+    policyRulesFailed: r.policy_rules_failed ? JSON.parse(r.policy_rules_failed as string) : null,
+    policyReason: (r.policy_reason as string | null) ?? null,
     budgetBefore: r.budget_before as number,
     budgetAfter: r.budget_after as number,
     challenged: Boolean(r.challenged),

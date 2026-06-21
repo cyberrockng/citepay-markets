@@ -166,6 +166,54 @@ export default function ReceiptPage({ params }: { params: Promise<{ id: string }
         </div>
       </div>
 
+      {/* Policy Receipt */}
+      {receipt.policyProfile && (
+        <div className="bg-[#111118] rounded-xl p-6 border border-[#1e1e2e] mb-4">
+          <div className="flex items-center gap-2 mb-4">
+            <h2 className="font-semibold text-[#f0f0f5]">Policy Receipt</h2>
+            <span className="text-xs font-mono px-2 py-0.5 rounded border border-[#6366f1]/40 text-[#6366f1] bg-[#6366f1]/10">
+              {receipt.policyProfile}
+            </span>
+          </div>
+          <div className="space-y-2">
+            {receipt.policyRulesPassed && receipt.policyRulesPassed.length > 0 && (
+              <div>
+                <div className="text-[#8b8b9e] text-xs mb-1.5">Rules Passed</div>
+                <div className="flex flex-wrap gap-1.5">
+                  {receipt.policyRulesPassed.map((r) => (
+                    <span key={r} className="text-xs font-mono px-2 py-0.5 rounded border border-[#00ff88]/30 text-[#00ff88] bg-[#00ff88]/5">
+                      ✓ {r}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+            {receipt.policyRulesFailed && receipt.policyRulesFailed.length > 0 && (
+              <div>
+                <div className="text-[#8b8b9e] text-xs mb-1.5 mt-2">Rules Failed</div>
+                <div className="flex flex-wrap gap-1.5">
+                  {receipt.policyRulesFailed.map((r) => (
+                    <span key={r} className="text-xs font-mono px-2 py-0.5 rounded border border-orange-700/40 text-orange-400 bg-orange-900/10">
+                      ✗ {r}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+            {receipt.policyReason && (
+              <div className="mt-3 text-xs text-orange-400 font-mono bg-orange-900/10 border border-orange-700/30 rounded-lg px-3 py-2">
+                {receipt.policyReason}
+              </div>
+            )}
+            {!receipt.policyReason && (
+              <div className="mt-2 text-xs text-[#00ff88] font-mono">
+                All policy rules passed — decision authorized by {receipt.policyProfile} policy.
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Score Breakdown */}
       <div className="bg-[#111118] rounded-xl p-6 border border-[#1e1e2e] mb-4">
         <div className="flex items-center justify-between mb-5">

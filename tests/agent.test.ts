@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
-import type { Source } from "../src/types";
+import type { Source, ScoreBreakdown } from "../src/types";
+import { evaluatePolicy, POLICY_PRESETS, resolvePolicy } from "../src/lib/policy";
 
 // Import scoring internals via the agent module
 // We test the scoring logic directly without hitting external APIs.
@@ -153,6 +154,58 @@ describe("Agent scoring", () => {
     const decision = (total >= MIN_SCORE_TO_PAY && withinBudget) ? "PAY"
       : total >= MIN_SCORE_TO_REFUSE ? "REFUSE" : "SKIP";
     expect(decision).toBe("REFUSE");
+  });
+
+  it("BLOCKED_BY_POLICY: high-score unbonded source blocked by conservative policy", () => {
+    const source = mockSource({ bonded: false, price: 1000 });
+    const scores = { relevance: 85, price: 90, bond: 0, reputation: 20, total: 65 } as ScoreBreakdown;
+    const result = evaluatePolicy(source, scores, 0, POLICY_PRESETS.conservative);
+    expect(result.blocked).toBe(true);
+    expect(result.rulesFailed).toContain("require_bonded_source");
+    expect(result.reason).toMatch(/Blocked by policy/);
+  });
+
+  it("policy: conservative blocks source above max price", () => {
+    const source = mockSource({ price: 5000, bonded: true });  // $0.005 > conservative max $0.002
+    const scores = { relevance: 80, price: 80, bond: 20, reputation: 20, total: 70 } as ScoreBreakdown;
+    const result = evaluatePolicy(source, scores, 0, POLICY_PRESETS.conservative);
+    expect(result.blocked).toBe(true);
+    expect(result.rulesFailed).toContain("max_price_exceeded");
+  });
+
+  it("policy: balanced allows unbonded source", () => {
+    const source = mockSource({ bonded: false, price: 3000 });
+    const scores = { relevance: 60, price: 80, bond: 0, reputation: 15, total: 55 } as ScoreBreakdown;
+    const result = evaluatePolicy(source, scores, 0, POLICY_PRESETS.balanced);
+    expect(result.blocked).toBe(false);
+    expect(result.rulesPassed).toContain("bonded_ok");
+  });
+
+  it("policy: spend cap blocks when session is exhausted", () => {
+    const source = mockSource({ price: 2000 });
+    const scores = { relevance: 90, price: 80, bond: 20, reputation: 20, total: 75 } as ScoreBreakdown;
+    // conservative cap is 10000, already spent 9000
+    const result = evaluatePolicy(source, scores, 9000, POLICY_PRESETS.conservative);
+    expect(result.blocked).toBe(true);
+    expect(result.rulesFailed).toContain("session_spend_cap_exceeded");
+  });
+
+  it("policy: aggressive allows low-relevance source", () => {
+    const source = mockSource({ price: 5000, bonded: false });
+    const scores = { relevance: 22, price: 60, bond: 0, reputation: 15, total: 35 } as ScoreBreakdown;
+    const result = evaluatePolicy(source, scores, 0, POLICY_PRESETS.aggressive);
+    expect(result.blocked).toBe(false);
+  });
+
+  it("resolvePolicy: falls back to balanced for unknown key", () => {
+    const policy = resolvePolicy("unknown-policy-xyz");
+    expect(policy.name).toBe("Balanced");
+  });
+
+  it("resolvePolicy: resolves conservative by name", () => {
+    const policy = resolvePolicy("conservative");
+    expect(policy.requireBonded).toBe(true);
+    expect(policy.minRelevanceScore).toBe(70);
   });
 
   it("evidence hash generation is deterministic", async () => {

@@ -1,4 +1,4 @@
-export type Decision = "PAY" | "REFUSE" | "SKIP";
+export type Decision = "PAY" | "REFUSE" | "SKIP" | "BLOCKED_BY_POLICY";
 
 export interface Source {
   id: string;
@@ -37,6 +37,10 @@ export interface AgentDecision {
   scores: ScoreBreakdown;
   reason: string;
   excerptUsed?: string;
+  policyProfile: string;
+  policyRulesPassed: string[];
+  policyRulesFailed: string[];
+  policyReason: string | null;
 }
 
 export interface EvidencePreimage {
@@ -75,6 +79,10 @@ export interface Receipt {
   reason: string;
   txHash: string | null;
   paymentStatus: "confirmed" | "simulated" | null;
+  policyProfile: string | null;
+  policyRulesPassed: string[] | null;
+  policyRulesFailed: string[] | null;
+  policyReason: string | null;
   budgetBefore: number;
   budgetAfter: number;
   challenged: boolean;

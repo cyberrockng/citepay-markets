@@ -1,6 +1,6 @@
 # CitePay Markets
 
-> **CitePay is Proof-of-Paid-Citation for AI agents: agents pay creators in USDC, publish verifiable receipts, and expose tampering through objective hash challenges.**
+> **CitePay Markets is the policy and payment layer for autonomous AI citations. Agents enforce configurable Agent Spend Policies, pay creators in USDC, and publish tamper-evident Policy Receipts anchored on Base Sepolia.**
 
 [![CI](https://github.com/cyberrockng/citepay-markets/actions/workflows/ci.yml/badge.svg)](https://github.com/cyberrockng/citepay-markets/actions/workflows/ci.yml)
 [![Base Sepolia](https://img.shields.io/badge/network-Base%20Sepolia-blue)](https://sepolia.basescan.org)
@@ -536,16 +536,18 @@ See [section 13](#13-deployment-instructions) for Vercel deployment steps.
 
 ---
 
-## 20. Future Roadmap
+## 20. Next Phase
 
-- **Mainnet deployment** with real USDC payments
-- **IPFS content addressing** — store source content on IPFS, use CID as content hash
-- **zkProof receipts** — zero-knowledge proof that evidence hash matches preimage without revealing query
-- **Multi-agent marketplace** — multiple competing buyer agents with different policies
-- **Creator staking** — on-chain bond via smart contract instead of off-chain tracking
-- **Reputation NFTs** — creator reputation as transferable on-chain credential
-- **Agent subscription model** — flat monthly fee for unlimited queries
-- **Cross-chain expansion** — Ethereum mainnet, Optimism, Arbitrum
+| Phase | Feature | Why |
+|---|---|---|
+| 1 | **Passkey onboarding for creators** | Remove private-key requirement; any creator registers a source with a browser passkey |
+| 1 | **Gasless source registration** | Sponsor gas via Coinbase Paymaster so creators never need ETH |
+| 2 | **Sponsored citation payments** | Platform or brand funds the agent wallet; creators get paid without end-user wallets |
+| 2 | **Managed persistent database** | Replace per-instance SQLite with Vercel Postgres or Turso for full receipt history across deployments |
+| 2 | **Production x402 verification** | Enable Circle API payment verification and remove `X402_DEV_MODE`; enforce real query-fee payments |
+| 3 | **Policy marketplace** | Publish, share, and fork Agent Spend Policies as named on-chain objects |
+| 3 | **zkProof receipts** | Zero-knowledge proof that evidence hash matches preimage without revealing query content |
+| 3 | **Cross-chain expansion** | Base Mainnet, Optimism, Arbitrum |
 
 ---
 

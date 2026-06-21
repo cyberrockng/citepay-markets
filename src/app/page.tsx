@@ -4,9 +4,10 @@ import { useEffect, useState } from "react";
 import type { TractionStats } from "@/types";
 
 const DECISION_COLOR: Record<string, { card: string; badge: string }> = {
-  PAY:    { card: "border-[#00ff88]/30 bg-[#00ff88]/5",  badge: "text-[#00ff88] border-[#00ff88]/30 bg-[#00ff88]/10" },
-  REFUSE: { card: "border-red-800/40 bg-red-900/10",     badge: "text-red-400 border-red-800 bg-red-900/20" },
-  SKIP:   { card: "border-[#1e1e2e] bg-[#111118]",       badge: "text-[#8b8b9e] border-[#1e1e2e]" },
+  PAY:               { card: "border-[#00ff88]/30 bg-[#00ff88]/5",    badge: "text-[#00ff88] border-[#00ff88]/30 bg-[#00ff88]/10" },
+  REFUSE:            { card: "border-red-800/40 bg-red-900/10",       badge: "text-red-400 border-red-800 bg-red-900/20" },
+  SKIP:              { card: "border-[#1e1e2e] bg-[#111118]",         badge: "text-[#8b8b9e] border-[#1e1e2e]" },
+  BLOCKED_BY_POLICY: { card: "border-orange-700/30 bg-orange-900/10", badge: "text-orange-400 border-orange-700 bg-orange-900/20" },
 };
 
 const HOW_IT_WORKS = [
@@ -42,11 +43,11 @@ export default function LandingPage() {
           Base Sepolia · x402 + USDC · Smart Contract
         </div>
         <h1 className="text-5xl sm:text-6xl font-bold mb-5 leading-tight tracking-tight">
-          Proof-of-Paid-Citation<br />
-          <span className="text-[#6366f1]">for AI Agents</span>
+          The Policy &amp; Payment Layer<br />
+          <span className="text-[#6366f1]">for Autonomous AI Citations</span>
         </h1>
         <p className="text-xl text-[#8b8b9e] max-w-2xl mx-auto mb-10 leading-relaxed">
-          Agents pay creators in USDC, publish verifiable receipts, and expose tampering through objective hash challenges.
+          Agents enforce configurable spend policies, pay creators in USDC, and publish tamper-evident Policy Receipts anchored on Base Sepolia.
         </p>
         <div className="flex flex-col sm:flex-row gap-3 justify-center">
           <Link
@@ -127,13 +128,14 @@ export default function LandingPage() {
       <section className="max-w-4xl mx-auto px-6 py-16 border-t border-[#1e1e2e]">
         <h2 className="text-lg font-semibold text-[#f0f0f5] mb-2">How a Receipt Looks</h2>
         <p className="text-[#8b8b9e] text-sm mb-8">
-          Every agent decision — PAY, REFUSE, or SKIP — generates a public receipt with evidence hash and reasoning.
+          Every agent decision — Paid, Refused, Skipped, or Blocked by Policy — generates a public Policy Receipt with evidence hash and reasoning.
         </p>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {[
-            { decision: "PAY",    source: "x402: HTTP-Native Payments",    creator: "@coinbase",  paid: "$0.0020", reason: "High relevance, bonded creator, fair price.",    score: 72 },
-            { decision: "REFUSE", source: "Generic Blog Post",              creator: "@unknown",   paid: "$0.0000", reason: "Relevant but overpriced relative to budget.",     score: 41 },
-            { decision: "SKIP",   source: "Unrelated Marketing Page",       creator: "@marketer",  paid: "$0.0000", reason: "Weak relevance to query.",                        score: 18 },
+            { decision: "PAY",               source: "x402: HTTP-Native Payments", creator: "@coinbase", paid: "$0.0020", reason: "High relevance, bonded creator, fair price.",      score: 72 },
+            { decision: "REFUSE",            source: "Generic Blog Post",           creator: "@unknown",  paid: "$0.0000", reason: "Relevant but overpriced relative to budget.",      score: 41 },
+            { decision: "SKIP",              source: "Unrelated Marketing Page",    creator: "@marketer", paid: "$0.0000", reason: "Weak relevance to query.",                          score: 18 },
+            { decision: "BLOCKED_BY_POLICY", source: "Unbonded Research Post",      creator: "@anon",     paid: "$0.0000", reason: "Blocked by policy: require_bonded_source.",         score: 67 },
           ].map(({ decision, source, creator, paid, reason, score }) => {
             const { card, badge } = DECISION_COLOR[decision];
             return (
@@ -205,9 +207,9 @@ export default function LandingPage() {
           </div>
           <div className="bg-[#111118] rounded-xl p-6 border border-[#1e1e2e]">
             <div className="text-xs font-mono text-[#8b8b9e] mb-3">For AI Agents</div>
-            <h3 className="font-semibold text-lg text-[#f0f0f5] mb-2">Cite sources. Pay creators. Prove it.</h3>
+            <h3 className="font-semibold text-lg text-[#f0f0f5] mb-2">Set a policy. Cite sources. Pay creators. Prove it.</h3>
             <p className="text-[#8b8b9e] text-sm mb-4 leading-relaxed">
-              POST /api/ask with an X-PAYMENT header to run queries programmatically. Get structured answers with cited, paid sources and auditable receipt IDs.
+              POST /api/ask with an X-PAYMENT header and an Agent Spend Policy. Get structured answers with cited, paid sources — and a Policy Receipt for every decision.
             </p>
             <Link href="/ask" className="text-[#6366f1] hover:text-indigo-300 text-sm transition-colors">
               Try the API →

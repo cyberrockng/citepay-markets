@@ -2,6 +2,7 @@
 import { useState, useCallback, useEffect } from "react";
 import Link from "next/link";
 import { BackButton } from "@/components/back-button";
+import { POLICY_PRESETS, simulatePolicyDecisions } from "@/lib/policy";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -61,6 +62,8 @@ export default function DemoPage() {
   const [running, setRunning] = useState(false);
   const [done, setDone]     = useState(false);
   const [walletBalance, setWalletBalance] = useState<number | null>(null);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const [policyComparison, setPolicyComparison] = useState<any[] | null>(null);
 
   useEffect(() => {
     fetch("/api/wallet/balance")
@@ -77,6 +80,7 @@ export default function DemoPage() {
     setRunning(true);
     setDone(false);
     setSteps(INIT);
+    setPolicyComparison(null);
 
     try {
       // ── 1. Check sources ──────────────────────────────────────────────────
@@ -110,11 +114,27 @@ export default function DemoPage() {
         queryId:     ask.queryId,
         answer:      ask.answer,
         pay:         payDecisions.length,
-        refuse:      decisions.filter(d => d.decision === "REFUSE").length,
-        skip:        decisions.filter(d => d.decision === "SKIP").length,
+        refuse:      decisions.filter((d: { decision: string }) => d.decision === "REFUSE").length,
+        skip:        decisions.filter((d: { decision: string }) => d.decision === "SKIP").length,
         totalPaid:   ask.totalPaid,
         payDecision: first,
       });
+
+      // Build policy comparison from scored decisions (client-side, no extra API calls)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const decisionInputs = decisions.map((d: any) => ({
+        source: d.source,
+        sourcePrice: d.sourcePrice ?? d.amountPaid,
+        sourceBonded: d.sourceBonded ?? false,
+        sourceOnChainId: d.sourceOnChainId ?? null,
+        scores: d.scores,
+        originalDecision: d.decision,
+      }));
+      setPolicyComparison([
+        { label: "Conservative", key: "conservative", results: simulatePolicyDecisions(decisionInputs, POLICY_PRESETS.conservative) },
+        { label: "Balanced", key: "balanced", results: simulatePolicyDecisions(decisionInputs, POLICY_PRESETS.balanced) },
+        { label: "Aggressive", key: "aggressive", results: simulatePolicyDecisions(decisionInputs, POLICY_PRESETS.aggressive) },
+      ]);
 
       if (!first) {
         set("receipt", "error", undefined, "No PAY decision returned — increase budget or re-seed");
@@ -286,6 +306,67 @@ export default function DemoPage() {
                 Live Traction →
               </Link>
             </div>
+          </div>
+        )}
+
+        {/* Multi-Policy Comparison */}
+        {policyComparison && (
+          <div className="mt-8">
+            <div className="mb-4">
+              <h2 className="text-lg font-bold text-[#f0f0f5]">Policy Comparison</h2>
+              <p className="text-[#8b8b9e] text-xs mt-0.5">
+                One query · ten sources · three policies — same scores, different outcomes
+              </p>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              {policyComparison.map((col) => {
+                const paid = col.results.filter((r: { decision: string }) => r.decision === "PAY").length;
+                const blocked = col.results.filter((r: { decision: string }) => r.decision === "BLOCKED_BY_POLICY").length;
+                const refused = col.results.filter((r: { decision: string }) => r.decision === "REFUSE").length;
+                const colors: Record<string, string> = {
+                  conservative: "border-yellow-600/40",
+                  balanced: "border-[#6366f1]/40",
+                  aggressive: "border-[#00ff88]/30",
+                };
+                const labelColors: Record<string, string> = {
+                  conservative: "text-yellow-400",
+                  balanced: "text-[#6366f1]",
+                  aggressive: "text-[#00ff88]",
+                };
+                return (
+                  <div key={col.key} className={`bg-[#111118] rounded-xl border ${colors[col.key]} p-4`}>
+                    <div className={`font-semibold text-sm mb-1 ${labelColors[col.key]}`}>{col.label}</div>
+                    <div className="flex gap-3 text-xs font-mono mb-3">
+                      <span className="text-[#00ff88]">{paid} PAY</span>
+                      {blocked > 0 && <span className="text-orange-400">{blocked} BLOCKED</span>}
+                      <span className="text-red-400">{refused} REFUSE</span>
+                    </div>
+                    <div className="space-y-1.5">
+                      {col.results.map((r: { source: string; decision: string; reason: string }, i: number) => {
+                        const dc =
+                          r.decision === "PAY" ? "text-[#00ff88]" :
+                          r.decision === "BLOCKED_BY_POLICY" ? "text-orange-400" :
+                          r.decision === "REFUSE" ? "text-red-400" : "text-[#4a4a5e]";
+                        return (
+                          <div key={i} className="flex items-center justify-between gap-2">
+                            <span className="text-[#8b8b9e] text-xs truncate flex-1" title={r.source}>
+                              {r.source.length > 28 ? r.source.slice(0, 28) + "…" : r.source}
+                            </span>
+                            <span className={`text-xs font-mono shrink-0 ${dc}`}>
+                              {r.decision === "BLOCKED_BY_POLICY" ? "BLOCKED" : r.decision}
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+            <p className="text-[#4a4a5e] text-xs mt-3">
+              Policy simulation applied client-side to real scored decisions. Try different policies in the{" "}
+              <Link href="/ask" className="text-[#6366f1] hover:text-indigo-300 transition-colors">Agent Workbench →</Link>
+            </p>
           </div>
         )}
       </div>

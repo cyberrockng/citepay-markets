@@ -68,15 +68,16 @@ export function StatCard({
 // ── Badge ─────────────────────────────────────────────────────────────────────
 
 const BADGE_STYLES: Record<string, string> = {
-  PAY:      "text-[#00ff88] border-[#00ff88]/30 bg-[#00ff88]/10",
-  REFUSE:   "text-red-400 border-red-800 bg-red-900/20",
-  SKIP:     "text-[#8b8b9e] border-[#1e1e2e] bg-[#111118]",
-  BONDED:   "text-yellow-400 border-yellow-700 bg-yellow-900/20",
-  ACTIVE:   "text-[#00ff88] border-[#00ff88]/30 bg-[#00ff88]/10",
-  INACTIVE: "text-[#4a4a5e] border-[#1e1e2e]",
-  CHALLENGED: "text-yellow-400 border-yellow-700 bg-yellow-900/20",
-  ANCHORED: "text-[#00ff88] border-[#00ff88]/30 bg-[#00ff88]/10",
-  PROOF:    "text-[#00ff88] border-[#00ff88]/30 bg-[#00ff88]/10",
+  PAY:               "text-[#00ff88] border-[#00ff88]/30 bg-[#00ff88]/10",
+  REFUSE:            "text-red-400 border-red-800 bg-red-900/20",
+  SKIP:              "text-[#8b8b9e] border-[#1e1e2e] bg-[#111118]",
+  BLOCKED_BY_POLICY: "text-orange-400 border-orange-700 bg-orange-900/20",
+  BONDED:            "text-yellow-400 border-yellow-700 bg-yellow-900/20",
+  ACTIVE:            "text-[#00ff88] border-[#00ff88]/30 bg-[#00ff88]/10",
+  INACTIVE:          "text-[#4a4a5e] border-[#1e1e2e]",
+  CHALLENGED:        "text-yellow-400 border-yellow-700 bg-yellow-900/20",
+  ANCHORED:          "text-[#00ff88] border-[#00ff88]/30 bg-[#00ff88]/10",
+  PROOF:             "text-[#00ff88] border-[#00ff88]/30 bg-[#00ff88]/10",
 };
 
 export function Badge({
@@ -264,8 +265,9 @@ export function Card({
 
 export function decisionStyle(decision: string): string {
   switch (decision) {
-    case "PAY":    return "text-[#00ff88] border-[#00ff88]/30 bg-[#00ff88]/10";
-    case "REFUSE": return "text-red-400 border-red-800 bg-red-900/20";
-    default:       return "text-[#8b8b9e] border-[#1e1e2e] bg-[#111118]";
+    case "PAY":               return "text-[#00ff88] border-[#00ff88]/30 bg-[#00ff88]/10";
+    case "REFUSE":            return "text-red-400 border-red-800 bg-red-900/20";
+    case "BLOCKED_BY_POLICY": return "text-orange-400 border-orange-700 bg-orange-900/20";
+    default:                  return "text-[#8b8b9e] border-[#1e1e2e] bg-[#111118]";
   }
 }
