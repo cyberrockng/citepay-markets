@@ -5,9 +5,19 @@ import type { TractionStats } from "@/types";
 import { PageShell, StatCard } from "@/components/ui";
 import { BackButton } from "@/components/back-button";
 
+interface OnChainStats {
+  paidCitations: number;
+  totalUSDCMicro: number;
+  uniqueCreators: number;
+  agentWallet: string;
+  explorerUrl: string;
+  lastUpdated: string;
+}
+
 export default function TractionPage() {
   const [stats, setStats] = useState<TractionStats | null>(null);
   const [ts, setTs] = useState("");
+  const [onChain, setOnChain] = useState<OnChainStats | null>(null);
 
   useEffect(() => {
     function load() {
@@ -15,9 +25,13 @@ export default function TractionPage() {
         .then((r) => r.json())
         .then((d) => { setStats(d.stats); setTs(d.generatedAt); })
         .catch(() => {});
+      fetch("/api/onchain-stats")
+        .then((r) => r.json())
+        .then((d) => { if (!d.error) setOnChain(d); })
+        .catch(() => {});
     }
     load();
-    const t = setInterval(load, 10000);
+    const t = setInterval(load, 15000);
     return () => clearInterval(t);
   }, []);
 
@@ -27,7 +41,7 @@ export default function TractionPage() {
         <div>
           <BackButton label="Home" />
           <h1 className="text-3xl font-bold mt-4 text-[#f0f0f5]">Traction Dashboard</h1>
-          <p className="text-[#8b8b9e] mt-1">Real metrics from real agent decisions · settled on Arc via Circle Gateway · resets on cold start</p>
+          <p className="text-[#8b8b9e] mt-1">Real metrics from real agent decisions · settled on Arc via Circle Gateway</p>
         </div>
         {ts && (
           <div className="text-xs text-[#4a4a5e] font-mono mt-1">
@@ -35,6 +49,46 @@ export default function TractionPage() {
           </div>
         )}
       </div>
+
+      {/* On-chain persistent record */}
+      {onChain && (
+        <div className="mb-8 rounded-xl border border-[#00ff88]/20 bg-[#00ff88]/5 p-5">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h2 className="text-sm font-semibold text-[#00ff88] uppercase tracking-widest">On-Chain Record · Arc Testnet</h2>
+              <p className="text-[#8b8b9e] text-xs mt-0.5">Permanent · verified on arcscan · survives cold starts</p>
+            </div>
+            <a
+              href={onChain.explorerUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-xs text-[#6366f1] hover:text-indigo-300 transition-colors font-mono"
+            >
+              View on arcscan →
+            </a>
+          </div>
+          <div className="grid grid-cols-3 gap-4">
+            <StatCard
+              label="Citations Paid (All Time)"
+              value={onChain.paidCitations}
+              accent="text-[#00ff88]"
+              sub="USDC transfers on Arc"
+            />
+            <StatCard
+              label="USDC Routed (All Time)"
+              value={`$${(onChain.totalUSDCMicro / 1_000_000).toFixed(4)}`}
+              accent="text-[#00ff88]"
+              sub="to creator wallets"
+            />
+            <StatCard
+              label="Creators Paid (All Time)"
+              value={onChain.uniqueCreators}
+              accent="text-[#00ff88]"
+              sub="unique recipients"
+            />
+          </div>
+        </div>
+      )}
 
       {!stats ? (
         <div className="text-[#8b8b9e] text-center py-20 animate-pulse">Loading stats…</div>
