@@ -107,7 +107,8 @@ export async function verifyGatewayPayment(req: NextRequest): Promise<{
     const { BatchFacilitatorClient } = await import(
       "@circle-fin/x402-batching/server"
     );
-    const facilitator   = new BatchFacilitatorClient();
+    const gatewayUrl = process.env.CIRCLE_GATEWAY_URL ?? "https://gateway-api-testnet.circle.com";
+    const facilitator   = new BatchFacilitatorClient({ url: gatewayUrl });
     const requirements  = buildPaymentRequirements();
     const paymentPayload = JSON.parse(
       Buffer.from(paymentSignature, "base64").toString("utf-8")
@@ -115,7 +116,7 @@ export async function verifyGatewayPayment(req: NextRequest): Promise<{
 
     const verifyResult = await facilitator.verify(paymentPayload, requirements);
     if (!verifyResult.isValid) {
-      return { valid: false, error: verifyResult.invalidReason ?? "Verification failed" };
+      return { valid: false, error: `Gateway verify: ${verifyResult.invalidReason ?? "Verification failed"}` };
     }
 
     const settleResult = await facilitator.settle(paymentPayload, requirements);
