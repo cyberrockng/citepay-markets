@@ -12,6 +12,16 @@
     "test:api": "vitest run tests/api.test.ts --root .",
     "seed": "npx tsx scripts/seed-sources.ts"
   },
+  "overrides": {
+    "@circle-fin/adapter-circle-wallets": {
+      "react": "$react",
+      "react-dom": "$react-dom"
+    },
+    "@circle-fin/unified-balance-kit": {
+      "react": "$react",
+      "react-dom": "$react-dom"
+    }
+  },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.55.0",
     "@circle-fin/adapter-circle-wallets": "^1.3.2",
