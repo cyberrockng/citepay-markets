@@ -3,7 +3,7 @@ import { sha256 } from "./evidence";
 
 export const QUERY_FEE_USDC = 0.01; // $0.01 USDC to run a query
 export const QUERY_FEE_MICRO = Math.round(QUERY_FEE_USDC * 1_000_000); // 10000 micro-USDC
-export const PAYMENT_RECEIVER = process.env.AGENT_WALLET_ADDRESS || "0xCITEPAY_RECEIVER";
+export const PAYMENT_RECEIVER = process.env.AGENT_WALLET_ADDRESS || "0x5389688243328c26a92b301faEEAb5fbf9AFf105";
 export const CHAIN_ID = 84532; // Base Sepolia
 
 export interface X402PaymentHeader {

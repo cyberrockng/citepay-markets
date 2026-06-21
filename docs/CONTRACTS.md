@@ -107,9 +107,9 @@ The backend records every decision in SQLite for fast API reads. The contract se
 
 ```
 /api/ask  →  agent scores sources
-          →  PAY: payCreator() + insertReceipt() in SQLite
+          →  PAY: payCreator() USDC transfer + insertReceipt() in SQLite
+                  + anchorPAY() → payCitation() on CitePayMarket.sol
           →  REFUSE/SKIP: insertReceipt() in SQLite
-          (contract integration: next milestone — payCitation/recordDecision calls)
 ```
 
 ---

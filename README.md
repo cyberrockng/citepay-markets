@@ -401,7 +401,7 @@ Set these environment variables in the Vercel dashboard (Settings → Environmen
 - `AGENT_WALLET_ADDRESS`
 - `USDC_CONTRACT_ADDRESS=0x036CbD53842c5426634e7929541eC2318f3dCF7e`
 
-> Note: CitePay uses SQLite (`data/citepay.db`) for the receipt mirror. On Vercel, this resets on each deployment. For persistent storage, migrate to a Vercel-compatible DB (Postgres/Turso).
+> Note: CitePay uses SQLite in `/tmp` on Vercel. The 10 creator sources and their on-chain IDs are baked into the seed and re-created on every cold start. Receipts and query history accumulate on warm instances and reset on cold starts. For persistent receipt history across deployments, migrate to a managed DB (Postgres/Turso).
 
 ### Deploy contract to Base Sepolia
 
@@ -527,7 +527,7 @@ See [section 13](#13-deployment-instructions) for Vercel deployment steps.
 
 ## 19. Known Limitations
 
-- **SQLite persistence**: The receipt mirror resets on Vercel redeploy. Suitable for demo; production needs a managed DB.
+- **SQLite persistence**: Sources are auto-seeded (with baked on-chain IDs) on every cold start. Receipts accumulate on warm Vercel instances and reset on cold starts. Suitable for demo; production needs a managed DB.
 - **Payout fallback**: Creator payouts are real on-chain USDC transfers when `AGENT_PRIVATE_KEY` is set and the wallet is funded. If neither `AGENT_PRIVATE_KEY` nor `CIRCLE_API_KEY` is configured, the system generates a deterministic SHA-256 txHash so receipts remain structurally valid during local development.
 - **Dev mode x402**: `X402_DEV_MODE=true` accepts any `X-PAYMENT` header. Production requires Circle payment verification.
 - **Relevance scoring**: Claude Haiku scores relevance from title + description only (not full content fetch). Scores are probabilistic.

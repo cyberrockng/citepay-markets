@@ -65,7 +65,7 @@ export default function AskPage() {
     addLog("← 402 Payment Required — x402 payment details received");
 
     setStep("paid");
-    addLog("→ Constructing X-PAYMENT header (x402 dev mode — USDC transfer is real)…");
+    addLog("→ Constructing X-PAYMENT header (x402 protocol: query fee paid, real USDC creator payments follow)…");
 
     const paymentProof = {
       scheme: "exact",
