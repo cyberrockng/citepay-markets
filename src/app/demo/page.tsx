@@ -1,5 +1,5 @@
 "use client";
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import Link from "next/link";
 import { BackButton } from "@/components/back-button";
 
@@ -60,6 +60,14 @@ export default function DemoPage() {
   const [steps, setSteps]   = useState<Steps>(INIT);
   const [running, setRunning] = useState(false);
   const [done, setDone]     = useState(false);
+  const [walletBalance, setWalletBalance] = useState<number | null>(null);
+
+  useEffect(() => {
+    fetch("/api/wallet/balance")
+      .then(r => r.json())
+      .then(d => { if (typeof d.balanceUsdc === "number") setWalletBalance(d.balanceUsdc); })
+      .catch(() => {});
+  }, []);
 
   function set(key: string, status: Status, data?: Record<string, unknown>, error?: string) {
     setSteps(prev => ({ ...prev, [key]: { status, data, error } }));
@@ -208,6 +216,20 @@ export default function DemoPage() {
             );
           })}
         </div>
+
+        {/* Agent Wallet Balance */}
+        {walletBalance !== null && (
+          <div className={`mb-4 rounded-lg px-4 py-2.5 border text-xs flex items-center justify-between ${
+            walletBalance >= 0.001
+              ? "bg-[#00ff88]/5 border-[#00ff88]/20 text-[#00ff88]"
+              : "bg-yellow-500/5 border-yellow-500/30 text-yellow-400"
+          }`}>
+            <span className="font-mono">Agent wallet: ${walletBalance.toFixed(4)} USDC</span>
+            {walletBalance < 0.001 && (
+              <span className="font-semibold">⚠ Low balance — payments will show as simulated</span>
+            )}
+          </div>
+        )}
 
         {/* Run Button */}
         <button

@@ -40,6 +40,20 @@ export default function TractionPage() {
         <div className="text-[#8b8b9e] text-center py-20 animate-pulse">Loading stats…</div>
       ) : (
         <div className="space-y-10">
+          {stats.totalQueries === 0 && (
+            <div className="rounded-xl p-5 border border-[#6366f1]/30 bg-[#6366f1]/5 flex items-center justify-between gap-4">
+              <div>
+                <p className="text-[#f0f0f5] font-semibold text-sm">No activity yet on this instance</p>
+                <p className="text-[#8b8b9e] text-xs mt-0.5">Run the live demo to generate decisions, receipts, and USDC payments.</p>
+              </div>
+              <Link
+                href="/demo"
+                className="shrink-0 text-sm font-semibold text-white bg-[#6366f1] hover:bg-indigo-500 px-4 py-2 rounded-lg transition-colors"
+              >
+                Run Demo →
+              </Link>
+            </div>
+          )}
           {/* Creator Economy */}
           <section>
             <h2 className="text-xs font-semibold text-[#8b8b9e] uppercase tracking-widest mb-4">Creator Economy</h2>
