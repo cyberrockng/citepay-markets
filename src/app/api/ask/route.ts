@@ -6,8 +6,6 @@ import { runBuyerAgent, getAgentAddress } from "@/lib/agent";
 import { buildEvidencePreimage, hashEvidence, sha256, parseUSDC } from "@/lib/evidence";
 import { payCreator } from "@/lib/payments";
 import { anchorPAY, checkAnchorReady } from "@/lib/anchor";
-
-let anchorChecked = false;
 import {
   getAllSources,
   insertQuery,
@@ -16,6 +14,8 @@ import {
   updateSourceStats,
   updateReceiptOnChain,
 } from "@/lib/db";
+
+let anchorChecked = false;
 
 export const dynamic = "force-dynamic";
 

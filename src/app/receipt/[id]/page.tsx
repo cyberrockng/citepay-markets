@@ -146,7 +146,7 @@ export default function ReceiptPage({ params }: { params: Promise<{ id: string }
             </div>
           ) : (
             <div className="text-[#8b8b9e] text-xs">
-              Anchor pending — source must be registered on-chain first (<code className="text-[#f0f0f5]">npm run seed</code>).
+              Anchor pending — will be written on the next PAY decision for this source.
             </div>
           )}
         </div>
