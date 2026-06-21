@@ -1,13 +1,13 @@
 /**
- * POST /api/orchestrate
+ * POST /api/orchestrate — streaming multi-agent pipeline
  *
- * Multi-agent pipeline:
- *   [Orchestrator] decomposes query → [Researcher Agents] via x402 → [Synthesizer]
- *
- * Each sub-query is a real Circle Gateway payment from the orchestrator wallet
- * to the researcher endpoint (/api/ask). This creates agent-to-agent x402 payments.
+ * Emits newline-delimited JSON chunks as each step completes:
+ *   { type: "trace", line: string }
+ *   { type: "subquery_result", index: number, subQuery: SubQueryResult }
+ *   { type: "final", finalAnswer: string, stats: Stats }
+ *   { type: "error", error: string }
  */
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
 import { GatewayClient } from "@circle-fin/x402-batching/client";
 
@@ -15,7 +15,6 @@ export const dynamic = "force-dynamic";
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
-// Orchestrator uses the same demo buyer wallet (testnet only)
 const ORCHESTRATOR_KEY: `0x${string}` =
   (process.env.DEMO_BUYER_KEY as `0x${string}`) ??
   "0x1111111111111111111111111111111111111111111111111111111111111111";
@@ -65,10 +64,7 @@ Return ONLY a JSON array of strings, no explanation. Example: ["What is X?", "Ho
   }
 }
 
-async function synthesize(
-  originalQuery: string,
-  subResults: SubQueryResult[]
-): Promise<string> {
+async function synthesize(originalQuery: string, subResults: SubQueryResult[]): Promise<string> {
   const context = subResults
     .filter((r) => r.decisions.some((d) => d.decision === "PAY"))
     .map((r) => {
@@ -103,119 +99,130 @@ Write a concise, well-structured answer that synthesizes all the above. Referenc
 export async function POST(req: NextRequest) {
   let body: { query?: string; policy?: string } = {};
   try { body = await req.json(); } catch {
-    return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
+    return new Response(JSON.stringify({ type: "error", error: "Invalid JSON body" }) + "\n", { status: 400 });
   }
 
   const query = (body.query ?? "").trim();
-  if (!query) return NextResponse.json({ error: "query is required" }, { status: 400 });
-
-  const policy = body.policy ?? "balanced";
-
-  // 1. Check/refill orchestrator Gateway balance
-  const orchestratorClient = new GatewayClient({ chain: "arcTestnet", privateKey: ORCHESTRATOR_KEY });
-  const balances = await orchestratorClient.getBalances();
-
-  if (balances.gateway.available < MIN_BALANCE_MICRO && AGENT_KEY) {
-    try {
-      const agentClient = new GatewayClient({ chain: "arcTestnet", privateKey: AGENT_KEY });
-      await agentClient.depositFor("0.05", orchestratorClient.address);
-    } catch (e) {
-      console.error("[orchestrate] auto-refill failed:", e);
-    }
+  if (!query) {
+    return new Response(JSON.stringify({ type: "error", error: "query is required" }) + "\n", { status: 400 });
   }
 
-  // 2. Decompose query into sub-questions
-  const agentTrace: string[] = [];
-  agentTrace.push(`[Orchestrator] Received query: "${query}"`);
-
-  const subQueries = await decomposeQuery(query);
-  agentTrace.push(`[Orchestrator] Decomposed into ${subQueries.length} sub-queries: ${subQueries.map((q) => `"${q}"`).join(" | ")}`);
-
-  // 3. Dispatch sub-queries to researcher agent in parallel (each pays via x402)
+  const policy = body.policy ?? "balanced";
   const host = req.headers.get("host") ?? "citepay-markets.vercel.app";
   const proto = host.startsWith("localhost") ? "http" : "https";
   const askUrl = `${proto}://${host}/api/ask`;
 
-  agentTrace.push(`[Orchestrator] Dispatching ${subQueries.length} researcher agents via Circle Gateway x402 payments → ${askUrl}`);
+  const encoder = new TextEncoder();
+  const { readable, writable } = new TransformStream<Uint8Array, Uint8Array>();
+  const writer = writable.getWriter();
 
-  const subResults = await Promise.all(
-    subQueries.map(async (subQuery): Promise<SubQueryResult> => {
-      try {
-        const payResult = await orchestratorClient.pay<{
-          queryId: string;
-          answer: string;
-          decisions: SubQueryResult["decisions"];
-          totalPaid: number;
-        }>(askUrl, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ query: subQuery, budget: 0.05, policy }),
-        });
+  const send = (chunk: object) => {
+    writer.write(encoder.encode(JSON.stringify(chunk) + "\n")).catch(() => {});
+  };
 
-        return {
-          subQuery,
-          queryId: payResult.data.queryId,
-          answer: payResult.data.answer,
-          decisions: payResult.data.decisions,
-          totalPaid: payResult.data.totalPaid,
-          gatewayAmountMicro: payResult.amount.toString(),
-          paidViaGateway: true,
-        };
-      } catch (err) {
-        return {
-          subQuery,
-          queryId: "",
-          answer: `Sub-agent failed: ${(err as Error).message}`,
-          decisions: [],
-          totalPaid: 0,
-          gatewayAmountMicro: "0",
-          paidViaGateway: false,
-        };
+  (async () => {
+    try {
+      const orchestratorClient = new GatewayClient({ chain: "arcTestnet", privateKey: ORCHESTRATOR_KEY });
+
+      send({ type: "trace", line: `[Orchestrator] Received query: "${query}"` });
+      send({ type: "trace", line: `[Orchestrator] Checking Circle Gateway balance…` });
+
+      const balances = await orchestratorClient.getBalances();
+      if (balances.gateway.available < MIN_BALANCE_MICRO && AGENT_KEY) {
+        try {
+          const agentClient = new GatewayClient({ chain: "arcTestnet", privateKey: AGENT_KEY });
+          await agentClient.depositFor("0.05", orchestratorClient.address);
+          send({ type: "trace", line: `[Orchestrator] Auto-refilled Gateway balance from agent wallet` });
+        } catch (e) {
+          send({ type: "trace", line: `[Orchestrator] Auto-refill failed: ${(e as Error).message}` });
+        }
       }
-    })
-  );
 
-  // Build trace entries from results
-  for (const r of subResults) {
-    const paid = r.decisions.filter((d) => d.decision === "PAY");
-    if (r.paidViaGateway) {
-      agentTrace.push(
-        `[Researcher Agent] "${r.subQuery.slice(0, 60)}" — paid $${(Number(r.gatewayAmountMicro) / 1e6).toFixed(3)} query fee via Circle Gateway → ${paid.length} citations purchased ($${(r.totalPaid / 1e6).toFixed(4)} USDC to creators)`
+      send({ type: "trace", line: `[Orchestrator] Decomposing query into sub-questions…` });
+      const subQueries = await decomposeQuery(query);
+      send({ type: "trace", line: `[Orchestrator] Decomposed into ${subQueries.length} sub-queries: ${subQueries.map((q) => `"${q}"`).join(" | ")}` });
+      send({ type: "trace", line: `[Orchestrator] Dispatching ${subQueries.length} researcher agents via Circle Gateway x402 → ${askUrl}` });
+
+      // Run sub-agents in parallel, emit each result as it completes
+      const subResults: SubQueryResult[] = new Array(subQueries.length);
+      await Promise.all(
+        subQueries.map(async (subQuery, index) => {
+          try {
+            const payResult = await orchestratorClient.pay<{
+              queryId: string;
+              answer: string;
+              decisions: SubQueryResult["decisions"];
+              totalPaid: number;
+            }>(askUrl, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ query: subQuery, budget: 0.05, policy }),
+            });
+
+            const result: SubQueryResult = {
+              subQuery,
+              queryId: payResult.data.queryId,
+              answer: payResult.data.answer,
+              decisions: payResult.data.decisions,
+              totalPaid: payResult.data.totalPaid,
+              gatewayAmountMicro: payResult.amount.toString(),
+              paidViaGateway: true,
+            };
+            subResults[index] = result;
+
+            const paid = result.decisions.filter((d) => d.decision === "PAY");
+            send({ type: "trace", line: `[Researcher Agent] "${subQuery.slice(0, 60)}" — paid $${(Number(result.gatewayAmountMicro) / 1e6).toFixed(3)} via Gateway → ${paid.length} citations ($${(result.totalPaid / 1e6).toFixed(4)} USDC to creators)` });
+            send({ type: "subquery_result", index, subQuery: result });
+          } catch (err) {
+            const result: SubQueryResult = {
+              subQuery,
+              queryId: "",
+              answer: `Sub-agent failed: ${(err as Error).message}`,
+              decisions: [],
+              totalPaid: 0,
+              gatewayAmountMicro: "0",
+              paidViaGateway: false,
+            };
+            subResults[index] = result;
+            send({ type: "trace", line: `[Researcher Agent] "${subQuery.slice(0, 60)}" — FAILED: ${(err as Error).message.slice(0, 80)}` });
+            send({ type: "subquery_result", index, subQuery: result });
+          }
+        })
       );
-    } else {
-      agentTrace.push(`[Researcher Agent] "${r.subQuery.slice(0, 60)}" — FAILED: ${r.answer.slice(0, 80)}`);
+
+      send({ type: "trace", line: `[Orchestrator] All ${subResults.length} agents complete. Synthesizing…` });
+      const finalAnswer = await synthesize(query, subResults);
+      send({ type: "trace", line: `[Orchestrator] Synthesis complete.` });
+
+      const allDecisions = subResults.flatMap((r) => r.decisions);
+      const totalGatewayMicro = subResults.reduce((s, r) => s + Number(r.gatewayAmountMicro), 0);
+      const totalCreatorMicro = subResults.reduce((s, r) => s + r.totalPaid, 0);
+
+      send({
+        type: "final",
+        finalAnswer,
+        subQueries: subResults,
+        stats: {
+          subQueriesDispatched: subQueries.length,
+          totalGatewayFeeMicro: totalGatewayMicro,
+          totalCreatorPaymentsMicro: totalCreatorMicro,
+          citationsPurchased: allDecisions.filter((d) => d.decision === "PAY").length,
+          orchestratorWallet: orchestratorClient.address,
+        },
+      });
+    } catch (err) {
+      send({ type: "error", error: String(err) });
+    } finally {
+      writer.close().catch(() => {});
     }
-  }
+  })();
 
-  // 4. Synthesize
-  agentTrace.push(`[Orchestrator] Synthesizing results from ${subResults.length} researcher agents…`);
-  const finalAnswer = await synthesize(query, subResults);
-  agentTrace.push(`[Orchestrator] Synthesis complete. Final answer generated.`);
-
-  // Aggregate stats
-  const allDecisions = subResults.flatMap((r) => r.decisions);
-  const totalGatewayMicro = subResults.reduce((s, r) => s + Number(r.gatewayAmountMicro), 0);
-  const totalCreatorMicro = subResults.reduce((s, r) => s + r.totalPaid, 0);
-
-  return NextResponse.json({
-    query,
-    finalAnswer,
-    subQueries: subResults.map((r) => ({
-      subQuery: r.subQuery,
-      queryId: r.queryId,
-      answer: r.answer,
-      decisions: r.decisions,
-      totalPaid: r.totalPaid,
-      gatewayAmountMicro: r.gatewayAmountMicro,
-      paidViaGateway: r.paidViaGateway,
-    })),
-    agentTrace,
-    stats: {
-      subQueriesDispatched: subQueries.length,
-      totalGatewayFeeMicro: totalGatewayMicro,
-      totalCreatorPaymentsMicro: totalCreatorMicro,
-      citationsPurchased: allDecisions.filter((d) => d.decision === "PAY").length,
-      orchestratorWallet: orchestratorClient.address,
+  return new Response(readable, {
+    headers: {
+      "Content-Type": "application/x-ndjson",
+      "Cache-Control": "no-cache",
+      "Transfer-Encoding": "chunked",
+      "X-Accel-Buffering": "no",
     },
   });
 }

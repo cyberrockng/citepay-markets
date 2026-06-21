@@ -8,6 +8,7 @@ import { payCreator } from "@/lib/payments";
 import { anchorPAY, checkAnchorReady } from "@/lib/anchor";
 import { resolvePolicy } from "@/lib/policy";
 import { signReceiptHash } from "@/lib/signature";
+import { agentEvents } from "@/lib/events";
 import {
   getAllSources,
   insertQuery,
@@ -170,6 +171,16 @@ export async function POST(req: NextRequest) {
     };
 
     insertReceipt(receipt);
+
+    // Emit live feed event (best-effort — only reaches same serverless instance)
+    agentEvents.emit("decision", {
+      decision: d.decision,
+      sourceTitle: d.source.title,
+      amountPaid: d.decision === "PAY" ? d.source.price : 0,
+      evidenceHash,
+      query,
+      timestamp: new Date().toISOString(),
+    });
 
     // Anchor PAY decision on-chain after receipt row exists
     if (d.decision === "PAY" && d.source.onChainId) {

@@ -6,8 +6,8 @@ const NAV = [
   { href: "/",            label: "Home",    icon: "◈" },
   { href: "/orchestrate", label: "Multi",   icon: "⬡" },
   { href: "/ask",         label: "Ask",     icon: "✦" },
+  { href: "/live",        label: "Live",    icon: "⬤" },
   { href: "/mcp",         label: "MCP",     icon: "⬟" },
-  { href: "/market",      label: "Market",  icon: "◉" },
 ];
 
 export function MobileNav() {

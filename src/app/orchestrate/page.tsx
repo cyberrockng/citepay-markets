@@ -24,32 +24,36 @@ interface SubQuery {
   paidViaGateway: boolean;
 }
 
-interface OrchestrateResult {
-  query: string;
-  finalAnswer: string;
-  subQueries: SubQuery[];
-  agentTrace: string[];
-  stats: {
-    subQueriesDispatched: number;
-    totalGatewayFeeMicro: number;
-    totalCreatorPaymentsMicro: number;
-    citationsPurchased: number;
-    orchestratorWallet: string;
-  };
+interface Stats {
+  subQueriesDispatched: number;
+  totalGatewayFeeMicro: number;
+  totalCreatorPaymentsMicro: number;
+  citationsPurchased: number;
+  orchestratorWallet: string;
 }
 
 export default function OrchestratePage() {
   const [query, setQuery] = useState("");
   const [loading, setLoading] = useState(false);
-  const [result, setResult] = useState<OrchestrateResult | null>(null);
+  const [agentTrace, setAgentTrace] = useState<string[]>([]);
+  const [subQueries, setSubQueries] = useState<SubQuery[]>([]);
+  const [finalAnswer, setFinalAnswer] = useState<string | null>(null);
+  const [stats, setStats] = useState<Stats | null>(null);
   const [error, setError] = useState("");
   const [activeTab, setActiveTab] = useState<number>(0);
+  const [pendingCount, setPendingCount] = useState<number | null>(null);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!query.trim() || loading) return;
-    setResult(null);
+
+    setAgentTrace([]);
+    setSubQueries([]);
+    setFinalAnswer(null);
+    setStats(null);
     setError("");
+    setPendingCount(null);
+    setActiveTab(0);
     setLoading(true);
 
     try {
@@ -58,16 +62,67 @@ export default function OrchestratePage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ query, policy: "balanced" }),
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Orchestration failed");
-      setResult(data as OrchestrateResult);
-      setActiveTab(0);
+
+      if (!res.body) throw new Error("No response body");
+
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split("\n");
+        buffer = lines.pop() ?? "";
+
+        for (const line of lines) {
+          const trimmed = line.trim();
+          if (!trimmed) continue;
+          try {
+            const chunk = JSON.parse(trimmed) as {
+              type: string;
+              line?: string;
+              index?: number;
+              subQuery?: SubQuery;
+              finalAnswer?: string;
+              subQueries?: SubQuery[];
+              stats?: Stats;
+              error?: string;
+            };
+
+            if (chunk.type === "trace" && chunk.line) {
+              setAgentTrace((prev) => [...prev, chunk.line!]);
+              // Extract dispatched count from trace to show progress
+              const m = chunk.line.match(/Dispatching (\d+) researcher/);
+              if (m) setPendingCount(Number(m[1]));
+            } else if (chunk.type === "subquery_result" && chunk.subQuery) {
+              setSubQueries((prev) => {
+                const next = [...prev, chunk.subQuery!];
+                setActiveTab(next.length - 1);
+                setPendingCount((c) => (c !== null ? Math.max(0, c - 1) : null));
+                return next;
+              });
+            } else if (chunk.type === "final") {
+              if (chunk.finalAnswer) setFinalAnswer(chunk.finalAnswer);
+              if (chunk.stats) setStats(chunk.stats);
+              if (chunk.subQueries) setSubQueries(chunk.subQueries);
+              setLoading(false);
+            } else if (chunk.type === "error" && chunk.error) {
+              setError(chunk.error);
+              setLoading(false);
+            }
+          } catch { /* skip malformed line */ }
+        }
+      }
     } catch (err) {
       setError(String(err));
-    } finally {
       setLoading(false);
     }
   }
+
+  const hasResults = finalAnswer !== null || subQueries.length > 0;
 
   return (
     <main className="min-h-screen bg-[#0a0a0f] text-[#f0f0f5]">
@@ -127,7 +182,9 @@ export default function OrchestratePage() {
           </button>
           {loading && (
             <p className="text-[#4a4a5e] text-xs text-center mt-3 animate-pulse">
-              Decomposing query → dispatching sub-agents via Circle Gateway → synthesizing…
+              {pendingCount !== null && pendingCount > 0
+                ? `Waiting for ${pendingCount} researcher agent${pendingCount > 1 ? "s" : ""} to respond…`
+                : "Decomposing query → dispatching sub-agents via Circle Gateway → synthesizing…"}
             </p>
           )}
         </form>
@@ -139,57 +196,80 @@ export default function OrchestratePage() {
           </div>
         )}
 
-        {/* Results */}
-        {result && (
-          <div className="space-y-6">
-
-            {/* Stats bar */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-              {[
-                { label: "Sub-agents hired", value: result.stats.subQueriesDispatched, color: "text-indigo-400" },
-                { label: "Gateway fees paid", value: `$${(result.stats.totalGatewayFeeMicro / 1e6).toFixed(3)} USDC`, color: "text-violet-400" },
-                { label: "Citations bought", value: result.stats.citationsPurchased, color: "text-[#00ff88]" },
-                { label: "Creator payments", value: `$${(result.stats.totalCreatorPaymentsMicro / 1e6).toFixed(4)} USDC`, color: "text-amber-400" },
-              ].map((s) => (
-                <div key={s.label} className="bg-[#111118] rounded-xl border border-[#1e1e2e] p-4">
-                  <div className={`text-lg font-bold font-mono ${s.color}`}>{s.value}</div>
-                  <div className="text-xs text-[#8b8b9e] mt-0.5">{s.label}</div>
+        {/* Streaming agent trace — visible while loading and after */}
+        {agentTrace.length > 0 && (
+          <div className="bg-[#0a0a0f] rounded-xl border border-[#1e1e2e] p-5 mb-6">
+            <div className="text-xs text-[#4a4a5e] font-mono mb-3">{"// agent execution trace"}</div>
+            <div className="space-y-1.5 font-mono text-xs">
+              {agentTrace.map((line, i) => (
+                <div key={i} className={
+                  line.startsWith("[Orchestrator]")
+                    ? "text-indigo-400"
+                    : line.startsWith("[Researcher")
+                    ? "text-[#00ff88]"
+                    : "text-[#8b8b9e]"
+                }>
+                  {line}
                 </div>
               ))}
+              {loading && <div className="text-[#4a4a5e] animate-pulse">▋</div>}
             </div>
+          </div>
+        )}
 
-            {/* Agent Trace */}
-            <div className="bg-[#0a0a0f] rounded-xl border border-[#1e1e2e] p-5">
-              <div className="text-xs text-[#4a4a5e] font-mono mb-3">{"// agent execution trace"}</div>
-              <div className="space-y-1.5 font-mono text-xs">
-                {result.agentTrace.map((line, i) => (
-                  <div key={i} className={
-                    line.startsWith("[Orchestrator]")
-                      ? "text-indigo-400"
-                      : line.startsWith("[Researcher")
-                      ? "text-[#00ff88]"
-                      : "text-[#8b8b9e]"
-                  }>
-                    {line}
+        {/* Partial results while loading — sub-agents as they complete */}
+        {subQueries.length > 0 && (
+          <div className="space-y-6">
+            {/* Stats bar */}
+            {stats && (
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                {[
+                  { label: "Sub-agents hired", value: stats.subQueriesDispatched, color: "text-indigo-400" },
+                  { label: "Gateway fees paid", value: `$${(stats.totalGatewayFeeMicro / 1e6).toFixed(3)} USDC`, color: "text-violet-400" },
+                  { label: "Citations bought", value: stats.citationsPurchased, color: "text-[#00ff88]" },
+                  { label: "Creator payments", value: `$${(stats.totalCreatorPaymentsMicro / 1e6).toFixed(4)} USDC`, color: "text-amber-400" },
+                ].map((s) => (
+                  <div key={s.label} className="bg-[#111118] rounded-xl border border-[#1e1e2e] p-4">
+                    <div className={`text-lg font-bold font-mono ${s.color}`}>{s.value}</div>
+                    <div className="text-xs text-[#8b8b9e] mt-0.5">{s.label}</div>
                   </div>
                 ))}
               </div>
-            </div>
+            )}
+
+            {/* Live partial stats while loading */}
+            {loading && !stats && (
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                {[
+                  { label: "Agents completed", value: subQueries.length, color: "text-indigo-400" },
+                  { label: "Citations so far", value: subQueries.flatMap((sq) => sq.decisions).filter((d) => d.decision === "PAY").length, color: "text-[#00ff88]" },
+                  { label: "Creator payments", value: `$${(subQueries.reduce((s, sq) => s + sq.totalPaid, 0) / 1e6).toFixed(4)} USDC`, color: "text-amber-400" },
+                  { label: "Awaiting", value: pendingCount !== null ? pendingCount : "…", color: "text-[#4a4a5e]" },
+                ].map((s) => (
+                  <div key={s.label} className="bg-[#111118] rounded-xl border border-[#1e1e2e] p-4">
+                    <div className={`text-lg font-bold font-mono ${s.color}`}>{s.value}</div>
+                    <div className="text-xs text-[#8b8b9e] mt-0.5">{s.label}</div>
+                  </div>
+                ))}
+              </div>
+            )}
 
             {/* Final Answer */}
-            <div className="bg-[#111118] rounded-xl border border-indigo-900/30 p-6">
-              <div className="flex items-center gap-2 mb-3">
-                <div className="w-5 h-5 rounded bg-indigo-600/40 flex items-center justify-center text-indigo-300 text-xs font-bold">S</div>
-                <h2 className="font-semibold text-[#f0f0f5]">Synthesized Answer</h2>
-                <span className="text-xs text-indigo-400 bg-indigo-900/20 px-2 py-0.5 rounded-full">from {result.stats.subQueriesDispatched} agents</span>
+            {finalAnswer && (
+              <div className="bg-[#111118] rounded-xl border border-indigo-900/30 p-6">
+                <div className="flex items-center gap-2 mb-3">
+                  <div className="w-5 h-5 rounded bg-indigo-600/40 flex items-center justify-center text-indigo-300 text-xs font-bold">S</div>
+                  <h2 className="font-semibold text-[#f0f0f5]">Synthesized Answer</h2>
+                  <span className="text-xs text-indigo-400 bg-indigo-900/20 px-2 py-0.5 rounded-full">from {subQueries.length} agents</span>
+                </div>
+                <p className="text-[#f0f0f5] leading-relaxed whitespace-pre-wrap">{finalAnswer}</p>
               </div>
-              <p className="text-[#f0f0f5] leading-relaxed whitespace-pre-wrap">{result.finalAnswer}</p>
-            </div>
+            )}
 
             {/* Sub-agent tabs */}
             <div className="bg-[#111118] rounded-xl border border-[#1e1e2e] overflow-hidden">
               <div className="flex border-b border-[#1e1e2e] overflow-x-auto">
-                {result.subQueries.map((sq, i) => (
+                {subQueries.map((sq, i) => (
                   <button
                     key={i}
                     onClick={() => setActiveTab(i)}
@@ -205,10 +285,16 @@ export default function OrchestratePage() {
                     )}
                   </button>
                 ))}
+                {loading && pendingCount !== null && pendingCount > 0 && (
+                  <div className="flex-shrink-0 px-5 py-3 text-sm text-[#4a4a5e] animate-pulse flex items-center gap-2">
+                    <span className="animate-spin h-3 w-3 border border-[#4a4a5e] border-t-indigo-400 rounded-full" />
+                    {pendingCount} pending…
+                  </div>
+                )}
               </div>
 
-              {result.subQueries[activeTab] && (() => {
-                const sq = result.subQueries[activeTab];
+              {subQueries[activeTab] && (() => {
+                const sq = subQueries[activeTab];
                 const paidDecisions = sq.decisions.filter((d) => d.decision === "PAY");
                 return (
                   <div className="p-5">
@@ -273,27 +359,40 @@ export default function OrchestratePage() {
               })()}
             </div>
 
-            {/* Share CTA */}
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-3 bg-[#111118] rounded-xl border border-[#1e1e2e] px-5 py-4">
-              <div className="text-sm text-[#8b8b9e]">
-                <span className="text-[#f0f0f5] font-semibold">{result.stats.subQueriesDispatched} agents</span> paid{" "}
-                <span className="text-[#00ff88]">${(result.stats.totalGatewayFeeMicro / 1e6).toFixed(3)} USDC</span> in Gateway fees →{" "}
-                <span className="text-[#00ff88]">{result.stats.citationsPurchased} citations</span> purchased on Arc
+            {/* Share CTA — only after complete */}
+            {!loading && stats && (
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-3 bg-[#111118] rounded-xl border border-[#1e1e2e] px-5 py-4">
+                <div className="text-sm text-[#8b8b9e]">
+                  <span className="text-[#f0f0f5] font-semibold">{stats.subQueriesDispatched} agents</span> paid{" "}
+                  <span className="text-[#00ff88]">${(stats.totalGatewayFeeMicro / 1e6).toFixed(3)} USDC</span> in Gateway fees →{" "}
+                  <span className="text-[#00ff88]">{stats.citationsPurchased} citations</span> purchased on Arc
+                </div>
+                <a
+                  href={`https://twitter.com/intent/tweet?text=${encodeURIComponent(
+                    `Just ran a multi-agent research query on CitePay Markets 🤖\n\n${stats.subQueriesDispatched} AI agents paid $${(stats.totalGatewayFeeMicro / 1e6).toFixed(3)} USDC via Circle Gateway on Arc → ${stats.citationsPurchased} citations bought from real creators\n\nQuery: "${query.slice(0, 80)}"\n\nTry it → https://citepay-markets.vercel.app/orchestrate\n\n#Lepton #CircleGateway #x402`
+                  )}`}
+                  target="_blank" rel="noopener noreferrer"
+                  className="flex-shrink-0 text-xs px-4 py-2 rounded-lg bg-[#1e1e2e] hover:bg-[#2e2e3e] text-[#8b8b9e] hover:text-[#f0f0f5] transition-colors font-mono"
+                >
+                  Share on X →
+                </a>
               </div>
-              <a
-                href={`https://twitter.com/intent/tweet?text=${encodeURIComponent(
-                  `Just ran a multi-agent research query on CitePay Markets 🤖\n\n${result.stats.subQueriesDispatched} AI agents paid $${(result.stats.totalGatewayFeeMicro / 1e6).toFixed(3)} USDC via Circle Gateway on Arc → ${result.stats.citationsPurchased} citations bought from real creators\n\nQuery: "${result.query.slice(0, 80)}"\n\nTry it → https://citepay-markets.vercel.app/orchestrate\n\n#Lepton #CircleGateway #x402`
-                )}`}
-                target="_blank" rel="noopener noreferrer"
-                className="flex-shrink-0 text-xs px-4 py-2 rounded-lg bg-[#1e1e2e] hover:bg-[#2e2e3e] text-[#8b8b9e] hover:text-[#f0f0f5] transition-colors font-mono"
-              >
-                Share on X →
-              </a>
-            </div>
+            )}
 
-            <div className="text-xs text-[#4a4a5e] font-mono">
-              Orchestrator wallet: {result.stats.orchestratorWallet}
-            </div>
+            {!loading && stats && (
+              <div className="text-xs text-[#4a4a5e] font-mono">
+                Orchestrator wallet: {stats.orchestratorWallet}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Empty state with Live feed link */}
+        {!hasResults && !loading && (
+          <div className="text-center py-8">
+            <Link href="/live" className="text-xs text-[#4a4a5e] hover:text-[#8b8b9e] font-mono transition-colors">
+              Watch the live agent feed →
+            </Link>
           </div>
         )}
       </div>

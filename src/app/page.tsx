@@ -93,6 +93,10 @@ export default function LandingPage() {
             <Link href="/mcp" className="border border-[#6366f1]/40 hover:border-[#6366f1] text-[#6366f1] hover:text-indigo-300 font-semibold px-8 py-3.5 rounded-xl transition-colors">
               Add to Claude (MCP)
             </Link>
+            <Link href="/live" className="border border-[#00ff88]/20 hover:border-[#00ff88]/50 text-[#00ff88]/70 hover:text-[#00ff88] font-semibold px-8 py-3.5 rounded-xl transition-colors flex items-center gap-2">
+              <span className="w-1.5 h-1.5 rounded-full bg-[#00ff88] inline-block animate-pulse" />
+              Live Feed
+            </Link>
             <Link href="/market" className="border border-[#1e1e2e] hover:border-[#8b8b9e] text-[#8b8b9e] hover:text-[#f0f0f5] font-semibold px-8 py-3.5 rounded-xl transition-colors">
               Source Market
             </Link>
