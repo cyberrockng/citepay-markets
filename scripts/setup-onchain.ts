@@ -8,7 +8,7 @@ import { resolve } from "path";
 
 config({ path: resolve(process.cwd(), ".env.local") });
 
-const RPC      = process.env.BASE_SEPOLIA_RPC_URL || "https://sepolia.base.org";
+const RPC      = process.env.ARC_RPC_URL || "https://rpc.testnet.arc.network";
 const PK       = process.env.AGENT_PRIVATE_KEY!;
 const CONTRACT = process.env.NEXT_PUBLIC_CONTRACT_ADDRESS || "0x396cf1646EbAeF85ee8428C2d9239C46Ae956085";
 const BOND     = ethers.parseEther("0.001");

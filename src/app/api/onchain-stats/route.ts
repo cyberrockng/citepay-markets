@@ -1,32 +1,42 @@
 import { NextResponse } from "next/server";
 import { createPublicClient, http, parseAbiItem } from "viem";
-import { ARC_RPC, ARC_USDC, PAYMENT_RECEIVER } from "@/lib/x402";
+import { ARC_RPC } from "@/lib/x402";
 
 export const dynamic = "force-dynamic";
+
+const CONTRACT = (process.env.NEXT_PUBLIC_CONTRACT_ADDRESS ?? "0x396cf1646EbAeF85ee8428C2d9239C46Ae956085") as `0x${string}`;
+const EXPLORER = "https://testnet.arcscan.app";
 
 const arcTestnet = {
   id: 5042002,
   name: "Arc Testnet",
-  nativeCurrency: { name: "USDC", symbol: "USDC", decimals: 18 },
+  nativeCurrency: { name: "Ether", symbol: "ETH", decimals: 18 },
   rpcUrls: { default: { http: [ARC_RPC] } },
 } as const;
 
-// Cache so we don't hammer the RPC on every traction poll
 let cache: { data: OnChainStats; ts: number } | null = null;
-const CACHE_TTL_MS = 30_000;
+const CACHE_TTL_MS = 60_000;
 
 interface OnChainStats {
-  paidCitations: number;
-  totalUSDCMicro: number;
+  citationPaidEvents: number;
+  sourceRegisteredEvents: number;
+  uniqueAgents: number;
   uniqueCreators: number;
-  agentWallet: string;
+  contractAddress: string;
   explorerUrl: string;
   lastUpdated: string;
 }
 
-const TRANSFER_EVENT = parseAbiItem(
-  "event Transfer(address indexed from, address indexed to, uint256 value)"
+const CITATION_PAID_EVENT = parseAbiItem(
+  "event CitationPaid(uint256 indexed receiptId, uint256 indexed sourceId, address indexed agent, address creator, uint256 amount, bytes32 queryHash, bytes32 evidenceHash)"
 );
+const SOURCE_REGISTERED_EVENT = parseAbiItem(
+  "event SourceRegistered(uint256 indexed sourceId, address indexed creator, address payoutWallet, bytes32 contentHash, uint256 price, uint256 bond)"
+);
+
+// Deploy block — contract was deployed before this block
+const DEPLOY_BLOCK = 48_040_000n;
+const CHUNK = 9_000n;
 
 export async function GET() {
   if (cache && Date.now() - cache.ts < CACHE_TTL_MS) {
@@ -35,49 +45,42 @@ export async function GET() {
 
   try {
     const client = createPublicClient({ chain: arcTestnet, transport: http(ARC_RPC) });
-
-    // Arc RPC caps eth_getLogs at 10,000 blocks per request — scan in chunks.
     const latestBlock = await client.getBlockNumber();
-    const START_BLOCK = 48_000_000n; // safe start before first bridge (Jun 21 2026)
-    const CHUNK = 9_000n;
 
-    const recipients = new Set<string>();
-    let totalMicro = 0n;
-    let paidCount = 0;
+    const agents = new Set<string>();
+    const creators = new Set<string>();
+    let citationCount = 0;
+    let sourceCount = 0;
 
-    for (let from = START_BLOCK; from <= latestBlock; from += CHUNK + 1n) {
-      const to = from + CHUNK < latestBlock ? from + CHUNK : latestBlock;
-      const chunk = await client.getLogs({
-        address: ARC_USDC as `0x${string}`,
-        event: TRANSFER_EVENT,
-        args: { from: PAYMENT_RECEIVER },
-        fromBlock: from,
-        toBlock: to,
-      });
-      for (const log of chunk) {
-        const recipient = log.args.to;
-        const value = log.args.value ?? 0n;
-        if (recipient) recipients.add(recipient.toLowerCase());
-        totalMicro += value;
-        paidCount++;
+    for (let from = DEPLOY_BLOCK; from <= latestBlock; from += CHUNK + 1n) {
+      const to = from + CHUNK <= latestBlock ? from + CHUNK : latestBlock;
+
+      const [citations, sources] = await Promise.all([
+        client.getLogs({ address: CONTRACT, event: CITATION_PAID_EVENT, fromBlock: from, toBlock: to }),
+        client.getLogs({ address: CONTRACT, event: SOURCE_REGISTERED_EVENT, fromBlock: from, toBlock: to }),
+      ]);
+
+      for (const log of citations) {
+        citationCount++;
+        if (log.args.agent) agents.add(log.args.agent.toLowerCase());
+        if (log.args.creator) creators.add(log.args.creator.toLowerCase());
       }
+      sourceCount += sources.length;
     }
 
     const data: OnChainStats = {
-      paidCitations: paidCount,
-      totalUSDCMicro: Number(totalMicro),
-      uniqueCreators: recipients.size,
-      agentWallet: PAYMENT_RECEIVER,
-      explorerUrl: `https://testnet.arcscan.app/address/${PAYMENT_RECEIVER}`,
+      citationPaidEvents: citationCount,
+      sourceRegisteredEvents: sourceCount,
+      uniqueAgents: agents.size,
+      uniqueCreators: creators.size,
+      contractAddress: CONTRACT,
+      explorerUrl: `${EXPLORER}/address/${CONTRACT}`,
       lastUpdated: new Date().toISOString(),
     };
 
     cache = { data, ts: Date.now() };
     return NextResponse.json(data);
   } catch (err) {
-    return NextResponse.json(
-      { error: "RPC error", detail: String(err) },
-      { status: 502 }
-    );
+    return NextResponse.json({ error: "RPC error", detail: String(err) }, { status: 502 });
   }
 }

@@ -111,6 +111,7 @@ export async function POST(req: NextRequest) {
   const host = req.headers.get("host") ?? "citepay-markets.vercel.app";
   const proto = host.startsWith("localhost") ? "http" : "https";
   const askUrl = `${proto}://${host}/api/ask`;
+  const agentsUrl = `${proto}://${host}/api/agents`;
 
   const encoder = new TextEncoder();
   const { readable, writable } = new TransformStream<Uint8Array, Uint8Array>();
@@ -122,9 +123,34 @@ export async function POST(req: NextRequest) {
 
   (async () => {
     try {
+      const { runPilot } = await import("@/lib/pilot");
       const orchestratorClient = new GatewayClient({ chain: "arcTestnet", privateKey: ORCHESTRATOR_KEY });
 
       send({ type: "trace", line: `[Orchestrator] Received query: "${query}"` });
+
+      // ── Pilot: read agent reputations and attest allocation plan ─────────────
+      send({ type: "trace", line: `[Pilot] Reading source agent reputations from Arc Testnet…` });
+      let pilotPlan = null;
+      try {
+        const agentResp = await fetch(agentsUrl, { headers: { "Cache-Control": "no-cache" } });
+        const agentData = await agentResp.json() as { agents?: { id: string; name: string; citationsPaid: number; reputationScore: number; reputationBadge: "Healthy" | "Watch" | "Stop"; sourceIds: number[] }[] };
+        const agentStats = (agentData.agents ?? []).map((a) => ({
+          id: a.id, name: a.name, citationsPaid: a.citationsPaid,
+          reputationScore: a.reputationScore, reputationBadge: a.reputationBadge, sourceIds: a.sourceIds,
+        }));
+
+        send({ type: "trace", line: `[Pilot] Agents: ${agentStats.map((a) => `${a.name}(${a.reputationBadge} ${a.reputationScore}%)`).join(" | ")}` });
+        send({ type: "trace", line: `[Pilot] Computing budget allocation and attesting plan hash onchain…` });
+
+        pilotPlan = await runPilot({ query, budgetMicroUsdc: 150_000, agents: agentStats, attest: true });
+
+        send({ type: "trace", line: `[Pilot] Plan hash: 0x${pilotPlan.planHash.slice(0, 16)}… anchored at ${pilotPlan.attestationTxHash ? `tx ${pilotPlan.attestationTxHash.slice(0, 10)}…` : "(simulated)"}` });
+        send({ type: "trace", line: `[Pilot] Allocation: ${pilotPlan.allocations.map((a) => `${a.agentName} ${a.sharePercent}%`).join(" | ")}` });
+        send({ type: "pilot_plan", plan: pilotPlan });
+      } catch (e) {
+        send({ type: "trace", line: `[Pilot] Reputation read failed (${(e as Error).message?.slice(0, 60) ?? "unknown"}), proceeding without attestation` });
+      }
+
       send({ type: "trace", line: `[Orchestrator] Checking Circle Gateway balance…` });
 
       const balances = await orchestratorClient.getBalances();
@@ -202,12 +228,14 @@ export async function POST(req: NextRequest) {
         type: "final",
         finalAnswer,
         subQueries: subResults,
+        pilotPlan,
         stats: {
           subQueriesDispatched: subQueries.length,
           totalGatewayFeeMicro: totalGatewayMicro,
           totalCreatorPaymentsMicro: totalCreatorMicro,
           citationsPurchased: allDecisions.filter((d) => d.decision === "PAY").length,
           orchestratorWallet: orchestratorClient.address,
+          pilotAttestationTx: pilotPlan?.attestationTxHash ?? null,
         },
       });
     } catch (err) {

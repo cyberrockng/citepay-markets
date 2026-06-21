@@ -32,6 +32,15 @@ interface Stats {
   orchestratorWallet: string;
 }
 
+interface PilotAllocation { agentName: string; sharePercent: number; reasoning: string; }
+interface PilotPlan {
+  planHash: string;
+  allocations: PilotAllocation[];
+  attestationTxHash: string | null;
+  attestationExplorerUrl: string | null;
+  attestationBlock: number | null;
+}
+
 export default function OrchestratePage() {
   const [query, setQuery] = useState("");
   const [loading, setLoading] = useState(false);
@@ -39,6 +48,7 @@ export default function OrchestratePage() {
   const [subQueries, setSubQueries] = useState<SubQuery[]>([]);
   const [finalAnswer, setFinalAnswer] = useState<string | null>(null);
   const [stats, setStats] = useState<Stats | null>(null);
+  const [pilotPlan, setPilotPlan] = useState<PilotPlan | null>(null);
   const [error, setError] = useState("");
   const [activeTab, setActiveTab] = useState<number>(0);
   const [pendingCount, setPendingCount] = useState<number | null>(null);
@@ -51,6 +61,7 @@ export default function OrchestratePage() {
     setSubQueries([]);
     setFinalAnswer(null);
     setStats(null);
+    setPilotPlan(null);
     setError("");
     setPendingCount(null);
     setActiveTab(0);
@@ -89,14 +100,17 @@ export default function OrchestratePage() {
               finalAnswer?: string;
               subQueries?: SubQuery[];
               stats?: Stats;
+              plan?: PilotPlan;
+              pilotPlan?: PilotPlan;
               error?: string;
             };
 
             if (chunk.type === "trace" && chunk.line) {
               setAgentTrace((prev) => [...prev, chunk.line!]);
-              // Extract dispatched count from trace to show progress
               const m = chunk.line.match(/Dispatching (\d+) researcher/);
               if (m) setPendingCount(Number(m[1]));
+            } else if (chunk.type === "pilot_plan" && chunk.plan) {
+              setPilotPlan(chunk.plan);
             } else if (chunk.type === "subquery_result" && chunk.subQuery) {
               setSubQueries((prev) => {
                 const next = [...prev, chunk.subQuery!];
@@ -108,6 +122,7 @@ export default function OrchestratePage() {
               if (chunk.finalAnswer) setFinalAnswer(chunk.finalAnswer);
               if (chunk.stats) setStats(chunk.stats);
               if (chunk.subQueries) setSubQueries(chunk.subQueries);
+              if (chunk.pilotPlan) setPilotPlan(chunk.pilotPlan);
               setLoading(false);
             } else if (chunk.type === "error" && chunk.error) {
               setError(chunk.error);
@@ -251,6 +266,45 @@ export default function OrchestratePage() {
                     <div className="text-xs text-[#8b8b9e] mt-0.5">{s.label}</div>
                   </div>
                 ))}
+              </div>
+            )}
+
+            {/* Pilot Plan attestation panel */}
+            {pilotPlan && (
+              <div className="bg-[#111118] rounded-xl border border-violet-900/40 p-5">
+                <div className="flex items-center justify-between flex-wrap gap-2 mb-4">
+                  <div className="flex items-center gap-2">
+                    <div className="w-5 h-5 rounded bg-violet-600/40 flex items-center justify-center text-violet-300 text-xs font-bold">P</div>
+                    <h2 className="font-semibold text-[#f0f0f5]">Pilot Agent</h2>
+                    <span className="text-xs text-violet-400 bg-violet-900/20 px-2 py-0.5 rounded-full">Attested onchain before paying</span>
+                  </div>
+                  {pilotPlan.attestationExplorerUrl && (
+                    <a href={pilotPlan.attestationExplorerUrl} target="_blank" rel="noopener noreferrer"
+                      className="text-xs font-mono text-violet-400 hover:text-violet-300 transition-colors">
+                      arcscan.app →
+                    </a>
+                  )}
+                </div>
+                <div className="mb-3 font-mono text-xs text-[#4a4a5e]">
+                  plan hash: <span className="text-violet-400">0x{pilotPlan.planHash.slice(0, 32)}…</span>
+                  {pilotPlan.attestationBlock && (
+                    <span className="ml-2 text-[#4a4a5e]">block #{pilotPlan.attestationBlock.toLocaleString()}</span>
+                  )}
+                </div>
+                <div className="grid grid-cols-3 gap-3">
+                  {pilotPlan.allocations.map((a) => (
+                    <div key={a.agentName} className="bg-[#0a0a0f] rounded-lg p-3 border border-[#1e1e2e]">
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-xs font-bold text-[#f0f0f5]">{a.agentName}</span>
+                        <span className="text-xs font-mono text-violet-400 font-bold">{a.sharePercent}%</span>
+                      </div>
+                      <div className="h-1 bg-[#1e1e2e] rounded-full mb-2">
+                        <div className="h-full bg-violet-500 rounded-full" style={{ width: `${a.sharePercent}%` }} />
+                      </div>
+                      <p className="text-[10px] text-[#4a4a5e] leading-relaxed">{a.reasoning}</p>
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
 

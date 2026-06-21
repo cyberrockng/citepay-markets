@@ -39,11 +39,13 @@ function useCountUp(target: number, active: boolean, duration = 1200): number {
 
 export default function LandingPage() {
   const [stats, setStats] = useState<TractionStats | null>(null);
+  const [onchainStats, setOnchainStats] = useState<{ citationPaidEvents: number; sourceRegisteredEvents: number } | null>(null);
   const statsRef = useRef<HTMLDivElement>(null);
   const [statsVisible, setStatsVisible] = useState(false);
 
   useEffect(() => {
     fetch("/api/traction").then((r) => r.json()).then((d) => setStats(d.stats)).catch(() => {});
+    fetch("/api/onchain-stats").then((r) => r.json()).then((d) => setOnchainStats(d)).catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -54,10 +56,11 @@ export default function LandingPage() {
     return () => obs.disconnect();
   }, []);
 
-  const usdcRouted     = useCountUp(stats?.totalUSDCRouted ?? 0, statsVisible);
-  const totalDecisions = useCountUp(stats?.totalDecisions  ?? 0, statsVisible);
-  const creatorsPaid   = useCountUp(stats?.creatorsPaid    ?? 0, statsVisible);
-  const paidCitations  = useCountUp(stats?.paidCitations   ?? 0, statsVisible);
+  const usdcRouted       = useCountUp(stats?.totalUSDCRouted ?? 0, statsVisible);
+  const totalDecisions   = useCountUp(stats?.totalDecisions  ?? 0, statsVisible);
+  const creatorsPaid     = useCountUp(stats?.creatorsPaid    ?? 0, statsVisible);
+  const paidCitations    = useCountUp(stats?.paidCitations   ?? 0, statsVisible);
+  const onchainCitations = useCountUp(onchainStats?.citationPaidEvents ?? 0, statsVisible);
 
   return (
     <main className="min-h-screen bg-[#0a0a0f] text-[#f0f0f5] pb-20 sm:pb-0">
@@ -74,7 +77,12 @@ export default function LandingPage() {
         <div className="relative z-10">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#111118]/80 backdrop-blur border border-[#1e1e2e] text-[#8b8b9e] text-xs font-mono mb-8">
             <span className="w-1.5 h-1.5 rounded-full bg-[#00ff88] inline-block pulse-dot" />
-            Arc Testnet · Circle Gateway · Nanopayments · x402
+            Arc Testnet · Circle Gateway · Nanopayments · x402 ·{" "}
+            {onchainStats ? (
+              <span className="text-[#00ff88] font-bold">{onchainStats.citationPaidEvents.toLocaleString()} CitationPaid events</span>
+            ) : (
+              <span className="text-[#4a4a5e]">loading chain…</span>
+            )}
           </div>
           <h1 className="text-5xl sm:text-6xl font-bold mb-5 leading-tight tracking-tight">
             The Policy &amp; Payment Layer<br />
@@ -87,18 +95,18 @@ export default function LandingPage() {
             <Link href="/orchestrate" className="bg-[#00ff88] hover:bg-[#00e87a] text-black font-bold px-8 py-3.5 rounded-xl transition-all hover:scale-105 card-lift">
               Multi-Agent Demo →
             </Link>
-            <Link href="/ask"  className="bg-[#6366f1] hover:bg-indigo-500 text-white font-semibold px-8 py-3.5 rounded-xl transition-all hover:scale-105 card-lift">
-              Single Agent
-            </Link>
-            <Link href="/mcp" className="border border-[#6366f1]/40 hover:border-[#6366f1] text-[#6366f1] hover:text-indigo-300 font-semibold px-8 py-3.5 rounded-xl transition-colors">
-              Add to Claude (MCP)
+            <Link href="/agents" className="bg-[#6366f1] hover:bg-indigo-500 text-white font-semibold px-8 py-3.5 rounded-xl transition-all hover:scale-105 card-lift">
+              Source Agents
             </Link>
             <Link href="/live" className="border border-[#00ff88]/20 hover:border-[#00ff88]/50 text-[#00ff88]/70 hover:text-[#00ff88] font-semibold px-8 py-3.5 rounded-xl transition-colors flex items-center gap-2">
               <span className="w-1.5 h-1.5 rounded-full bg-[#00ff88] inline-block animate-pulse" />
               Live Feed
             </Link>
-            <Link href="/market" className="border border-[#1e1e2e] hover:border-[#8b8b9e] text-[#8b8b9e] hover:text-[#f0f0f5] font-semibold px-8 py-3.5 rounded-xl transition-colors">
-              Source Market
+            <Link href="/wallet" className="border border-[#1e1e2e] hover:border-[#8b8b9e] text-[#8b8b9e] hover:text-[#f0f0f5] font-semibold px-8 py-3.5 rounded-xl transition-colors">
+              Agent Wallet
+            </Link>
+            <Link href="/mcp" className="border border-[#6366f1]/40 hover:border-[#6366f1] text-[#6366f1] hover:text-indigo-300 font-semibold px-8 py-3.5 rounded-xl transition-colors">
+              Add to Claude (MCP)
             </Link>
           </div>
         </div>
@@ -114,16 +122,18 @@ export default function LandingPage() {
         </div>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
           {[
-            { label: "Creators Paid",   value: creatorsPaid,   accent: "text-[#00ff88]", prefix: "" },
-            { label: "USDC Routed",     value: usdcRouted,     accent: "text-[#00ff88]", prefix: "$", divisor: 1_000_000, decimals: 4 },
-            { label: "Public Receipts", value: totalDecisions, accent: "text-[#6366f1]", prefix: "" },
-            { label: "Paid Citations",  value: paidCitations,  accent: "text-[#00ff88]", prefix: "" },
-          ].map(({ label, value, accent, prefix, divisor, decimals }) => {
-            const display = stats == null ? "—"
+            { label: "CitationPaid Events", value: onchainCitations, accent: "text-[#00ff88]", prefix: "", onchain: true },
+            { label: "USDC Routed",         value: usdcRouted,       accent: "text-[#00ff88]", prefix: "$", divisor: 1_000_000, decimals: 4 },
+            { label: "Agent Decisions",     value: totalDecisions,   accent: "text-[#6366f1]", prefix: "" },
+            { label: "Source Agents",       value: 3,                accent: "text-[#6366f1]", prefix: "", fixed: true },
+          ].map(({ label, value, accent, prefix, divisor, decimals, onchain, fixed }) => {
+            const display = (fixed || onchain) ? `${prefix}${value}`
+              : stats == null ? "—"
               : divisor ? `${prefix}${(value / divisor).toFixed(decimals ?? 2)}`
               : `${prefix}${value}`;
             return (
-              <div key={label} className="bg-[#111118] rounded-xl p-5 border border-[#1e1e2e] text-center card-lift">
+              <div key={label} className={`bg-[#111118] rounded-xl p-5 border text-center card-lift ${onchain ? "border-[#00ff88]/20" : "border-[#1e1e2e]"}`}>
+                {onchain && <div className="text-[10px] font-mono text-[#4a4a5e] mb-1">Arc Testnet</div>}
                 <div className={`text-2xl font-bold font-mono ${accent}`}>{display}</div>
                 <div className="text-[#8b8b9e] text-xs mt-1">{label}</div>
               </div>
