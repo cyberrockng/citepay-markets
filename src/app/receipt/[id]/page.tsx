@@ -106,14 +106,14 @@ export default function ReceiptPage({ params }: { params: Promise<{ id: string }
 
       {/* USDC Tx */}
       {isPay && (
-        <div className={`rounded-xl p-5 border mb-4 ${receipt.txHash ? "bg-[#00ff88]/5 border-[#00ff88]/30" : "bg-[#111118] border-[#1e1e2e]"}`}>
+        <div className={`rounded-xl p-5 border mb-4 ${receipt.paymentStatus === "confirmed" ? "bg-[#00ff88]/5 border-[#00ff88]/30" : "bg-[#111118] border-[#1e1e2e]"}`}>
           <div className="flex items-center gap-2 mb-3">
             <span className="text-xs font-semibold text-[#8b8b9e] uppercase tracking-widest">USDC Payout</span>
-            {receipt.txHash
+            {receipt.paymentStatus === "confirmed"
               ? <span className="text-[#00ff88] text-xs font-mono">✓ confirmed on-chain</span>
               : <span className="text-yellow-400 text-xs font-mono">⚠ simulated fallback (no on-chain tx)</span>}
           </div>
-          {receipt.txHash
+          {receipt.paymentStatus === "confirmed" && receipt.txHash
             ? <ProofPanel
                 label="Base Sepolia Transaction"
                 baseScanTx={receipt.txHash}

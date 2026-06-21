@@ -98,6 +98,7 @@ export async function POST(req: NextRequest) {
   for (const d of decisions) {
     const receiptId = uuidv4();
     let txHash: string | null = null;
+    let paymentStatus: "confirmed" | "simulated" | null = null;
 
     // Build evidence
     const preimage = buildEvidencePreimage({
@@ -124,6 +125,7 @@ export async function POST(req: NextRequest) {
         receiptId,
       });
       txHash = payment.txHash;
+      paymentStatus = payment.status;
       totalPaid += d.source.price;
       budgetRemaining -= d.source.price;
     }
@@ -147,6 +149,7 @@ export async function POST(req: NextRequest) {
       scores: d.scores,
       reason: d.reason,
       txHash,
+      paymentStatus,
       budgetBefore: budgetRemaining + (d.decision === "PAY" ? d.source.price : 0),
       budgetAfter: budgetRemaining,
       challenged: false,

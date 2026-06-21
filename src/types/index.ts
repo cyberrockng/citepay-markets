@@ -74,6 +74,7 @@ export interface Receipt {
   scores: ScoreBreakdown;
   reason: string;
   txHash: string | null;
+  paymentStatus: "confirmed" | "simulated" | null;
   budgetBefore: number;
   budgetAfter: number;
   challenged: boolean;
