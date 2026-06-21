@@ -214,6 +214,27 @@ export default function ReceiptPage({ params }: { params: Promise<{ id: string }
         </div>
       )}
 
+      {/* Agent Signature (offline-verifiable) */}
+      {receipt.agentSignature && (
+        <div className="bg-[#111118] rounded-xl p-6 border border-[#1e1e2e] mb-4">
+          <div className="flex items-center gap-2 mb-3">
+            <h2 className="font-semibold text-[#f0f0f5]">Agent Signature</h2>
+            <span className="text-[#00ff88] text-xs font-mono">✓ offline-verifiable</span>
+          </div>
+          <div className="bg-[#0a0a0f] rounded-lg p-3 font-mono text-xs text-[#00ff88] break-all border border-[#1e1e2e] mb-3">
+            {receipt.agentSignature}
+          </div>
+          <p className="text-[#8b8b9e] text-xs leading-relaxed">
+            EIP-191 personal_sign of the evidence hash above, signed by{" "}
+            <span className="font-mono text-[#f0f0f5]">{receipt.agentAddress}</span>.
+            Verify without trusting CitePay:
+          </p>
+          <div className="bg-[#0a0a0f] rounded-lg p-3 font-mono text-xs text-[#8b8b9e] mt-2 border border-[#1e1e2e]">
+            {`ethers.verifyMessage("${receipt.evidenceHash}", "<signature>") === agentAddress`}
+          </div>
+        </div>
+      )}
+
       {/* Score Breakdown */}
       <div className="bg-[#111118] rounded-xl p-6 border border-[#1e1e2e] mb-4">
         <div className="flex items-center justify-between mb-5">

@@ -68,6 +68,12 @@ export default function LandingPage() {
           >
             Source Market
           </Link>
+          <Link
+            href="/leaderboard"
+            className="border border-[#1e1e2e] hover:border-[#8b8b9e] text-[#8b8b9e] hover:text-[#f0f0f5] font-semibold px-8 py-3.5 rounded-xl transition-colors"
+          >
+            Leaderboard
+          </Link>
         </div>
       </section>
 
@@ -227,6 +233,7 @@ export default function LandingPage() {
           <div className="flex gap-6 text-sm text-[#8b8b9e]">
             <Link href="/demo" className="hover:text-[#f0f0f5] transition-colors">Demo</Link>
             <Link href="/market" className="hover:text-[#f0f0f5] transition-colors">Market</Link>
+            <Link href="/leaderboard" className="hover:text-[#f0f0f5] transition-colors">Leaderboard</Link>
             <Link href="/traction" className="hover:text-[#f0f0f5] transition-colors">Traction</Link>
             <Link href="/ask" className="hover:text-[#f0f0f5] transition-colors">Ask</Link>
             <a

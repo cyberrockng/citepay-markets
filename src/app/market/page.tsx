@@ -5,9 +5,20 @@ import type { Source } from "@/types";
 import { PageShell, Badge } from "@/components/ui";
 import { BackButton } from "@/components/back-button";
 
+const CATEGORIES = ["All", "Protocol", "Research", "Infrastructure", "AI/Agents"];
+
+const CATEGORY_COLORS: Record<string, string> = {
+  "Protocol":       "text-[#6366f1] border-[#6366f1]/40",
+  "Research":       "text-[#00ff88] border-[#00ff88]/40",
+  "Infrastructure": "text-yellow-400 border-yellow-400/40",
+  "AI/Agents":      "text-purple-400 border-purple-400/40",
+  "General":        "text-[#8b8b9e] border-[#8b8b9e]/40",
+};
+
 export default function MarketPage() {
   const [sources, setSources] = useState<Source[]>([]);
   const [loading, setLoading] = useState(true);
+  const [activeCategory, setActiveCategory] = useState("All");
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({
     title: "", url: "", creatorName: "", creatorHandle: "",
@@ -17,11 +28,13 @@ export default function MarketPage() {
   const [msg, setMsg] = useState("");
 
   useEffect(() => {
-    fetch("/api/sources")
+    setLoading(true);
+    const url = activeCategory === "All" ? "/api/sources" : `/api/sources?category=${encodeURIComponent(activeCategory)}`;
+    fetch(url)
       .then((r) => r.json())
       .then((d) => { setSources(d.sources || []); setLoading(false); })
       .catch(() => setLoading(false));
-  }, []);
+  }, [activeCategory]);
 
   async function handleRegister(e: React.FormEvent) {
     e.preventDefault();
@@ -84,6 +97,23 @@ export default function MarketPage() {
             <div className={`text-2xl font-bold font-mono ${accent}`}>{value}</div>
             <div className="text-[#8b8b9e] text-xs mt-1">{label}</div>
           </div>
+        ))}
+      </div>
+
+      {/* Category Filter */}
+      <div className="flex flex-wrap gap-2 mb-6">
+        {CATEGORIES.map((cat) => (
+          <button
+            key={cat}
+            onClick={() => setActiveCategory(cat)}
+            className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${
+              activeCategory === cat
+                ? "bg-[#6366f1] border-[#6366f1] text-white"
+                : "border-[#1e1e2e] text-[#8b8b9e] hover:border-[#8b8b9e] hover:text-[#f0f0f5]"
+            }`}
+          >
+            {cat}
+          </button>
         ))}
       </div>
 
@@ -181,6 +211,7 @@ export default function MarketPage() {
               <thead>
                 <tr className="border-b border-[#1e1e2e]">
                   <th className="px-4 py-3 text-left text-xs text-[#8b8b9e] font-medium">Source</th>
+                  <th className="px-4 py-3 text-center text-xs text-[#8b8b9e] font-medium">Category</th>
                   <th className="px-4 py-3 text-center text-xs text-[#8b8b9e] font-medium">Bond</th>
                   <th className="px-4 py-3 text-right text-xs text-[#8b8b9e] font-medium">Rep</th>
                   <th className="px-4 py-3 text-right text-xs text-[#8b8b9e] font-medium">Price</th>
@@ -213,6 +244,15 @@ export default function MarketPage() {
                             earnings →
                           </Link>
                         </div>
+                      </td>
+                      <td className="px-4 py-3 text-center">
+                        {s.category && s.category !== "General" ? (
+                          <span className={`text-xs font-mono px-2 py-0.5 rounded border ${CATEGORY_COLORS[s.category] ?? CATEGORY_COLORS["General"]}`}>
+                            {s.category}
+                          </span>
+                        ) : (
+                          <span className="text-[#4a4a5e] text-xs">—</span>
+                        )}
                       </td>
                       <td className="px-4 py-3 text-center">
                         {s.bonded

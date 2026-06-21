@@ -118,6 +118,8 @@ function migrate(db: Database.Database) {
     "ALTER TABLE receipts ADD COLUMN policy_rules_passed   TEXT    DEFAULT NULL",
     "ALTER TABLE receipts ADD COLUMN policy_rules_failed   TEXT    DEFAULT NULL",
     "ALTER TABLE receipts ADD COLUMN policy_reason         TEXT    DEFAULT NULL",
+    "ALTER TABLE receipts ADD COLUMN agent_signature       TEXT    DEFAULT NULL",
+    "ALTER TABLE sources  ADD COLUMN category              TEXT    DEFAULT 'General'",
   ]) {
     try { db.exec(sql); } catch { /* column already exists */ }
   }
@@ -128,16 +130,16 @@ function migrate(db: Database.Database) {
 // on_chain_id values are permanent — assigned when sources were registered on
 // CitePayMarket.sol (0x396cf1646EbAeF85ee8428C2d9239C46Ae956085, Base Sepolia)
 const SEED_SOURCES = [
-  { onChainId: 1,  title: "x402: HTTP-Native Payments for AI Agents", url: "https://x402.org", creatorName: "Coinbase Developer Platform", creatorHandle: "@coinbase", payoutWallet: "0x1234000000000000000000000000000000000001", price: 2000, bond: 10000, contentHash: "70f01a7977012702b243e6a6c2509f6a603b7a61e0241a6f0c3ce845949e1d57", description: "x402 is an open protocol for machine-native payments using HTTP 402 Payment Required. It enables AI agents and automated systems to pay for resources autonomously using USDC on Base." },
-  { onChainId: 2,  title: "Circle's Programmable Wallets: Powering Agentic Finance", url: "https://developers.circle.com/w3s/programmable-wallets", creatorName: "Circle Developer Docs", creatorHandle: "@circle", payoutWallet: "0x1234000000000000000000000000000000000002", price: 3000, bond: 10000, contentHash: "33a7a9314b96f7dbea847c48f7d7cb5ed74537485913516e043b565795a930b5", description: "Circle's Programmable Wallets enable developers to create and manage wallets at scale. USDC transfers on Base Sepolia are instant and near-zero cost, making them ideal for micro-payments between AI agents and content creators." },
-  { onChainId: 3,  title: "Agentic AI: How Autonomous Agents Will Transform Commerce", url: "https://a16z.com/agentic-ai", creatorName: "Andreessen Horowitz", creatorHandle: "@a16z", payoutWallet: "0x1234000000000000000000000000000000000003", price: 4000, bond: 5000, contentHash: "2b02947de287cdddc2d2440d37cc1c5961cb7d70f3407e609f400d757b58dac6", description: "Agentic AI systems — autonomous agents that plan, act, and pay for resources — represent a fundamental shift in how software works. These agents need on-chain payment rails to operate at scale without human intervention." },
-  { onChainId: 4,  title: "The Creator Economy in the Age of AI: Who Gets Paid?", url: "https://mirror.xyz/citepay/creator-economy-ai", creatorName: "Research by CitePay", creatorHandle: "@citepay", payoutWallet: "0x1234000000000000000000000000000000000004", price: 2000, bond: 0, contentHash: "256329962cf8c93150940eb17d0a305c284d2b6c0a406a04add51ac658cffb92", description: "As large language models increasingly answer questions by drawing on creator content without attribution or compensation, a new payment layer is needed. CitePay Markets solves this by making citations accountable and paid." },
-  { onChainId: 5,  title: "Base: The Onchain Platform for Everyone", url: "https://base.org", creatorName: "Base Documentation", creatorHandle: "@base", payoutWallet: "0x1234000000000000000000000000000000000005", price: 1500, bond: 10000, contentHash: "d282cc888b86dbd8028f9f6af714587c56a00f7264430541e233df145250acb6", description: "Base is a secure, low-cost, developer-friendly Ethereum L2. With near-zero gas fees and USDC native support, Base is the ideal chain for micro-payment applications like AI citation markets." },
-  { onChainId: 6,  title: "Reputation Systems in Decentralized Marketplaces", url: "https://vitalik.eth.limo/general/2023/07/24/biometric.html", creatorName: "Vitalik Buterin", creatorHandle: "@vitalik", payoutWallet: "0x1234000000000000000000000000000000000006", price: 5000, bond: 20000, contentHash: "610d8c75ff1294ae99afa1f0049511f7ead82b6c2f98caff07ca7e881dafe62b", description: "Reputation in decentralized systems should be earned through verifiable on-chain actions, not assigned by central authorities. Source credibility bonds and pay/refuse ratios create objective, game-resistant reputation scores." },
-  { onChainId: 7,  title: "HTTP 402 and the Future of Machine Payments", url: "https://docs.cdp.coinbase.com/x402/docs/welcome", creatorName: "Coinbase Developer Platform", creatorHandle: "@coinbase_dev", payoutWallet: "0x1234000000000000000000000000000000000007", price: 2500, bond: 10000, contentHash: "327d0c9a1e2e214d2658b334afac90483ea11836b6676ef8035854a52a08d8b4", description: "HTTP 402 Payment Required has been dormant since the 1990s. x402 revives it as a machine-native payment protocol, enabling any HTTP endpoint to require payment before serving content — perfect for AI agent workflows." },
-  { onChainId: 8,  title: "Content Integrity and Hash Verification in Web3", url: "https://ipfs.tech/blog/content-addressing", creatorName: "Protocol Labs", creatorHandle: "@protocollabs", payoutWallet: "0x1234000000000000000000000000000000000008", price: 2000, bond: 5000, contentHash: "77ed5dbce0e8699cf34d041e4db6af0b697821ea25094eca3ee328a4a3dde5d4", description: "Content-addressed storage ensures that what you paid for is what you received. By storing a SHA-256 hash of content at payment time, CitePay Markets can objectively verify if a creator modified their source after receiving payment." },
-  { onChainId: 9,  title: "USDC: The Dollar for the Internet", url: "https://www.circle.com/usdc", creatorName: "Circle", creatorHandle: "@circle", payoutWallet: "0x1234000000000000000000000000000000000009", price: 1000, bond: 10000, contentHash: "fac45fcf9ee419e9010f1335ea6f744d2ccd9533f68babea3162e6412a3651df", description: "USDC is a fully reserved, dollar-backed stablecoin that settles instantly on Base. Its programmatic accessibility makes it the default currency for AI agent payments, enabling autonomous financial transactions at internet scale." },
-  { onChainId: 10, title: "The Case for AI Agent Accountability: Evidence Logs and Receipts", url: "https://anthropic.com/research/model-cards", creatorName: "Anthropic", creatorHandle: "@anthropic", payoutWallet: "0x1234000000000000000000000000000000000010", price: 3000, bond: 15000, contentHash: "5e49d22dddff4c0357ce8d8c5bf22a75665185ee6cd7c96cd5308b91dac26f13", description: "AI agents that interact with the world on behalf of users must maintain auditable logs of their decisions. A public receipt for every payment, refusal, or skip creates accountability and enables objective dispute resolution." },
+  { onChainId: 1,  category: "Protocol",       title: "x402: HTTP-Native Payments for AI Agents", url: "https://x402.org", creatorName: "Coinbase Developer Platform", creatorHandle: "@coinbase", payoutWallet: "0x1234000000000000000000000000000000000001", price: 2000, bond: 10000, contentHash: "70f01a7977012702b243e6a6c2509f6a603b7a61e0241a6f0c3ce845949e1d57", description: "x402 is an open protocol for machine-native payments using HTTP 402 Payment Required. It enables AI agents and automated systems to pay for resources autonomously using USDC on Base." },
+  { onChainId: 2,  category: "Infrastructure", title: "Circle's Programmable Wallets: Powering Agentic Finance", url: "https://developers.circle.com/w3s/programmable-wallets", creatorName: "Circle Developer Docs", creatorHandle: "@circle", payoutWallet: "0x1234000000000000000000000000000000000002", price: 3000, bond: 10000, contentHash: "33a7a9314b96f7dbea847c48f7d7cb5ed74537485913516e043b565795a930b5", description: "Circle's Programmable Wallets enable developers to create and manage wallets at scale. USDC transfers on Base Sepolia are instant and near-zero cost, making them ideal for micro-payments between AI agents and content creators." },
+  { onChainId: 3,  category: "Research",       title: "Agentic AI: How Autonomous Agents Will Transform Commerce", url: "https://a16z.com/agentic-ai", creatorName: "Andreessen Horowitz", creatorHandle: "@a16z", payoutWallet: "0x1234000000000000000000000000000000000003", price: 4000, bond: 5000, contentHash: "2b02947de287cdddc2d2440d37cc1c5961cb7d70f3407e609f400d757b58dac6", description: "Agentic AI systems — autonomous agents that plan, act, and pay for resources — represent a fundamental shift in how software works. These agents need on-chain payment rails to operate at scale without human intervention." },
+  { onChainId: 4,  category: "Research",       title: "The Creator Economy in the Age of AI: Who Gets Paid?", url: "https://mirror.xyz/citepay/creator-economy-ai", creatorName: "Research by CitePay", creatorHandle: "@citepay", payoutWallet: "0x1234000000000000000000000000000000000004", price: 2000, bond: 0, contentHash: "256329962cf8c93150940eb17d0a305c284d2b6c0a406a04add51ac658cffb92", description: "As large language models increasingly answer questions by drawing on creator content without attribution or compensation, a new payment layer is needed. CitePay Markets solves this by making citations accountable and paid." },
+  { onChainId: 5,  category: "Infrastructure", title: "Base: The Onchain Platform for Everyone", url: "https://base.org", creatorName: "Base Documentation", creatorHandle: "@base", payoutWallet: "0x1234000000000000000000000000000000000005", price: 1500, bond: 10000, contentHash: "d282cc888b86dbd8028f9f6af714587c56a00f7264430541e233df145250acb6", description: "Base is a secure, low-cost, developer-friendly Ethereum L2. With near-zero gas fees and USDC native support, Base is the ideal chain for micro-payment applications like AI citation markets." },
+  { onChainId: 6,  category: "Research",       title: "Reputation Systems in Decentralized Marketplaces", url: "https://vitalik.eth.limo/general/2023/07/24/biometric.html", creatorName: "Vitalik Buterin", creatorHandle: "@vitalik", payoutWallet: "0x1234000000000000000000000000000000000006", price: 5000, bond: 20000, contentHash: "610d8c75ff1294ae99afa1f0049511f7ead82b6c2f98caff07ca7e881dafe62b", description: "Reputation in decentralized systems should be earned through verifiable on-chain actions, not assigned by central authorities. Source credibility bonds and pay/refuse ratios create objective, game-resistant reputation scores." },
+  { onChainId: 7,  category: "Protocol",       title: "HTTP 402 and the Future of Machine Payments", url: "https://docs.cdp.coinbase.com/x402/docs/welcome", creatorName: "Coinbase Developer Platform", creatorHandle: "@coinbase_dev", payoutWallet: "0x1234000000000000000000000000000000000007", price: 2500, bond: 10000, contentHash: "327d0c9a1e2e214d2658b334afac90483ea11836b6676ef8035854a52a08d8b4", description: "HTTP 402 Payment Required has been dormant since the 1990s. x402 revives it as a machine-native payment protocol, enabling any HTTP endpoint to require payment before serving content — perfect for AI agent workflows." },
+  { onChainId: 8,  category: "Research",       title: "Content Integrity and Hash Verification in Web3", url: "https://ipfs.tech/blog/content-addressing", creatorName: "Protocol Labs", creatorHandle: "@protocollabs", payoutWallet: "0x1234000000000000000000000000000000000008", price: 2000, bond: 5000, contentHash: "77ed5dbce0e8699cf34d041e4db6af0b697821ea25094eca3ee328a4a3dde5d4", description: "Content-addressed storage ensures that what you paid for is what you received. By storing a SHA-256 hash of content at payment time, CitePay Markets can objectively verify if a creator modified their source after receiving payment." },
+  { onChainId: 9,  category: "Infrastructure", title: "USDC: The Dollar for the Internet", url: "https://www.circle.com/usdc", creatorName: "Circle", creatorHandle: "@circle", payoutWallet: "0x1234000000000000000000000000000000000009", price: 1000, bond: 10000, contentHash: "fac45fcf9ee419e9010f1335ea6f744d2ccd9533f68babea3162e6412a3651df", description: "USDC is a fully reserved, dollar-backed stablecoin that settles instantly on Base. Its programmatic accessibility makes it the default currency for AI agent payments, enabling autonomous financial transactions at internet scale." },
+  { onChainId: 10, category: "AI/Agents",      title: "The Case for AI Agent Accountability: Evidence Logs and Receipts", url: "https://anthropic.com/research/model-cards", creatorName: "Anthropic", creatorHandle: "@anthropic", payoutWallet: "0x1234000000000000000000000000000000000010", price: 3000, bond: 15000, contentHash: "5e49d22dddff4c0357ce8d8c5bf22a75665185ee6cd7c96cd5308b91dac26f13", description: "AI agents that interact with the world on behalf of users must maintain auditable logs of their decisions. A public receipt for every payment, refusal, or skip creates accountability and enables objective dispute resolution." },
 ];
 
 function seedIfEmpty(db: Database.Database) {
@@ -145,14 +147,14 @@ function seedIfEmpty(db: Database.Database) {
   if (count > 0) return;
   const stmt = db.prepare(`
     INSERT INTO sources (id, title, url, creator_name, creator_handle, payout_wallet,
-      content_hash, description, price, bond, bonded, active, on_chain_id)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?)
+      content_hash, description, price, bond, bonded, active, on_chain_id, category)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?)
   `);
   const insertMany = db.transaction((rows: typeof SEED_SOURCES) => {
     for (const s of rows) {
       stmt.run(uuidv4(), s.title, s.url, s.creatorName, s.creatorHandle,
         s.payoutWallet, s.contentHash, s.description, s.price, s.bond,
-        s.bond > 0 ? 1 : 0, s.onChainId);
+        s.bond > 0 ? 1 : 0, s.onChainId, s.category);
     }
   });
   insertMany(SEED_SOURCES);
@@ -175,8 +177,12 @@ export function insertSource(s: Source): void {
   );
 }
 
-export function getAllSources(): Source[] {
-  return getDb().prepare("SELECT * FROM sources WHERE active = 1 ORDER BY reputation DESC, paid_count DESC").all().map((r) => rowToSource(r as Record<string, unknown>));
+export function getAllSources(category?: string): Source[] {
+  const db = getDb();
+  const rows = category
+    ? db.prepare("SELECT * FROM sources WHERE active = 1 AND category = ? ORDER BY reputation DESC, paid_count DESC").all(category)
+    : db.prepare("SELECT * FROM sources WHERE active = 1 ORDER BY reputation DESC, paid_count DESC").all();
+  return rows.map((r) => rowToSource(r as Record<string, unknown>));
 }
 
 export function getSourceById(id: string): Source | null {
@@ -230,6 +236,7 @@ function rowToSource(r: Record<string, unknown>): Source {
     active: Boolean(r.active),
     createdAt: r.created_at as string,
     onChainId: (r.on_chain_id as number | null) ?? null,
+    category: (r.category as string | null) ?? "General",
   };
 }
 
@@ -241,8 +248,8 @@ export function insertReceipt(r: Receipt): void {
       decision, query, query_hash, source_title, source_url, amount_paid,
       evidence_hash, evidence_preimage, content_hash_at_decision, scores, reason,
       tx_hash, payment_status, policy_profile, policy_rules_passed, policy_rules_failed,
-      policy_reason, budget_before, budget_after, challenged, created_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      policy_reason, agent_signature, budget_before, budget_after, challenged, created_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).run(
     r.id, r.sourceId, r.queryId, r.agentAddress, r.creatorWallet,
     r.decision, r.query, r.queryHash, r.sourceTitle, r.sourceUrl, r.amountPaid,
@@ -251,7 +258,7 @@ export function insertReceipt(r: Receipt): void {
     r.policyProfile ?? null,
     r.policyRulesPassed ? JSON.stringify(r.policyRulesPassed) : null,
     r.policyRulesFailed ? JSON.stringify(r.policyRulesFailed) : null,
-    r.policyReason ?? null,
+    r.policyReason ?? null, r.agentSignature ?? null,
     r.budgetBefore, r.budgetAfter, r.challenged ? 1 : 0, r.createdAt
   );
 }
@@ -305,6 +312,7 @@ function rowToReceipt(r: Record<string, unknown>): Receipt {
     policyRulesPassed: r.policy_rules_passed ? JSON.parse(r.policy_rules_passed as string) : null,
     policyRulesFailed: r.policy_rules_failed ? JSON.parse(r.policy_rules_failed as string) : null,
     policyReason: (r.policy_reason as string | null) ?? null,
+    agentSignature: (r.agent_signature as string | null) ?? null,
     budgetBefore: r.budget_before as number,
     budgetAfter: r.budget_after as number,
     challenged: Boolean(r.challenged),
@@ -415,6 +423,46 @@ export function getFullTractionStats() {
     activeAgents,
     agentReputation,
   };
+}
+
+export interface LeaderboardEntry {
+  agentAddress: string;
+  totalDecisions: number;
+  paidCount: number;
+  refusedCount: number;
+  skipCount: number;
+  policyBlockedCount: number;
+  totalPaid: number;
+  topPolicy: string | null;
+}
+
+export function getLeaderboard(limit = 50): LeaderboardEntry[] {
+  const rows = getDb().prepare(`
+    SELECT
+      agent_address,
+      COUNT(*) AS total_decisions,
+      SUM(CASE WHEN decision = 'PAY' THEN 1 ELSE 0 END) AS paid_count,
+      SUM(CASE WHEN decision = 'REFUSE' THEN 1 ELSE 0 END) AS refused_count,
+      SUM(CASE WHEN decision = 'SKIP' THEN 1 ELSE 0 END) AS skip_count,
+      SUM(CASE WHEN decision = 'BLOCKED_BY_POLICY' THEN 1 ELSE 0 END) AS policy_blocked_count,
+      SUM(CASE WHEN decision = 'PAY' THEN amount_paid ELSE 0 END) AS total_paid,
+      (SELECT policy_profile FROM receipts r2 WHERE r2.agent_address = receipts.agent_address
+       AND r2.policy_profile IS NOT NULL ORDER BY r2.created_at DESC LIMIT 1) AS top_policy
+    FROM receipts
+    GROUP BY agent_address
+    ORDER BY total_paid DESC, paid_count DESC
+    LIMIT ?
+  `).all(limit) as Record<string, unknown>[];
+  return rows.map((r) => ({
+    agentAddress: r.agent_address as string,
+    totalDecisions: r.total_decisions as number,
+    paidCount: r.paid_count as number,
+    refusedCount: r.refused_count as number,
+    skipCount: r.skip_count as number,
+    policyBlockedCount: r.policy_blocked_count as number,
+    totalPaid: r.total_paid as number,
+    topPolicy: (r.top_policy as string | null) ?? null,
+  }));
 }
 
 export function recordShareCard(receiptId: string, creatorWallet: string): string {

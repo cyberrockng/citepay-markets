@@ -7,6 +7,7 @@ import { buildEvidencePreimage, hashEvidence, sha256, parseUSDC } from "@/lib/ev
 import { payCreator } from "@/lib/payments";
 import { anchorPAY, checkAnchorReady } from "@/lib/anchor";
 import { resolvePolicy } from "@/lib/policy";
+import { signReceiptHash } from "@/lib/signature";
 import {
   getAllSources,
   insertQuery,
@@ -29,7 +30,7 @@ export const dynamic = "force-dynamic";
 export async function POST(req: NextRequest) {
   if (!anchorChecked) { anchorChecked = true; void checkAnchorReady(); }
 
-  let body: { query?: string; budget?: number; policy?: string | Record<string, unknown> } = {};
+  let body: { query?: string; budget?: number; policy?: string | Record<string, unknown>; category?: string } = {};
   try {
     body = await req.json();
   } catch {
@@ -44,6 +45,7 @@ export async function POST(req: NextRequest) {
   const budgetUsdc = typeof body.budget === "number" ? body.budget : 0.05;
   const budgetMicro = parseUSDC(Math.max(0.01, Math.min(1.0, budgetUsdc)));
   const policy = resolvePolicy(body.policy as string | undefined);
+  const category = typeof body.category === "string" ? body.category : undefined;
 
   // ── Step 1: Check for payment ─────────────────────────────────────────────
   const hasPayment = req.headers.has("X-PAYMENT") || req.headers.has("x-payment");
@@ -82,7 +84,7 @@ export async function POST(req: NextRequest) {
   insertQuery(queryRecord);
 
   // ── Step 4: Run buyer agent ───────────────────────────────────────────────
-  const sources = getAllSources().filter((s) => s.active);
+  const sources = getAllSources(category).filter((s) => s.active);
   let decisions;
   try {
     decisions = await runBuyerAgent(query, budgetMicro, sources, policy);
@@ -117,6 +119,7 @@ export async function POST(req: NextRequest) {
       reputation: d.source.reputation,
     });
     const evidenceHash = hashEvidence(preimage);
+    const agentSignature = await signReceiptHash(evidenceHash);
 
     // Pay creator if decision is PAY (not BLOCKED_BY_POLICY)
     if (d.decision === "PAY") {
@@ -156,6 +159,7 @@ export async function POST(req: NextRequest) {
       policyRulesPassed: d.policyRulesPassed,
       policyRulesFailed: d.policyRulesFailed,
       policyReason: d.policyReason,
+      agentSignature,
       budgetBefore: budgetRemaining + (d.decision === "PAY" ? d.source.price : 0),
       budgetAfter: budgetRemaining,
       challenged: false,

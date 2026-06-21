@@ -20,6 +20,7 @@ export interface Source {
   active: boolean;
   createdAt: string;
   onChainId?: number | null; // CitePayMarket.sol sourceId once registered
+  category?: string; // e.g. "Protocol", "Research", "Infrastructure", "AI/Agents"
 }
 
 export interface ScoreBreakdown {
@@ -83,6 +84,7 @@ export interface Receipt {
   policyRulesPassed: string[] | null;
   policyRulesFailed: string[] | null;
   policyReason: string | null;
+  agentSignature?: string | null; // EIP-191 signature of evidenceHash by agentAddress
   budgetBefore: number;
   budgetAfter: number;
   challenged: boolean;
