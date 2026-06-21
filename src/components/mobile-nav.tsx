@@ -20,13 +20,13 @@ export function MobileNav() {
             <Link
               key={href}
               href={href}
-              className={`flex-1 flex flex-col items-center gap-0.5 py-3 text-[10px] font-medium tracking-wide transition-colors ${
+              className={`relative flex-1 flex flex-col items-center gap-0.5 py-3 text-[10px] font-medium tracking-wide transition-colors ${
                 active ? "text-[#6366f1]" : "text-[#4a4a5e] hover:text-[#8b8b9e]"
               }`}
             >
               <span className={`text-lg leading-none transition-transform ${active ? "scale-110" : ""}`}>{icon}</span>
               <span>{label}</span>
-              {active && <span className="absolute bottom-0 w-8 h-0.5 bg-[#6366f1] rounded-full" />}
+              {active && <span className="absolute bottom-0 left-1/2 -translate-x-1/2 w-8 h-0.5 bg-[#6366f1] rounded-full" />}
             </Link>
           );
         })}
