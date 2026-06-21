@@ -1,5 +1,5 @@
 {
   "crons": [
-    { "path": "/api/cron/auto-query", "schedule": "*/30 * * * *" }
+    { "path": "/api/cron/auto-query", "schedule": "0 12 * * *" }
   ]
 }
