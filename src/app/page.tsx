@@ -105,6 +105,9 @@ export default function LandingPage() {
             <Link href="/wallet" className="border border-[#1e1e2e] hover:border-[#8b8b9e] text-[#8b8b9e] hover:text-[#f0f0f5] font-semibold px-8 py-3.5 rounded-xl transition-colors">
               Agent Wallet
             </Link>
+            <Link href="/register" className="border border-violet-600/40 hover:border-violet-500 text-violet-400 hover:text-violet-300 font-semibold px-8 py-3.5 rounded-xl transition-colors">
+              Register Creator
+            </Link>
             <Link href="/mcp" className="border border-[#6366f1]/40 hover:border-[#6366f1] text-[#6366f1] hover:text-indigo-300 font-semibold px-8 py-3.5 rounded-xl transition-colors">
               Add to Claude (MCP)
             </Link>
