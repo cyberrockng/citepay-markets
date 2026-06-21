@@ -36,12 +36,24 @@ export async function GET() {
   try {
     const client = createPublicClient({ chain: arcTestnet, transport: http(ARC_RPC) });
 
-    const logs = await client.getLogs({
-      address: ARC_USDC as `0x${string}`,
-      event: TRANSFER_EVENT,
-      args: { from: PAYMENT_RECEIVER },
-      fromBlock: 0n,
-    });
+    // Arc RPC caps eth_getLogs at 10,000 blocks per request — scan in chunks.
+    // Agent wallet first got USDC on Jun 21 2026 (block ~48,010,000 on Arc testnet).
+    const latestBlock = await client.getBlockNumber();
+    const START_BLOCK = 48_000_000n; // safe start before first bridge
+    const CHUNK = 9_000n;
+    const logs: Awaited<ReturnType<typeof client.getLogs>> = [];
+
+    for (let from = START_BLOCK; from <= latestBlock; from += CHUNK + 1n) {
+      const to = from + CHUNK < latestBlock ? from + CHUNK : latestBlock;
+      const chunk = await client.getLogs({
+        address: ARC_USDC as `0x${string}`,
+        event: TRANSFER_EVENT,
+        args: { from: PAYMENT_RECEIVER },
+        fromBlock: from,
+        toBlock: to,
+      });
+      logs.push(...chunk);
+    }
 
     const recipients = new Set<string>();
     let totalMicro = 0n;
