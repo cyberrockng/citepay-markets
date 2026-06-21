@@ -19,7 +19,7 @@ export function PageShell({
 }) {
   return (
     <main className={`min-h-screen bg-[#0a0a0f] text-[#f0f0f5] ${className}`}>
-      <div className={`${maxWidth} mx-auto px-6 py-12`}>{children}</div>
+      <div className={`${maxWidth} mx-auto px-4 sm:px-6 py-10 pb-28 sm:pb-12`}>{children}</div>
     </main>
   );
 }
@@ -270,4 +270,38 @@ export function decisionStyle(decision: string): string {
     case "BLOCKED_BY_POLICY": return "text-orange-400 border-orange-700 bg-orange-900/20";
     default:                  return "text-[#8b8b9e] border-[#1e1e2e] bg-[#111118]";
   }
+}
+
+export function decisionAccent(decision: string): string {
+  switch (decision) {
+    case "PAY":               return "#00ff88";
+    case "REFUSE":            return "#f87171";
+    case "BLOCKED_BY_POLICY": return "#fb923c";
+    default:                  return "#1e1e2e";
+  }
+}
+
+// ── Skeleton ─────────────────────────────────────────────────────────────────
+
+export function Skeleton({ className = "" }: { className?: string }) {
+  return <div className={`skeleton ${className}`} />;
+}
+
+export function SkeletonTable({ rows = 5, cols = 5 }: { rows?: number; cols?: number }) {
+  return (
+    <div className="bg-[#111118] rounded-xl border border-[#1e1e2e] overflow-hidden">
+      <div className="px-6 py-4 border-b border-[#1e1e2e]">
+        <Skeleton className="h-4 w-40" />
+      </div>
+      <div className="divide-y divide-[#1e1e2e]">
+        {Array.from({ length: rows }).map((_, i) => (
+          <div key={i} className="px-6 py-4 flex gap-4">
+            {Array.from({ length: cols }).map((__, j) => (
+              <Skeleton key={j} className={`h-3 ${j === 0 ? "w-32" : "w-16"}`} />
+            ))}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
 }

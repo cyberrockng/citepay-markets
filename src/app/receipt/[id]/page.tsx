@@ -3,9 +3,10 @@ import { useEffect, useState } from "react";
 import { use } from "react";
 import type { Receipt } from "@/types";
 import {
-  PageShell, Badge, ProofPanel, ScoreBar, DataRow, decisionStyle,
+  PageShell, Badge, ProofPanel, ScoreBar, DataRow, decisionStyle, decisionAccent,
 } from "@/components/ui";
 import { BackButton } from "@/components/back-button";
+import { HashChip } from "@/components/hash-chip";
 
 export default function ReceiptPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
@@ -65,11 +66,19 @@ export default function ReceiptPage({ params }: { params: Promise<{ id: string }
 
   const p = receipt.evidencePreimage;
   const isPay = receipt.decision === "PAY";
+  const accent = decisionAccent(receipt.decision);
+
+  const STEPS = [
+    { label: "Evidence Built",   done: true },
+    { label: "Agent Signed",     done: !!receipt.agentSignature },
+    { label: "Creator Paid",     done: isPay && receipt.paymentStatus === "confirmed", partial: isPay && receipt.paymentStatus === "simulated" },
+    { label: "Anchored On-Chain",done: !!receipt.onChainTxHash },
+  ];
 
   return (
     <PageShell maxWidth="max-w-3xl">
       {/* Header */}
-      <div className="mb-8">
+      <div className="mb-6">
         <BackButton label="Home" />
         <div className="flex items-center gap-3 mt-4 flex-wrap">
           <h1 className="text-2xl font-bold text-[#f0f0f5]">Receipt #{receipt.id.slice(0, 8)}</h1>
@@ -80,8 +89,41 @@ export default function ReceiptPage({ params }: { params: Promise<{ id: string }
         </div>
       </div>
 
+      {/* Receipt Progress Stepper */}
+      <div className="bg-[#111118] rounded-xl p-5 border border-[#1e1e2e] mb-4">
+        <div className="flex items-center gap-0">
+          {STEPS.map((step, i) => (
+            <div key={step.label} className="flex items-center flex-1">
+              <div className="flex flex-col items-center gap-1 flex-1">
+                <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center text-[10px] font-bold transition-colors ${
+                  step.done    ? "border-[#00ff88] bg-[#00ff88]/10 text-[#00ff88]"
+                  : step.partial ? "border-yellow-400 bg-yellow-400/10 text-yellow-400"
+                  : "border-[#1e1e2e] bg-[#0a0a0f] text-[#4a4a5e]"
+                }`}>
+                  {step.done ? "✓" : step.partial ? "~" : i + 1}
+                </div>
+                <span className={`text-[10px] text-center leading-tight hidden sm:block ${
+                  step.done ? "text-[#00ff88]" : step.partial ? "text-yellow-400" : "text-[#4a4a5e]"
+                }`}>{step.label}</span>
+              </div>
+              {i < STEPS.length - 1 && (
+                <div className={`h-px flex-1 -mt-4 sm:-mt-3 mx-1 ${step.done ? "bg-[#00ff88]/30" : "bg-[#1e1e2e]"}`} />
+              )}
+            </div>
+          ))}
+        </div>
+        {/* Mobile labels */}
+        <div className="flex sm:hidden mt-2 text-[10px] text-[#4a4a5e]">
+          {STEPS.map((step) => (
+            <span key={step.label} className={`flex-1 text-center ${step.done ? "text-[#00ff88]" : step.partial ? "text-yellow-400" : ""}`}>
+              {step.label.split(" ")[0]}
+            </span>
+          ))}
+        </div>
+      </div>
+
       {/* Summary Card */}
-      <div className="bg-[#111118] rounded-xl p-6 border border-[#1e1e2e] mb-4">
+      <div className="bg-[#111118] rounded-xl p-6 border border-[#1e1e2e] mb-4" style={{ borderLeftWidth: "3px", borderLeftColor: accent }}>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 text-sm">
           <DataRow label="Query" value={receipt.query} />
           <DataRow label="Query Hash" value={receipt.queryHash} mono />
@@ -154,15 +196,10 @@ export default function ReceiptPage({ params }: { params: Promise<{ id: string }
 
       {/* Evidence Hashes */}
       <div className="bg-[#111118] rounded-xl p-6 border border-[#1e1e2e] mb-4">
-        <div className="flex items-center justify-between mb-5">
-          <h2 className="font-semibold text-[#f0f0f5]">Evidence Integrity</h2>
-          <span className={hashValid ? "text-[#00ff88] text-xs font-mono" : "text-red-400 text-xs font-mono"}>
-            {hashValid ? "✓ Hash verified" : "✗ Hash mismatch"}
-          </span>
-        </div>
-        <div className="space-y-4">
-          <ProofPanel label="Evidence Hash (SHA-256 of preimage)" hash={receipt.evidenceHash} valid={hashValid} />
-          <ProofPanel label="Content Hash at Decision" hash={receipt.contentHashAtDecision} />
+        <h2 className="font-semibold text-[#f0f0f5] mb-4">Evidence Integrity</h2>
+        <div className="space-y-3">
+          <HashChip hash={receipt.evidenceHash} valid={hashValid} label="Evidence Hash (SHA-256 of preimage)" />
+          <HashChip hash={receipt.contentHashAtDecision} label="Content Hash at Decision" />
         </div>
       </div>
 
@@ -216,23 +253,31 @@ export default function ReceiptPage({ params }: { params: Promise<{ id: string }
 
       {/* Agent Signature (offline-verifiable) */}
       {receipt.agentSignature && (
-        <div className="bg-[#111118] rounded-xl p-6 border border-[#1e1e2e] mb-4">
-          <div className="flex items-center gap-2 mb-3">
-            <h2 className="font-semibold text-[#f0f0f5]">Agent Signature</h2>
-            <span className="text-[#00ff88] text-xs font-mono">✓ offline-verifiable</span>
+        <details className="bg-[#111118] rounded-xl border border-[#00ff88]/20 mb-4 overflow-hidden group">
+          <summary className="px-6 py-4 flex items-center justify-between cursor-pointer hover:bg-[#0a0a0f]/40 transition-colors list-none">
+            <div className="flex items-center gap-2">
+              <h2 className="font-semibold text-[#f0f0f5]">Agent Signature</h2>
+              <span className="text-[#00ff88] text-xs font-mono">✓ offline-verifiable</span>
+            </div>
+            <span className="text-[#8b8b9e] text-xs font-mono group-open:hidden">Verify independently →</span>
+            <span className="text-[#8b8b9e] text-xs font-mono hidden group-open:inline">▲ collapse</span>
+          </summary>
+          <div className="px-6 pb-6 space-y-3">
+            <p className="text-[#8b8b9e] text-xs leading-relaxed">
+              EIP-191 personal_sign of the evidence hash, signed by agent wallet.
+              Copy the snippet below and paste it into any ethers.js console to verify without trusting CitePay.
+            </p>
+            <div className="bg-[#0a0a0f] rounded-lg p-4 font-mono text-xs text-[#00ff88] border border-[#1e1e2e] overflow-x-auto">
+              <div className="text-[#4a4a5e] mb-1">{"// Paste in any Node.js / browser console"}</div>
+              <div className="break-all whitespace-pre-wrap">{`const { ethers } = require("ethers");
+ethers.verifyMessage(
+  "${receipt.evidenceHash}",
+  "${receipt.agentSignature}"
+);
+// Expected: "${receipt.agentAddress}"`}</div>
+            </div>
           </div>
-          <div className="bg-[#0a0a0f] rounded-lg p-3 font-mono text-xs text-[#00ff88] break-all border border-[#1e1e2e] mb-3">
-            {receipt.agentSignature}
-          </div>
-          <p className="text-[#8b8b9e] text-xs leading-relaxed">
-            EIP-191 personal_sign of the evidence hash above, signed by{" "}
-            <span className="font-mono text-[#f0f0f5]">{receipt.agentAddress}</span>.
-            Verify without trusting CitePay:
-          </p>
-          <div className="bg-[#0a0a0f] rounded-lg p-3 font-mono text-xs text-[#8b8b9e] mt-2 border border-[#1e1e2e]">
-            {`ethers.verifyMessage("${receipt.evidenceHash}", "<signature>") === agentAddress`}
-          </div>
-        </div>
+        </details>
       )}
 
       {/* Score Breakdown */}

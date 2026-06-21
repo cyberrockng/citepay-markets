@@ -434,6 +434,7 @@ export interface LeaderboardEntry {
   policyBlockedCount: number;
   totalPaid: number;
   topPolicy: string | null;
+  lastDecisionAt: string | null;
 }
 
 export function getLeaderboard(limit = 50): LeaderboardEntry[] {
@@ -446,6 +447,7 @@ export function getLeaderboard(limit = 50): LeaderboardEntry[] {
       SUM(CASE WHEN decision = 'SKIP' THEN 1 ELSE 0 END) AS skip_count,
       SUM(CASE WHEN decision = 'BLOCKED_BY_POLICY' THEN 1 ELSE 0 END) AS policy_blocked_count,
       SUM(CASE WHEN decision = 'PAY' THEN amount_paid ELSE 0 END) AS total_paid,
+      MAX(created_at) AS last_decision_at,
       (SELECT policy_profile FROM receipts r2 WHERE r2.agent_address = receipts.agent_address
        AND r2.policy_profile IS NOT NULL ORDER BY r2.created_at DESC LIMIT 1) AS top_policy
     FROM receipts
@@ -462,6 +464,7 @@ export function getLeaderboard(limit = 50): LeaderboardEntry[] {
     policyBlockedCount: r.policy_blocked_count as number,
     totalPaid: r.total_paid as number,
     topPolicy: (r.top_policy as string | null) ?? null,
+    lastDecisionAt: (r.last_decision_at as string | null) ?? null,
   }));
 }
 

@@ -1,7 +1,9 @@
 "use client";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import type { TractionStats } from "@/types";
+
+const DEMO_AGENT = "0x5389688243328c26a92b301faEEAb5fbf9AFf105";
 
 const DECISION_COLOR: Record<string, { card: string; badge: string }> = {
   PAY:               { card: "border-[#00ff88]/30 bg-[#00ff88]/5",    badge: "text-[#00ff88] border-[#00ff88]/30 bg-[#00ff88]/10" },
@@ -10,87 +12,96 @@ const DECISION_COLOR: Record<string, { card: string; badge: string }> = {
   BLOCKED_BY_POLICY: { card: "border-orange-700/30 bg-orange-900/10", badge: "text-orange-400 border-orange-700 bg-orange-900/20" },
 };
 
-const HOW_IT_WORKS = [
-  { n: "01", title: "POST /api/ask", desc: "Submit a research query via HTTP with a budget." },
-  { n: "02", title: "← 402 Payment Required", desc: "Server returns x402 payment challenge." },
-  { n: "03", title: "Pay query fee in USDC", desc: "Client attaches X-PAYMENT header and retries." },
-  { n: "04", title: "Agent scores sources", desc: "CitePay evaluates creators on relevance, price, bond, and reputation." },
-  { n: "05", title: "PAY best sources", desc: "Winners receive USDC. Weak or overpriced sources get REFUSE or SKIP." },
-  { n: "06", title: "Public receipt + anchor", desc: "Every decision gets a public receipt with evidence hash anchored on-chain." },
+const FLOW_STEPS = [
+  { n: "01", title: "POST /api/ask",           desc: "Submit a research query with budget and agent spend policy." },
+  { n: "02", title: "← 402 Payment Required",  desc: "Server returns x402 payment challenge. No payment = no query." },
+  { n: "03", title: "Pay query fee in USDC",   desc: "Client attaches X-PAYMENT header and retries the request." },
+  { n: "04", title: "Agent scores sources",    desc: "CitePay evaluates creators on relevance, price, bond, and reputation." },
+  { n: "05", title: "PAY best sources",        desc: "Winners receive USDC instantly. Weak sources get REFUSE or SKIP." },
+  { n: "06", title: "Public receipt + anchor", desc: "Every decision becomes a signed Policy Receipt, anchored on Base Sepolia." },
 ];
 
-const PROOF_PILLARS = [
-  { icon: "①", title: "Agent used creator content", color: "text-[#00ff88]", border: "border-[#00ff88]/30" },
-  { icon: "②", title: "Creator paid in USDC", color: "text-[#00ff88]", border: "border-[#00ff88]/30" },
-  { icon: "③", title: "Citation decision is verifiable", color: "text-[#00ff88]", border: "border-[#00ff88]/30" },
-  { icon: "④", title: "Tampering can be challenged", color: "text-[#00ff88]", border: "border-[#00ff88]/30" },
-];
+function useCountUp(target: number, active: boolean, duration = 1200): number {
+  const [count, setCount] = useState(0);
+  useEffect(() => {
+    if (!active || !target) return;
+    const start = Date.now();
+    const timer = setInterval(() => {
+      const p = Math.min((Date.now() - start) / duration, 1);
+      const eased = 1 - Math.pow(1 - p, 3);
+      setCount(Math.round(target * eased));
+      if (p >= 1) clearInterval(timer);
+    }, 16);
+    return () => clearInterval(timer);
+  }, [target, active, duration]);
+  return count;
+}
 
 export default function LandingPage() {
   const [stats, setStats] = useState<TractionStats | null>(null);
+  const statsRef = useRef<HTMLDivElement>(null);
+  const [statsVisible, setStatsVisible] = useState(false);
 
   useEffect(() => {
     fetch("/api/traction").then((r) => r.json()).then((d) => setStats(d.stats)).catch(() => {});
   }, []);
 
+  useEffect(() => {
+    const el = statsRef.current;
+    if (!el) return;
+    const obs = new IntersectionObserver(([e]) => { if (e.isIntersecting) setStatsVisible(true); }, { threshold: 0.3 });
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, []);
+
+  const usdcRouted     = useCountUp(stats?.totalUSDCRouted ?? 0, statsVisible);
+  const totalDecisions = useCountUp(stats?.totalDecisions  ?? 0, statsVisible);
+  const creatorsPaid   = useCountUp(stats?.creatorsPaid    ?? 0, statsVisible);
+  const paidCitations  = useCountUp(stats?.paidCitations   ?? 0, statsVisible);
+
   return (
-    <main className="min-h-screen bg-[#0a0a0f] text-[#f0f0f5]">
+    <main className="min-h-screen bg-[#0a0a0f] text-[#f0f0f5] pb-20 sm:pb-0">
 
       {/* ── Hero ── */}
-      <section className="max-w-4xl mx-auto px-6 pt-24 pb-20 text-center">
-        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#111118] border border-[#1e1e2e] text-[#8b8b9e] text-xs font-mono mb-8">
-          <span className="w-1.5 h-1.5 rounded-full bg-[#00ff88] inline-block" />
-          Base Sepolia · x402 + USDC · Smart Contract
-        </div>
-        <h1 className="text-5xl sm:text-6xl font-bold mb-5 leading-tight tracking-tight">
-          The Policy &amp; Payment Layer<br />
-          <span className="text-[#6366f1]">for Autonomous AI Citations</span>
-        </h1>
-        <p className="text-xl text-[#8b8b9e] max-w-2xl mx-auto mb-10 leading-relaxed">
-          Agents enforce configurable spend policies, pay creators in USDC, and publish tamper-evident Policy Receipts anchored on Base Sepolia.
-        </p>
-        <div className="flex flex-col sm:flex-row gap-3 justify-center">
-          <Link
-            href="/demo"
-            className="bg-[#00ff88] hover:bg-[#00e87a] text-black font-bold px-8 py-3.5 rounded-xl transition-colors"
-          >
-            Live Demo →
-          </Link>
-          <Link
-            href="/ask"
-            className="bg-[#6366f1] hover:bg-indigo-500 text-white font-semibold px-8 py-3.5 rounded-xl transition-colors"
-          >
-            Ask a Question
-          </Link>
-          <Link
-            href="/market"
-            className="border border-[#1e1e2e] hover:border-[#8b8b9e] text-[#8b8b9e] hover:text-[#f0f0f5] font-semibold px-8 py-3.5 rounded-xl transition-colors"
-          >
-            Source Market
-          </Link>
-          <Link
-            href="/leaderboard"
-            className="border border-[#1e1e2e] hover:border-[#8b8b9e] text-[#8b8b9e] hover:text-[#f0f0f5] font-semibold px-8 py-3.5 rounded-xl transition-colors"
-          >
-            Leaderboard
-          </Link>
-        </div>
-      </section>
-
-      {/* ── 4 Proof Pillars ── */}
-      <section className="max-w-4xl mx-auto px-6 pb-16">
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          {PROOF_PILLARS.map(({ icon, title, color, border }) => (
-            <div key={title} className={`rounded-xl p-4 border ${border} bg-[#00ff88]/5 text-center`}>
-              <div className={`text-2xl font-mono mb-2 ${color}`}>{icon}</div>
-              <div className="text-xs text-[#f0f0f5] font-medium leading-snug">{title}</div>
-            </div>
-          ))}
+      <section
+        className="max-w-4xl mx-auto px-6 pt-24 pb-20 text-center relative"
+        style={{
+          backgroundImage: "radial-gradient(circle, #1e1e2e 1px, transparent 1px)",
+          backgroundSize: "24px 24px",
+        }}
+      >
+        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-[#0a0a0f]/60 to-[#0a0a0f] pointer-events-none" />
+        <div className="relative z-10">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#111118]/80 backdrop-blur border border-[#1e1e2e] text-[#8b8b9e] text-xs font-mono mb-8">
+            <span className="w-1.5 h-1.5 rounded-full bg-[#00ff88] inline-block pulse-dot" />
+            Base Sepolia · x402 + USDC · Smart Contract
+          </div>
+          <h1 className="text-5xl sm:text-6xl font-bold mb-5 leading-tight tracking-tight">
+            The Policy &amp; Payment Layer<br />
+            <span className="gradient-text">for Autonomous AI Citations</span>
+          </h1>
+          <p className="text-xl text-[#8b8b9e] max-w-2xl mx-auto mb-10 leading-relaxed">
+            Agents enforce configurable spend policies, pay creators in USDC, and publish tamper-evident Policy Receipts anchored on Base Sepolia.
+          </p>
+          <div className="flex flex-col sm:flex-row gap-3 justify-center flex-wrap">
+            <Link href="/demo" className="bg-[#00ff88] hover:bg-[#00e87a] text-black font-bold px-8 py-3.5 rounded-xl transition-all hover:scale-105 card-lift">
+              Live Demo →
+            </Link>
+            <Link href="/ask"  className="bg-[#6366f1] hover:bg-indigo-500 text-white font-semibold px-8 py-3.5 rounded-xl transition-all hover:scale-105 card-lift">
+              Ask a Question
+            </Link>
+            <Link href="/market" className="border border-[#1e1e2e] hover:border-[#8b8b9e] text-[#8b8b9e] hover:text-[#f0f0f5] font-semibold px-8 py-3.5 rounded-xl transition-colors">
+              Source Market
+            </Link>
+            <Link href="/leaderboard" className="border border-[#1e1e2e] hover:border-[#8b8b9e] text-[#8b8b9e] hover:text-[#f0f0f5] font-semibold px-8 py-3.5 rounded-xl transition-colors">
+              Leaderboard
+            </Link>
+          </div>
         </div>
       </section>
 
       {/* ── Live Market Stats ── */}
-      <section className="max-w-4xl mx-auto px-6 py-16 border-t border-[#1e1e2e]">
+      <section ref={statsRef} className="max-w-4xl mx-auto px-6 py-16 border-t border-[#1e1e2e]">
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-lg font-semibold text-[#f0f0f5]">Live Market Stats</h2>
           <Link href="/traction" className="text-xs text-[#6366f1] hover:text-indigo-300 transition-colors">
@@ -99,34 +110,52 @@ export default function LandingPage() {
         </div>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
           {[
-            { label: "Creators Paid", value: stats?.creatorsPaid ?? "—", accent: "text-[#00ff88]" },
-            {
-              label: "USDC Routed",
-              value: stats ? `$${(stats.totalUSDCRouted / 1_000_000).toFixed(4)}` : "—",
-              accent: "text-[#00ff88]",
-            },
-            { label: "Public Receipts", value: stats?.totalDecisions ?? "—", accent: "text-[#6366f1]" },
-            { label: "Paid Citations", value: stats?.paidCitations ?? "—", accent: "text-[#00ff88]" },
-          ].map(({ label, value, accent }) => (
-            <div key={label} className="bg-[#111118] rounded-xl p-5 border border-[#1e1e2e] text-center">
-              <div className={`text-2xl font-bold font-mono ${accent}`}>{value}</div>
-              <div className="text-[#8b8b9e] text-xs mt-1">{label}</div>
-            </div>
-          ))}
+            { label: "Creators Paid",   value: creatorsPaid,   accent: "text-[#00ff88]", prefix: "" },
+            { label: "USDC Routed",     value: usdcRouted,     accent: "text-[#00ff88]", prefix: "$", divisor: 1_000_000, decimals: 4 },
+            { label: "Public Receipts", value: totalDecisions, accent: "text-[#6366f1]", prefix: "" },
+            { label: "Paid Citations",  value: paidCitations,  accent: "text-[#00ff88]", prefix: "" },
+          ].map(({ label, value, accent, prefix, divisor, decimals }) => {
+            const display = stats == null ? "—"
+              : divisor ? `${prefix}${(value / divisor).toFixed(decimals ?? 2)}`
+              : `${prefix}${value}`;
+            return (
+              <div key={label} className="bg-[#111118] rounded-xl p-5 border border-[#1e1e2e] text-center card-lift">
+                <div className={`text-2xl font-bold font-mono ${accent}`}>{display}</div>
+                <div className="text-[#8b8b9e] text-xs mt-1">{label}</div>
+              </div>
+            );
+          })}
         </div>
       </section>
 
-      {/* ── How It Works ── */}
+      {/* ── How It Works — Vertical Stepper ── */}
       <section className="max-w-4xl mx-auto px-6 py-16 border-t border-[#1e1e2e]">
-        <h2 className="text-lg font-semibold text-[#f0f0f5] mb-8">How CitePay Works</h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {HOW_IT_WORKS.map(({ n, title, desc }) => (
-            <div key={n} className="bg-[#111118] rounded-xl p-5 border border-[#1e1e2e]">
-              <div className="font-mono text-xs text-[#4a4a5e] mb-2">{n}</div>
-              <h3 className="font-semibold text-[#f0f0f5] mb-1 font-mono text-sm">{title}</h3>
-              <p className="text-[#8b8b9e] text-xs leading-relaxed">{desc}</p>
-            </div>
-          ))}
+        <h2 className="text-lg font-semibold text-[#f0f0f5] mb-10">How CitePay Works</h2>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-12 gap-y-0">
+          {FLOW_STEPS.map((step, i) => {
+            const isLast = i === FLOW_STEPS.length - 1;
+            const col = i % 2;
+            const isPay = step.n === "05";
+            return (
+              <div key={step.n} className={`relative flex gap-4 ${col === 0 ? "sm:pr-6" : ""} ${!isLast ? "pb-8" : ""}`}>
+                {/* Line */}
+                {!isLast && (
+                  <div className="absolute left-3.5 top-7 bottom-0 w-px bg-[#1e1e2e]" style={{ left: "14px" }} />
+                )}
+                {/* Dot */}
+                <div className={`relative z-10 w-7 h-7 rounded-full border-2 flex items-center justify-center shrink-0 mt-0.5 ${
+                  isPay ? "border-[#00ff88] bg-[#00ff88]/10" : "border-[#1e1e2e] bg-[#0a0a0f]"
+                }`}>
+                  <span className={`text-[9px] font-mono font-bold ${isPay ? "text-[#00ff88]" : "text-[#4a4a5e]"}`}>{step.n}</span>
+                </div>
+                {/* Content */}
+                <div className="pb-1">
+                  <h3 className={`font-semibold text-sm font-mono mb-0.5 ${isPay ? "text-[#00ff88]" : "text-[#f0f0f5]"}`}>{step.title}</h3>
+                  <p className="text-[#8b8b9e] text-xs leading-relaxed">{step.desc}</p>
+                </div>
+              </div>
+            );
+          })}
         </div>
       </section>
 
@@ -145,10 +174,10 @@ export default function LandingPage() {
           ].map(({ decision, source, creator, paid, reason, score }) => {
             const { card, badge } = DECISION_COLOR[decision];
             return (
-              <div key={decision} className={`rounded-xl p-5 border ${card}`}>
+              <div key={decision} className={`rounded-xl p-5 border card-lift ${card}`} style={{ borderLeftWidth: "3px" }}>
                 <div className="flex items-center justify-between mb-3">
                   <span className={`text-xs font-mono font-bold px-2 py-0.5 rounded border ${badge}`}>
-                    {decision}
+                    {decision === "BLOCKED_BY_POLICY" ? "BLOCKED" : decision}
                   </span>
                   <span className="text-xs text-[#4a4a5e] font-mono">{score}/100</span>
                 </div>
@@ -172,27 +201,54 @@ export default function LandingPage() {
 
       {/* ── Agent API Callout ── */}
       <section className="max-w-4xl mx-auto px-6 py-16 border-t border-[#1e1e2e]">
-        <div className="bg-[#111118] rounded-xl border border-[#6366f1]/30 p-6 sm:p-8">
+        <div className="gradient-border rounded-xl bg-[#111118] p-6 sm:p-8" style={{
+          background: "#111118",
+          borderRadius: "12px",
+          padding: "2rem",
+          position: "relative",
+          isolation: "isolate",
+        }}>
+          <div
+            style={{
+              content: '""',
+              position: "absolute",
+              inset: "-1px",
+              borderRadius: "13px",
+              background: "linear-gradient(135deg, #6366f1 0%, #00ff88 100%)",
+              zIndex: -1,
+            }}
+          />
+          <div style={{
+            position: "absolute",
+            inset: "0",
+            borderRadius: "12px",
+            background: "#111118",
+            zIndex: -1,
+          }} />
           <div className="text-xs font-mono text-[#6366f1] mb-3">Agent API</div>
           <h2 className="text-xl font-bold text-[#f0f0f5] mb-3">
             One endpoint. Verifiable citations. Real USDC payments.
           </h2>
           <p className="text-[#8b8b9e] text-sm mb-6 leading-relaxed">
             Any AI agent can POST to <code className="text-[#f0f0f5] bg-[#0a0a0f] px-1.5 py-0.5 rounded">/api/ask</code> with an X-PAYMENT header to get structured, cited answers backed by on-chain receipts.
+            Native MCP support available at <code className="text-[#f0f0f5] bg-[#0a0a0f] px-1.5 py-0.5 rounded">/api/mcp</code>.
           </p>
           <div className="bg-[#0a0a0f] rounded-lg p-4 font-mono text-xs text-[#00ff88] overflow-x-auto border border-[#1e1e2e] mb-6">
 {`curl -X POST /api/ask \\
   -H "X-PAYMENT: <x402-proof>" \\
-  -d '{ "query": "...", "budget": 0.05 }'
+  -d '{ "query": "...", "budget": 0.05, "policy": "balanced" }'
 
 ← { "answer": "...", "decisions": [...], "receiptIds": [...] }`}
           </div>
           <div className="flex gap-4 flex-wrap">
-            <Link href="/ask" className="bg-[#6366f1] hover:bg-indigo-500 text-white font-semibold px-5 py-2.5 rounded-lg transition-colors text-sm">
+            <Link href="/ask"   className="bg-[#6366f1] hover:bg-indigo-500 text-white font-semibold px-5 py-2.5 rounded-lg transition-colors text-sm">
               Try the workbench
             </Link>
-            <Link href="/demo" className="border border-[#1e1e2e] hover:border-[#8b8b9e] text-[#8b8b9e] hover:text-[#f0f0f5] font-semibold px-5 py-2.5 rounded-lg transition-colors text-sm">
+            <Link href="/demo"  className="border border-[#1e1e2e] hover:border-[#8b8b9e] text-[#8b8b9e] hover:text-[#f0f0f5] font-semibold px-5 py-2.5 rounded-lg transition-colors text-sm">
               Watch the demo
+            </Link>
+            <Link href="/api/mcp" className="border border-[#6366f1]/30 hover:border-[#6366f1] text-[#6366f1] font-semibold px-5 py-2.5 rounded-lg transition-colors text-sm" target="_blank">
+              MCP Server ↗
             </Link>
           </div>
         </div>
@@ -201,7 +257,7 @@ export default function LandingPage() {
       {/* ── For Creators / For Agents ── */}
       <section className="max-w-4xl mx-auto px-6 py-16 border-t border-[#1e1e2e]">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-          <div className="bg-[#111118] rounded-xl p-6 border border-[#1e1e2e]">
+          <div className="bg-[#111118] rounded-xl p-6 border border-[#1e1e2e] card-lift">
             <div className="text-xs font-mono text-[#8b8b9e] mb-3">For Creators</div>
             <h3 className="font-semibold text-lg text-[#f0f0f5] mb-2">Get paid when AI cites you</h3>
             <p className="text-[#8b8b9e] text-sm mb-4 leading-relaxed">
@@ -211,7 +267,7 @@ export default function LandingPage() {
               Register a source →
             </Link>
           </div>
-          <div className="bg-[#111118] rounded-xl p-6 border border-[#1e1e2e]">
+          <div className="bg-[#111118] rounded-xl p-6 border border-[#1e1e2e] card-lift">
             <div className="text-xs font-mono text-[#8b8b9e] mb-3">For AI Agents</div>
             <h3 className="font-semibold text-lg text-[#f0f0f5] mb-2">Set a policy. Cite sources. Pay creators. Prove it.</h3>
             <p className="text-[#8b8b9e] text-sm mb-4 leading-relaxed">
@@ -228,22 +284,19 @@ export default function LandingPage() {
       <footer className="border-t border-[#1e1e2e] py-10">
         <div className="max-w-4xl mx-auto px-6 flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="text-[#4a4a5e] text-sm font-mono">
-            CitePay Markets — Proof-of-Paid-Citation for AI Agents
+            CitePay Markets · Demo agent:{" "}
+            <span className="text-[#6366f1]">
+              {DEMO_AGENT.slice(0, 6)}…{DEMO_AGENT.slice(-4)}
+            </span>
           </div>
-          <div className="flex gap-6 text-sm text-[#8b8b9e]">
-            <Link href="/demo" className="hover:text-[#f0f0f5] transition-colors">Demo</Link>
-            <Link href="/market" className="hover:text-[#f0f0f5] transition-colors">Market</Link>
+          <div className="flex flex-wrap gap-4 text-sm text-[#8b8b9e] justify-center">
+            <Link href="/demo"        className="hover:text-[#f0f0f5] transition-colors">Demo</Link>
+            <Link href="/market"      className="hover:text-[#f0f0f5] transition-colors">Market</Link>
             <Link href="/leaderboard" className="hover:text-[#f0f0f5] transition-colors">Leaderboard</Link>
-            <Link href="/traction" className="hover:text-[#f0f0f5] transition-colors">Traction</Link>
-            <Link href="/ask" className="hover:text-[#f0f0f5] transition-colors">Ask</Link>
-            <a
-              href="https://github.com/cyberrockng/citepay-markets"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="hover:text-[#f0f0f5] transition-colors"
-            >
-              GitHub
-            </a>
+            <Link href="/traction"    className="hover:text-[#f0f0f5] transition-colors">Traction</Link>
+            <Link href="/ask"         className="hover:text-[#f0f0f5] transition-colors">Ask</Link>
+            <a href="https://github.com/cyberrockng/citepay-markets" target="_blank" rel="noopener noreferrer"
+               className="hover:text-[#f0f0f5] transition-colors">GitHub</a>
           </div>
         </div>
       </footer>

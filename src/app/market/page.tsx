@@ -2,7 +2,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import type { Source } from "@/types";
-import { PageShell, Badge } from "@/components/ui";
+import { PageShell, Badge, Skeleton } from "@/components/ui";
 import { BackButton } from "@/components/back-button";
 
 const CATEGORIES = ["All", "Protocol", "Research", "Infrastructure", "AI/Agents"];
@@ -13,6 +13,14 @@ const CATEGORY_COLORS: Record<string, string> = {
   "Infrastructure": "text-yellow-400 border-yellow-400/40",
   "AI/Agents":      "text-purple-400 border-purple-400/40",
   "General":        "text-[#8b8b9e] border-[#8b8b9e]/40",
+};
+
+const CATEGORY_LEFT_BORDER: Record<string, string> = {
+  "Protocol":       "#6366f1",
+  "Research":       "#00ff88",
+  "Infrastructure": "#facc15",
+  "AI/Agents":      "#c084fc",
+  "General":        "#1e1e2e",
 };
 
 export default function MarketPage() {
@@ -100,16 +108,16 @@ export default function MarketPage() {
         ))}
       </div>
 
-      {/* Category Filter */}
-      <div className="flex flex-wrap gap-2 mb-6">
+      {/* Segmented Category Control */}
+      <div className="bg-[#0a0a0f] border border-[#1e1e2e] rounded-xl p-1 flex gap-1 mb-6 overflow-x-auto">
         {CATEGORIES.map((cat) => (
           <button
             key={cat}
             onClick={() => setActiveCategory(cat)}
-            className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${
+            className={`flex-1 min-w-[60px] py-1.5 px-3 text-xs font-medium rounded-lg transition-all whitespace-nowrap ${
               activeCategory === cat
-                ? "bg-[#6366f1] border-[#6366f1] text-white"
-                : "border-[#1e1e2e] text-[#8b8b9e] hover:border-[#8b8b9e] hover:text-[#f0f0f5]"
+                ? "bg-[#1e1e2e] text-[#f0f0f5] shadow-sm"
+                : "text-[#4a4a5e] hover:text-[#8b8b9e]"
             }`}
           >
             {cat}
@@ -199,7 +207,16 @@ export default function MarketPage() {
 
       {/* Source Table */}
       {loading ? (
-        <div className="text-[#8b8b9e] text-center py-16 animate-pulse">Loading sources…</div>
+        <div className="space-y-2">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <div key={i} className="bg-[#111118] rounded-xl border border-[#1e1e2e] px-4 py-4 flex gap-4 items-center">
+              <Skeleton className="h-3 w-48" />
+              <Skeleton className="h-3 w-16 ml-auto" />
+              <Skeleton className="h-3 w-12" />
+              <Skeleton className="h-3 w-12" />
+            </div>
+          ))}
+        </div>
       ) : sources.length === 0 ? (
         <div className="text-[#8b8b9e] text-center py-16 bg-[#111118] rounded-xl border border-[#1e1e2e]">
           No sources registered yet. Be the first to register a source.
@@ -221,11 +238,15 @@ export default function MarketPage() {
                 </tr>
               </thead>
               <tbody>
-                {sources.map((s) => {
+                {(() => {
+                  const maxPaid = Math.max(...sources.map((s) => s.paidCount), 1);
+                  return sources.map((s) => {
                   const repAbs = Math.abs(s.reputation);
                   const repColor = repAbs <= 2 ? "text-[#8b8b9e]" : s.reputation > 0 ? "text-[#00ff88]" : "text-red-400";
+                  const leftColor = CATEGORY_LEFT_BORDER[s.category ?? "General"] ?? "#1e1e2e";
+                  const heatPct = Math.round((s.paidCount / maxPaid) * 100);
                   return (
-                    <tr key={s.id} className="border-b border-[#1e1e2e] hover:bg-[#0a0a0f]/40 transition-colors">
+                    <tr key={s.id} className="border-b border-[#1e1e2e] hover:bg-[#0a0a0f]/40 transition-colors" style={{ borderLeft: `3px solid ${leftColor}` }}>
                       <td className="px-4 py-3">
                         <Link
                           href={`/source/${s.id}`}
@@ -237,7 +258,7 @@ export default function MarketPage() {
                           {s.creatorName} ·{" "}
                           <a href={s.url} target="_blank" rel="noopener noreferrer"
                              className="text-[#6366f1] hover:text-indigo-300">
-                            {s.url.replace(/^https?:\/\//, "").slice(0, 40)}
+                            {s.url.replace(/^https?:\/\//, "").slice(0, 38)}
                           </a>
                           {" · "}
                           <Link href={`/creator/${s.payoutWallet}`} className="text-[#00ff88] hover:underline">
@@ -267,14 +288,22 @@ export default function MarketPage() {
                       <td className="px-4 py-3 text-right font-mono text-xs text-[#f0f0f5]">
                         ${(s.price / 1_000_000).toFixed(4)}
                       </td>
-                      <td className="px-4 py-3 text-right text-[#00ff88] font-mono text-xs">{s.paidCount}</td>
+                      <td className="px-4 py-3 text-right">
+                        <div className="flex items-center justify-end gap-2">
+                          <div className="w-16 h-1.5 rounded-full bg-[#1e1e2e] overflow-hidden hidden sm:block">
+                            <div className="h-full rounded-full bg-[#00ff88]/30 transition-all" style={{ width: `${heatPct}%` }} />
+                          </div>
+                          <span className="text-[#00ff88] font-mono text-xs">{s.paidCount}</span>
+                        </div>
+                      </td>
                       <td className="px-4 py-3 text-right text-red-400 font-mono text-xs">{s.refusedCount}</td>
                       <td className="px-4 py-3 text-center">
                         <Badge type={s.active ? "ACTIVE" : "INACTIVE"} label={s.active ? "Active" : "Inactive"} />
                       </td>
                     </tr>
                   );
-                })}
+                  });
+                })()}
               </tbody>
             </table>
           </div>
