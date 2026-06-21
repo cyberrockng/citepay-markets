@@ -37,11 +37,13 @@ export async function GET() {
     const client = createPublicClient({ chain: arcTestnet, transport: http(ARC_RPC) });
 
     // Arc RPC caps eth_getLogs at 10,000 blocks per request — scan in chunks.
-    // Agent wallet first got USDC on Jun 21 2026 (block ~48,010,000 on Arc testnet).
     const latestBlock = await client.getBlockNumber();
-    const START_BLOCK = 48_000_000n; // safe start before first bridge
+    const START_BLOCK = 48_000_000n; // safe start before first bridge (Jun 21 2026)
     const CHUNK = 9_000n;
-    const logs: Awaited<ReturnType<typeof client.getLogs>> = [];
+
+    const recipients = new Set<string>();
+    let totalMicro = 0n;
+    let paidCount = 0;
 
     for (let from = START_BLOCK; from <= latestBlock; from += CHUNK + 1n) {
       const to = from + CHUNK < latestBlock ? from + CHUNK : latestBlock;
@@ -52,21 +54,17 @@ export async function GET() {
         fromBlock: from,
         toBlock: to,
       });
-      logs.push(...chunk);
-    }
-
-    const recipients = new Set<string>();
-    let totalMicro = 0n;
-
-    for (const log of logs) {
-      const to = (log.args as { to?: string }).to;
-      const value = (log.args as { value?: bigint }).value ?? 0n;
-      if (to) recipients.add(to.toLowerCase());
-      totalMicro += value;
+      for (const log of chunk) {
+        const recipient = log.args.to;
+        const value = log.args.value ?? 0n;
+        if (recipient) recipients.add(recipient.toLowerCase());
+        totalMicro += value;
+        paidCount++;
+      }
     }
 
     const data: OnChainStats = {
-      paidCitations: logs.length,
+      paidCitations: paidCount,
       totalUSDCMicro: Number(totalMicro),
       uniqueCreators: recipients.size,
       agentWallet: PAYMENT_RECEIVER,
