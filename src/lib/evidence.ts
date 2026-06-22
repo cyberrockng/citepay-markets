@@ -17,20 +17,27 @@ export function buildEvidencePreimage(opts: {
   price: number;
   bonded: boolean;
   reputation: number;
+  contributionWeight?: number;
+  weightedAmount?: number;
 }): EvidencePreimage {
+  const scoreInputs: EvidencePreimage["scoreInputs"] = {
+    relevance: opts.scores.relevance,
+    price: formatUSDC(opts.price),
+    bonded: opts.bonded,
+    creatorReputation: opts.reputation,
+    budgetRemainingBefore: formatUSDC(opts.budgetBefore),
+  };
+  if (opts.contributionWeight !== undefined) {
+    scoreInputs.contributionWeight = opts.contributionWeight;
+    scoreInputs.weightedAmountPaid = formatUSDC(opts.weightedAmount ?? opts.price);
+  }
   return {
     query: opts.query,
     queryHash: opts.queryHash,
     sourceUrl: opts.sourceUrl,
     excerptUsed: opts.excerptUsed,
     decision: opts.decision,
-    scoreInputs: {
-      relevance: opts.scores.relevance,
-      price: formatUSDC(opts.price),
-      bonded: opts.bonded,
-      creatorReputation: opts.reputation,
-      budgetRemainingBefore: formatUSDC(opts.budgetBefore),
-    },
+    scoreInputs,
     reason: opts.reason,
     timestamp: new Date().toISOString(),
   };

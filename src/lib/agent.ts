@@ -185,5 +185,26 @@ export async function runBuyerAgent(
     });
   }
 
+  // Compute contribution weights for PAY decisions.
+  // Each cited source earns a share of the total creator budget proportional
+  // to its relevance score — same total USDC out, redistributed by contribution.
+  const payDecisions = decisions.filter((d) => d.decision === "PAY");
+  if (payDecisions.length > 0) {
+    const totalRelevance = payDecisions.reduce((sum, d) => sum + d.scores.relevance, 0);
+    const totalCreatorBudget = payDecisions.reduce((sum, d) => sum + d.source.price, 0);
+
+    for (const d of payDecisions) {
+      d.contributionWeight = totalRelevance > 0
+        ? Math.round((d.scores.relevance / totalRelevance) * 10000) / 10000
+        : Math.round((1 / payDecisions.length) * 10000) / 10000;
+      d.weightedAmount = Math.round(d.contributionWeight * totalCreatorBudget);
+    }
+
+    // Correct any rounding drift so total weighted === totalCreatorBudget
+    const weightedTotal = payDecisions.reduce((sum, d) => sum + (d.weightedAmount ?? 0), 0);
+    const drift = totalCreatorBudget - weightedTotal;
+    if (drift !== 0) payDecisions[0].weightedAmount = (payDecisions[0].weightedAmount ?? 0) + drift;
+  }
+
   return decisions;
 }

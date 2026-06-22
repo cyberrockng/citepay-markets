@@ -42,6 +42,8 @@ export interface AgentDecision {
   policyRulesPassed: string[];
   policyRulesFailed: string[];
   policyReason: string | null;
+  contributionWeight?: number; // 0–1, share of creator budget this source earned
+  weightedAmount?: number;     // actual micro-USDC paid (weighted, not flat listed price)
 }
 
 export interface EvidencePreimage {
@@ -56,6 +58,8 @@ export interface EvidencePreimage {
     bonded: boolean;
     creatorReputation: number;
     budgetRemainingBefore: string;
+    contributionWeight?: number; // share of creator budget (PAY only)
+    weightedAmountPaid?: string; // actual payment after weighting (PAY only)
   };
   reason: string;
   timestamp: string;

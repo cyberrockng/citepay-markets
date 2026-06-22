@@ -15,6 +15,8 @@ interface QueryDecision {
   scores: { relevance: number; price: number; bond: number; reputation: number; total: number };
   reason: string;
   amountPaid: number;
+  sourcePrice: number;
+  contributionWeight: number | null;
   txHash: string | null;
   evidenceHash: string;
   receiptUrl: string;
@@ -283,8 +285,15 @@ export default function AskPage() {
                             {d.source}
                           </a>
                         </td>
-                        <td className="px-4 py-3 text-right text-[#f0f0f5] font-mono text-xs">
-                          ${(d.amountPaid / 1_000_000).toFixed(4)}
+                        <td className="px-4 py-3 text-right font-mono text-xs">
+                          <span className={d.decision === "PAY" ? "text-[#00ff88]" : "text-[#8b8b9e]"}>
+                            ${(d.amountPaid / 1_000_000).toFixed(4)}
+                          </span>
+                          {d.decision === "PAY" && d.contributionWeight !== null && (
+                            <span className="ml-1.5 text-[#a78bfa] text-[10px]">
+                              ({(d.contributionWeight * 100).toFixed(0)}%)
+                            </span>
+                          )}
                         </td>
                         <td className="px-4 py-3 text-right text-[#f0f0f5]">{d.scores.relevance}%</td>
                         <td className="px-4 py-3 text-right text-[#f0f0f5]">{d.scores.total}</td>

@@ -121,22 +121,26 @@ export async function POST(req: NextRequest) {
       price: d.source.price,
       bonded: d.source.bonded,
       reputation: d.source.reputation,
+      contributionWeight: d.contributionWeight,
+      weightedAmount: d.weightedAmount,
     });
     const evidenceHash = hashEvidence(preimage);
     const agentSignature = await signReceiptHash(evidenceHash);
 
-    // Pay creator if decision is PAY (not BLOCKED_BY_POLICY)
+    // Pay creator if decision is PAY (not BLOCKED_BY_POLICY).
+    // Use weighted amount: same total USDC out, redistributed by relevance contribution.
     if (d.decision === "PAY") {
+      const amountToPayMicro = d.weightedAmount ?? d.source.price;
       const payment = await payCreator({
         creatorWallet: d.source.payoutWallet,
-        amountMicroUsdc: d.source.price,
+        amountMicroUsdc: amountToPayMicro,
         sourceId: d.source.id,
         receiptId,
       });
       txHash = payment.txHash;
       paymentStatus = payment.status;
-      totalPaid += d.source.price;
-      budgetRemaining -= d.source.price;
+      totalPaid += amountToPayMicro;
+      budgetRemaining -= amountToPayMicro;
     }
 
     // Persist receipt FIRST — anchor update must come after insert
@@ -151,7 +155,7 @@ export async function POST(req: NextRequest) {
       queryHash,
       sourceTitle: d.source.title,
       sourceUrl: d.source.url,
-      amountPaid: d.decision === "PAY" ? d.source.price : 0,
+      amountPaid: d.decision === "PAY" ? (d.weightedAmount ?? d.source.price) : 0,
       evidenceHash,
       evidencePreimage: preimage,
       contentHashAtDecision: d.source.contentHash,
@@ -164,7 +168,7 @@ export async function POST(req: NextRequest) {
       policyRulesFailed: d.policyRulesFailed,
       policyReason: d.policyReason,
       agentSignature,
-      budgetBefore: budgetRemaining + (d.decision === "PAY" ? d.source.price : 0),
+      budgetBefore: budgetRemaining + (d.decision === "PAY" ? (d.weightedAmount ?? d.source.price) : 0),
       budgetAfter: budgetRemaining,
       challenged: false,
       createdAt: new Date().toISOString(),
@@ -176,7 +180,7 @@ export async function POST(req: NextRequest) {
     agentEvents.emit("decision", {
       decision: d.decision,
       sourceTitle: d.source.title,
-      amountPaid: d.decision === "PAY" ? d.source.price : 0,
+      amountPaid: d.decision === "PAY" ? (d.weightedAmount ?? d.source.price) : 0,
       evidenceHash,
       query,
       timestamp: new Date().toISOString(),
@@ -203,8 +207,9 @@ export async function POST(req: NextRequest) {
       url: d.source.url,
       scores: d.scores,
       reason: d.reason,
-      amountPaid: d.decision === "PAY" ? d.source.price : 0,
+      amountPaid: d.decision === "PAY" ? (d.weightedAmount ?? d.source.price) : 0,
       sourcePrice: d.source.price,
+      contributionWeight: d.contributionWeight ?? null,
       sourceBonded: d.source.bonded,
       sourceOnChainId: d.source.onChainId ?? null,
       txHash,

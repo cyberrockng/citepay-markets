@@ -137,6 +137,14 @@ export default function ReceiptPage({ params }: { params: Promise<{ id: string }
             accent={isPay ? "text-[#00ff88]" : "text-[#8b8b9e]"}
             mono={isPay}
           />
+          {isPay && receipt.evidencePreimage?.scoreInputs?.contributionWeight !== undefined && (
+            <DataRow
+              label="Contribution Weight"
+              value={`${(receipt.evidencePreimage.scoreInputs.contributionWeight * 100).toFixed(1)}% of creator budget (relevance-weighted)`}
+              accent="text-[#a78bfa]"
+              mono
+            />
+          )}
           <DataRow label="Timestamp" value={new Date(receipt.createdAt).toLocaleString()} />
           <DataRow label="Budget Before" value={`$${(receipt.budgetBefore / 1_000_000).toFixed(4)} USDC`} mono />
           <DataRow label="Budget After" value={`$${(receipt.budgetAfter / 1_000_000).toFixed(4)} USDC`} mono />
