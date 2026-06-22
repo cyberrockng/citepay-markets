@@ -1,5 +1,11 @@
 export type Decision = "PAY" | "REFUSE" | "SKIP" | "BLOCKED_BY_POLICY";
 
+export interface SplitRecipient {
+  wallet: string;
+  basisPoints: number; // out of 10000 (e.g. 6000 = 60%)
+  label: string;       // "author" | "editor" | "publisher" | "platform"
+}
+
 export interface Source {
   id: string;
   title: string;
@@ -21,6 +27,7 @@ export interface Source {
   createdAt: string;
   onChainId?: number | null; // CitePayMarket.sol sourceId once registered
   category?: string; // e.g. "Protocol", "Research", "Infrastructure", "AI/Agents"
+  splits?: SplitRecipient[] | null; // revenue split — if set, payment is distributed atomically
 }
 
 export interface ScoreBreakdown {

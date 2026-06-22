@@ -120,6 +120,8 @@ function migrate(db: Database.Database) {
     "ALTER TABLE receipts ADD COLUMN policy_reason         TEXT    DEFAULT NULL",
     "ALTER TABLE receipts ADD COLUMN agent_signature       TEXT    DEFAULT NULL",
     "ALTER TABLE sources  ADD COLUMN category              TEXT    DEFAULT 'General'",
+    "ALTER TABLE sources  ADD COLUMN splits                TEXT    DEFAULT NULL",
+    "ALTER TABLE receipts ADD COLUMN split_payments        TEXT    DEFAULT NULL",
   ]) {
     try { db.exec(sql); } catch { /* column already exists */ }
   }
@@ -130,9 +132,27 @@ function migrate(db: Database.Database) {
 // on_chain_id values are permanent — assigned when sources were registered on
 // CitePayMarket.sol (0x396cf1646EbAeF85ee8428C2d9239C46Ae956085, Arc Testnet)
 const SEED_SOURCES = [
-  { onChainId: 1,  category: "Protocol",       title: "x402: HTTP-Native Payments for AI Agents", url: "https://x402.org", creatorName: "Coinbase Developer Platform", creatorHandle: "@coinbase", payoutWallet: "0x3a0FfFE64537148b3766dA52D983058F98A4e3ce", price: 2000, bond: 10000, contentHash: "70f01a7977012702b243e6a6c2509f6a603b7a61e0241a6f0c3ce845949e1d57", description: "x402 is an open protocol for machine-native payments using HTTP 402 Payment Required. It enables AI agents and automated systems to pay for resources autonomously using USDC on Base." },
-  { onChainId: 2,  category: "Infrastructure", title: "Circle's Programmable Wallets: Powering Agentic Finance", url: "https://developers.circle.com/w3s/programmable-wallets", creatorName: "Circle Developer Docs", creatorHandle: "@circle", payoutWallet: "0x72101E4882159f3e0B3c176951AcA7816A1710e2", price: 3000, bond: 10000, contentHash: "33a7a9314b96f7dbea847c48f7d7cb5ed74537485913516e043b565795a930b5", description: "Circle's Programmable Wallets enable developers to create and manage wallets at scale. USDC transfers on Arc Testnet are instant and near-zero cost, making them ideal for micro-payments between AI agents and content creators." },
-  { onChainId: 3,  category: "Research",       title: "Agentic AI: How Autonomous Agents Will Transform Commerce", url: "https://a16z.com/agentic-ai", creatorName: "Andreessen Horowitz", creatorHandle: "@a16z", payoutWallet: "0xbe575CcebE08895e61c8E45652ff63E4a663d4D9", price: 4000, bond: 5000, contentHash: "2b02947de287cdddc2d2440d37cc1c5961cb7d70f3407e609f400d757b58dac6", description: "Agentic AI systems — autonomous agents that plan, act, and pay for resources — represent a fundamental shift in how software works. These agents need on-chain payment rails to operate at scale without human intervention." },
+  { onChainId: 1,  category: "Protocol",       title: "x402: HTTP-Native Payments for AI Agents", url: "https://x402.org", creatorName: "Coinbase Developer Platform", creatorHandle: "@coinbase", payoutWallet: "0x3a0FfFE64537148b3766dA52D983058F98A4e3ce", price: 2000, bond: 10000, contentHash: "70f01a7977012702b243e6a6c2509f6a603b7a61e0241a6f0c3ce845949e1d57", description: "x402 is an open protocol for machine-native payments using HTTP 402 Payment Required. It enables AI agents and automated systems to pay for resources autonomously using USDC on Base.",
+    splits: [
+      { wallet: "0x3a0FfFE64537148b3766dA52D983058F98A4e3ce", basisPoints: 7000, label: "author" },
+      { wallet: "0x72101E4882159f3e0B3c176951AcA7816A1710e2", basisPoints: 2000, label: "editor" },
+      { wallet: "0x9925e934B9aB91353F8525135A83112dF3FC567a", basisPoints: 1000, label: "publisher" },
+    ],
+  },
+  { onChainId: 2,  category: "Infrastructure", title: "Circle's Programmable Wallets: Powering Agentic Finance", url: "https://developers.circle.com/w3s/programmable-wallets", creatorName: "Circle Developer Docs", creatorHandle: "@circle", payoutWallet: "0x72101E4882159f3e0B3c176951AcA7816A1710e2", price: 3000, bond: 10000, contentHash: "33a7a9314b96f7dbea847c48f7d7cb5ed74537485913516e043b565795a930b5", description: "Circle's Programmable Wallets enable developers to create and manage wallets at scale. USDC transfers on Arc Testnet are instant and near-zero cost, making them ideal for micro-payments between AI agents and content creators.",
+    splits: [
+      { wallet: "0x72101E4882159f3e0B3c176951AcA7816A1710e2", basisPoints: 6000, label: "author" },
+      { wallet: "0xfccead074A3485751351f6b9FF893866A26632AF", basisPoints: 2500, label: "editor" },
+      { wallet: "0x578087F20dfF74e3dB0841C9514285648B4339DE", basisPoints: 1500, label: "platform" },
+    ],
+  },
+  { onChainId: 3,  category: "Research",       title: "Agentic AI: How Autonomous Agents Will Transform Commerce", url: "https://a16z.com/agentic-ai", creatorName: "Andreessen Horowitz", creatorHandle: "@a16z", payoutWallet: "0xbe575CcebE08895e61c8E45652ff63E4a663d4D9", price: 4000, bond: 5000, contentHash: "2b02947de287cdddc2d2440d37cc1c5961cb7d70f3407e609f400d757b58dac6", description: "Agentic AI systems — autonomous agents that plan, act, and pay for resources — represent a fundamental shift in how software works. These agents need on-chain payment rails to operate at scale without human intervention.",
+    splits: [
+      { wallet: "0xbe575CcebE08895e61c8E45652ff63E4a663d4D9", basisPoints: 5000, label: "author" },
+      { wallet: "0xF7b09B900A2676f8c2D8bdFE82FF4B0c4C5A6751", basisPoints: 3000, label: "co-author" },
+      { wallet: "0xa20C8F958a31A78Be4bcf33CecA8B463636050ce", basisPoints: 2000, label: "publisher" },
+    ],
+  },
   { onChainId: 4,  category: "Research",       title: "The Creator Economy in the Age of AI: Who Gets Paid?", url: "https://mirror.xyz/citepay/creator-economy-ai", creatorName: "Research by CitePay", creatorHandle: "@citepay", payoutWallet: "0xfccead074A3485751351f6b9FF893866A26632AF", price: 2000, bond: 0, contentHash: "256329962cf8c93150940eb17d0a305c284d2b6c0a406a04add51ac658cffb92", description: "As large language models increasingly answer questions by drawing on creator content without attribution or compensation, a new payment layer is needed. CitePay Markets solves this by making citations accountable and paid." },
   { onChainId: 5,  category: "Infrastructure", title: "Base: The Onchain Platform for Everyone", url: "https://base.org", creatorName: "Base Documentation", creatorHandle: "@base", payoutWallet: "0x6ed34b116B5040072619f83Dc25f64C70584e1F6", price: 1500, bond: 10000, contentHash: "d282cc888b86dbd8028f9f6af714587c56a00f7264430541e233df145250acb6", description: "Base is a secure, low-cost, developer-friendly Ethereum L2. With near-zero gas fees and USDC native support, Base is the ideal chain for micro-payment applications like AI citation markets." },
   { onChainId: 6,  category: "Research",       title: "Reputation Systems in Decentralized Marketplaces", url: "https://vitalik.eth.limo/general/2023/07/24/biometric.html", creatorName: "Vitalik Buterin", creatorHandle: "@vitalik", payoutWallet: "0xF7b09B900A2676f8c2D8bdFE82FF4B0c4C5A6751", price: 5000, bond: 20000, contentHash: "610d8c75ff1294ae99afa1f0049511f7ead82b6c2f98caff07ca7e881dafe62b", description: "Reputation in decentralized systems should be earned through verifiable on-chain actions, not assigned by central authorities. Source credibility bonds and pay/refuse ratios create objective, game-resistant reputation scores." },
@@ -157,14 +177,15 @@ function seedIfEmpty(db: Database.Database) {
   if (count > 0) return;
   const stmt = db.prepare(`
     INSERT INTO sources (id, title, url, creator_name, creator_handle, payout_wallet,
-      content_hash, description, price, bond, bonded, active, on_chain_id, category)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?)
+      content_hash, description, price, bond, bonded, active, on_chain_id, category, splits)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?)
   `);
   const insertMany = db.transaction((rows: typeof SEED_SOURCES) => {
     for (const s of rows) {
       stmt.run(uuidv4(), s.title, s.url, s.creatorName, s.creatorHandle,
         s.payoutWallet, s.contentHash, s.description, s.price, s.bond,
-        s.bond > 0 ? 1 : 0, s.onChainId, s.category);
+        s.bond > 0 ? 1 : 0, s.onChainId, s.category,
+        "splits" in s && s.splits ? JSON.stringify(s.splits) : null);
     }
   });
   insertMany(SEED_SOURCES);
@@ -247,6 +268,7 @@ function rowToSource(r: Record<string, unknown>): Source {
     createdAt: r.created_at as string,
     onChainId: (r.on_chain_id as number | null) ?? null,
     category: (r.category as string | null) ?? "General",
+    splits: r.splits ? JSON.parse(r.splits as string) : null,
   };
 }
 

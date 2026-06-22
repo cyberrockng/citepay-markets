@@ -93,3 +93,54 @@ export async function payCreator(opts: {
   const txHash = `0x${sha256(`${creatorWallet}:${amountMicroUsdc}:${receiptId}:${sourceId}`)}`;
   return { txHash, amountMicroUsdc, recipient: creatorWallet, status: "simulated" };
 }
+
+export interface SplitPayment {
+  wallet: string;
+  label: string;
+  basisPoints: number;
+  amountMicroUsdc: number;
+  txHash: string;
+  status: string;
+}
+
+/**
+ * Distribute a citation payment atomically across multiple recipients.
+ * Each recipient gets (totalMicroUsdc * basisPoints / 10000).
+ * Fires parallel transfers — all settle or all fall back to simulation.
+ */
+export async function payWithSplits(opts: {
+  splits: Array<{ wallet: string; basisPoints: number; label: string }>;
+  totalMicroUsdc: number;
+  sourceId: string;
+  receiptId: string;
+}): Promise<{ payments: SplitPayment[]; totalPaid: number }> {
+  const { splits, totalMicroUsdc, sourceId, receiptId } = opts;
+
+  const sum = splits.reduce((a, s) => a + s.basisPoints, 0);
+  if (sum !== 10000) throw new Error(`Citation splits must sum to 10000 basis points, got ${sum}`);
+
+  const results = await Promise.all(
+    splits.map(async (s) => {
+      const amount = Math.floor(totalMicroUsdc * s.basisPoints / 10000);
+      const result = await payCreator({
+        creatorWallet: s.wallet,
+        amountMicroUsdc: amount,
+        sourceId,
+        receiptId: `${receiptId}-${s.label}`,
+      });
+      return {
+        wallet: s.wallet,
+        label: s.label,
+        basisPoints: s.basisPoints,
+        amountMicroUsdc: amount,
+        txHash: result.txHash,
+        status: result.status,
+      };
+    })
+  );
+
+  return {
+    payments: results,
+    totalPaid: results.reduce((a, r) => a + r.amountMicroUsdc, 0),
+  };
+}
