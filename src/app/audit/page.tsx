@@ -3,6 +3,54 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { BackButton } from "@/components/back-button";
 
+interface AuditSummaryData {
+  summary: {
+    totalReceipts: number;
+    uniqueCreatorsPaid: number;
+    totalUSDCPaid: string;
+    byPurpose: Record<string, { count: number; totalMicro: number }>;
+  };
+}
+
+function AuditSummaryPanel() {
+  const [data, setData] = useState<AuditSummaryData | null>(null);
+
+  useEffect(() => {
+    fetch("/api/audit-summary?limit=200")
+      .then((r) => r.json())
+      .then(setData)
+      .catch(() => {});
+  }, []);
+
+  if (!data) return <div className="text-[#4a4a5e] text-xs font-mono animate-pulse">Loading audit data…</div>;
+
+  return (
+    <div className="space-y-3">
+      <div className="grid grid-cols-3 gap-3">
+        {[
+          { label: "Total receipts",      value: data.summary.totalReceipts },
+          { label: "Unique creators paid", value: data.summary.uniqueCreatorsPaid },
+          { label: "Total USDC paid",     value: `$${data.summary.totalUSDCPaid}` },
+        ].map(({ label, value }) => (
+          <div key={label} className="bg-[#0a0a0f] rounded-lg p-3 border border-[#1e1e2e]">
+            <div className="text-[10px] text-[#4a4a5e] mb-1">{label}</div>
+            <div className="text-sm font-mono text-[#00ff88]">{value}</div>
+          </div>
+        ))}
+      </div>
+      <div className="space-y-1.5">
+        {Object.entries(data.summary.byPurpose).map(([code, stats]) => (
+          <div key={code} className="flex items-center gap-3 text-xs font-mono px-2 py-1 rounded bg-[#0a0a0f] border border-[#1e1e2e]">
+            <span className="text-[#6366f1] w-20 flex-shrink-0">{code}</span>
+            <span className="text-[#8b8b9e] flex-1">{stats.count} events</span>
+            <span className="text-[#00ff88]">${(stats.totalMicro / 1e6).toFixed(6)}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 const ARC_RPC    = "https://rpc.testnet.arc.network";
 const DCW_WALLET = "0xa539a18b55e5e3b98892c724f8f75914c0b69942";
 const USDC       = "0x3600000000000000000000000000000000000000";
@@ -86,6 +134,7 @@ export default function AuditPage() {
                   { label: "USDC balance",     value: balance ? `$${balance}` : "—",          color: "text-[#00ff88]" },
                   { label: "Outbound txs",     value: txCount?.toString() ?? "—",             color: "text-[#6366f1]" },
                   { label: "USDC contract",    value: USDC,                                   color: "text-[#8b8b9e]" },
+                  { label: "Payment taxonomy", value: "CITE · QUERY_FEE · AGENT_REWARD · BOND_SLASH", color: "text-[#8b8b9e]" },
                 ].map(({ label, value, color }) => (
                   <div key={label} className="flex items-start justify-between gap-4 border-b border-[#1e1e2e] pb-3 last:border-0 last:pb-0">
                     <span className="text-[#4a4a5e] w-36 flex-shrink-0 text-xs">{label}</span>
@@ -147,6 +196,22 @@ export default function AuditPage() {
               <div className="mt-4 pt-4 border-t border-[#1e1e2e] text-[10px] text-[#4a4a5e]">
                 <span>Policy enforcement: </span>
                 <span className="text-[#8b8b9e]">BLOCKED_BY_POLICY decisions anchored on CitationMandate.sol</span>
+              </div>
+            </div>
+
+            {/* Citation Auditor */}
+            <div className="bg-[#111118] rounded-xl border border-[#6366f1]/20 p-6">
+              <div className="text-[10px] font-mono text-[#4a4a5e] mb-2 tracking-widest">CITATION AUDITOR</div>
+              <div className="text-xs text-[#8b8b9e] mb-3">
+                Machine-readable audit trail. Filter by agent address, purpose code, or date range.
+              </div>
+              <div className="space-y-1.5 font-mono text-xs text-[#4a4a5e] mb-4">
+                <div>GET /api/audit-summary</div>
+                <div>GET /api/audit-summary?agent=0xa539…&amp;purpose=CITE&amp;limit=50</div>
+                <div>GET /api/audit-summary?since=2026-06-01</div>
+              </div>
+              <div className="border-t border-[#1e1e2e] pt-4">
+                <AuditSummaryPanel />
               </div>
             </div>
 

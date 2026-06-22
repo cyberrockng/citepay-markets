@@ -151,6 +151,11 @@ export async function POST(req: NextRequest) {
     }
 
     // Persist receipt FIRST — anchor update must come after insert
+    const purposeCode = d.decision === "PAY" ? "CITE"
+      : d.decision === "REFUSE" ? "REFUSE"
+      : d.decision === "BLOCKED_BY_POLICY" ? "BLOCKED"
+      : "SKIP";
+
     const receipt = {
       id: receiptId,
       sourceId: d.source.id,
@@ -179,6 +184,7 @@ export async function POST(req: NextRequest) {
       budgetAfter: budgetRemaining,
       challenged: false,
       createdAt: new Date().toISOString(),
+      purposeCode,
     };
 
     insertReceipt(receipt);
@@ -244,6 +250,7 @@ export async function POST(req: NextRequest) {
       policyRulesFailed: d.policyRulesFailed,
       policyReason: d.policyReason,
       sufficiencyStop: d.sufficiencyStop ?? false,
+      purposeCode,
     });
   }
 

@@ -369,6 +369,25 @@ Powered by CitePay Markets`}
         </div>
       )}
 
+      {/* Purpose Code */}
+      {receipt.purposeCode && (
+        <div className="bg-[#0a0a0f] border border-[#1e1e2e] rounded-xl p-5 mb-4 font-mono">
+          <div className="text-[10px] text-[#4a4a5e] tracking-widest mb-3">PAYMENT PURPOSE</div>
+          <div className="flex items-center gap-3">
+            <span className="text-sm font-bold text-[#6366f1]">{receipt.purposeCode}</span>
+            <span className="text-xs text-[#8b8b9e]">·</span>
+            <span className="text-xs text-[#8b8b9e]">
+              {receipt.purposeCode === "CITE"         ? "Citation micropayment to creator"
+               : receipt.purposeCode === "REFUSE"     ? "Relevance below threshold — no payment"
+               : receipt.purposeCode === "BLOCKED"    ? "Policy enforcement — spend cap or bond requirement"
+               : receipt.purposeCode === "AGENT_REWARD" ? "Agent coordination reward"
+               : receipt.purposeCode === "BOND_SLASH" ? "Challenge resolved — content modified after payment"
+               : receipt.purposeCode}
+            </span>
+          </div>
+        </div>
+      )}
+
       {/* Content Integrity Proof */}
       {receipt.contentHashAtDecision && (
         <div className="bg-[#0a0a0f] border border-[#1e1e2e] rounded-xl p-5 mb-4">

@@ -121,6 +121,7 @@ function migrate(db: Database.Database) {
     "ALTER TABLE receipts ADD COLUMN policy_reason         TEXT    DEFAULT NULL",
     "ALTER TABLE receipts ADD COLUMN agent_signature       TEXT    DEFAULT NULL",
     "ALTER TABLE sources  ADD COLUMN category              TEXT    DEFAULT 'General'",
+    "ALTER TABLE receipts ADD COLUMN purpose_code          TEXT    DEFAULT NULL",
   ]) {
     try { db.exec(sql); } catch { /* column already exists */ }
   }
@@ -267,8 +268,9 @@ export function insertReceipt(r: Receipt): void {
       decision, query, query_hash, source_title, source_url, amount_paid,
       evidence_hash, evidence_preimage, content_hash_at_decision, scores, reason,
       tx_hash, payment_status, policy_profile, policy_rules_passed, policy_rules_failed,
-      policy_reason, agent_signature, budget_before, budget_after, challenged, created_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      policy_reason, agent_signature, budget_before, budget_after, challenged, created_at,
+      purpose_code)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).run(
     r.id, r.sourceId, r.queryId, r.agentAddress, r.creatorWallet,
     r.decision, r.query, r.queryHash, r.sourceTitle, r.sourceUrl, r.amountPaid,
@@ -278,7 +280,8 @@ export function insertReceipt(r: Receipt): void {
     r.policyRulesPassed ? JSON.stringify(r.policyRulesPassed) : null,
     r.policyRulesFailed ? JSON.stringify(r.policyRulesFailed) : null,
     r.policyReason ?? null, r.agentSignature ?? null,
-    r.budgetBefore, r.budgetAfter, r.challenged ? 1 : 0, r.createdAt
+    r.budgetBefore, r.budgetAfter, r.challenged ? 1 : 0, r.createdAt,
+    r.purposeCode ?? null
   );
 }
 
@@ -305,6 +308,23 @@ export function getAllReceipts(limit = 50): Receipt[] {
 
 export function getRecentReceipts(limit = 8): Receipt[] {
   return getDb().prepare("SELECT * FROM receipts ORDER BY created_at DESC LIMIT ?").all(limit).map((r) => rowToReceipt(r as Record<string, unknown>));
+}
+
+export function getReceiptsFiltered(opts: {
+  agentAddress?: string | null;
+  purposeCode?: string | null;
+  since?: string | null;
+  limit?: number;
+}): Receipt[] {
+  const db = getDb();
+  let sql = `SELECT * FROM receipts WHERE 1=1`;
+  const params: (string | number)[] = [];
+  if (opts.agentAddress) { sql += ` AND agent_address = ?`; params.push(opts.agentAddress); }
+  if (opts.purposeCode)  { sql += ` AND purpose_code = ?`;  params.push(opts.purposeCode); }
+  if (opts.since)        { sql += ` AND created_at >= ?`;    params.push(opts.since); }
+  sql += ` ORDER BY created_at DESC LIMIT ?`;
+  params.push(opts.limit ?? 50);
+  return db.prepare(sql).all(...params).map((r) => rowToReceipt(r as Record<string, unknown>));
 }
 
 export function markReceiptChallenged(id: string): void {
@@ -342,6 +362,7 @@ function rowToReceipt(r: Record<string, unknown>): Receipt {
     createdAt: r.created_at as string,
     onChainReceiptId: (r.on_chain_receipt_id as number | null) ?? null,
     onChainTxHash: (r.on_chain_tx_hash as string | null) ?? null,
+    purposeCode: (r.purpose_code as string | null) ?? null,
   };
 }
 

@@ -406,6 +406,40 @@ const { data } = await client.pay("https://citepay-markets.vercel.app/api/ask", 
         </div>
       </section>
 
+      {/* ── Institutional Framing ── */}
+      <section className="max-w-4xl mx-auto px-6 py-10 border-t border-[#1e1e2e]">
+        <div className="rounded-2xl border border-[#6366f1]/20 bg-[#111118] p-6 md:p-8">
+          <div className="text-[10px] font-mono text-[#6366f1] tracking-widest mb-3">FOR INSTITUTIONS DEPLOYING AI AGENTS</div>
+          <p className="text-sm text-[#8b8b9e] leading-relaxed max-w-2xl mb-5">
+            CitePay provides a compliance-grade, on-chain attribution layer for every USDC spent by AI agents on knowledge retrieval.
+            Every citation is receipted with a SHA-256 evidence hash, purpose code, content integrity proof, and ArcScan-verifiable transaction.
+            Policy enforcement (spend caps, bond requirements, relevance thresholds) is anchored on-chain — not a config file a developer can change.
+          </p>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
+            {[
+              { code: "CITE",         desc: "Citation micropayment" },
+              { code: "QUERY_FEE",    desc: "x402 gateway fee"      },
+              { code: "AGENT_REWARD", desc: "Coordination reward"   },
+              { code: "BOND_SLASH",   desc: "Accountability slash"  },
+            ].map(({ code, desc }) => (
+              <div key={code} className="bg-[#0a0a0f] rounded-lg p-3 border border-[#1e1e2e]">
+                <div className="font-mono text-xs text-[#6366f1] mb-1">{code}</div>
+                <div className="text-[10px] text-[#4a4a5e]">{desc}</div>
+              </div>
+            ))}
+          </div>
+          <div className="text-[10px] font-mono text-[#4a4a5e] flex flex-wrap gap-4">
+            <a href="/api/audit-summary" className="text-[#6366f1] hover:text-indigo-300 transition-colors">
+              /api/audit-summary ↗
+            </a>
+            <a href="/audit" className="text-[#6366f1] hover:text-indigo-300 transition-colors">
+              On-chain audit →
+            </a>
+            <span>Neither Muse DNA nor AXON Protocol has a compliance taxonomy with real data behind it.</span>
+          </div>
+        </div>
+      </section>
+
       {/* ── Footer ── */}
       <footer className="border-t border-[#1e1e2e] py-10">
         <div className="max-w-4xl mx-auto px-6 flex flex-col sm:flex-row items-center justify-between gap-4">

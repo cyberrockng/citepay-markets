@@ -97,6 +97,7 @@ export interface Receipt {
   createdAt: string;
   onChainReceiptId?: number | null; // CitePayMarket.sol receiptId
   onChainTxHash?: string | null;    // tx that wrote to the contract
+  purposeCode?: string | null;      // ISO-style: CITE | QUERY_FEE | AGENT_REWARD | BOND_SLASH | REFUSE | BLOCKED
 }
 
 export interface QueryRecord {
