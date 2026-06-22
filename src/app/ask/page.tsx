@@ -4,14 +4,14 @@ import Link from "next/link";
 import { useAccount, useConnect, useDisconnect, useSignMessage } from "wagmi";
 import { injected } from "@wagmi/connectors";
 import { SiweMessage } from "siwe";
-import { generatePrivateKey } from "viem/accounts";
 import { decisionStyle } from "@/components/ui";
 import { BackButton } from "@/components/back-button";
 import { POLICY_PRESETS, type AgentPolicy } from "@/lib/policy";
 import { arcTestnet } from "@/lib/wagmi";
 
 type Step = "idle" | "waiting_payment" | "running" | "done" | "error";
-type WalletStep = "disconnected" | "connected" | "siwe_pending" | "authed" | "funding" | "funded";
+type WalletStep = "disconnected" | "connected" | "siwe_pending" | "authed" | "funding" | "funded" | "circle_creating" | "circle_ready";
+type WalletMode = "eoa" | "circle";
 
 interface TraceEntry {
   id: number;
@@ -77,10 +77,13 @@ export default function AskPage() {
   const [traces, setTraces]       = useState<TraceEntry[]>([]);
 
   // Non-custodial wallet state
-  const [walletStep, setWalletStep]   = useState<WalletStep>("disconnected");
-  const [siweAddress, setSiweAddress] = useState<string | null>(null);
-  const [sessionKey, setSessionKey]   = useState<`0x${string}` | null>(null);
-  const [walletError, setWalletError] = useState("");
+  const [walletStep, setWalletStep]       = useState<WalletStep>("disconnected");
+  const [walletMode, setWalletMode]       = useState<WalletMode>("circle");
+  const [siweAddress, setSiweAddress]     = useState<string | null>(null);
+  const [sessionKey, setSessionKey]       = useState<`0x${string}` | null>(null);
+  const [circleWalletId, setCircleWalletId]       = useState<string | null>(null);
+  const [circleWalletAddress, setCircleWalletAddress] = useState<string | null>(null);
+  const [walletError, setWalletError]     = useState("");
 
   const consoleRef = useRef<HTMLDivElement>(null);
   const traceIdRef = useRef(0);
@@ -93,13 +96,16 @@ export default function AskPage() {
 
   const isActive      = step !== "idle" && step !== "error" && step !== "done";
   const policy: AgentPolicy = POLICY_PRESETS[policyKey];
-  const useWalletMode = walletStep === "funded" && sessionKey !== null;
+  const useWalletMode = (walletStep === "funded" && sessionKey !== null) ||
+                        (walletStep === "circle_ready" && circleWalletId !== null);
 
   useEffect(() => {
     if (!isConnected && walletStep !== "disconnected") {
       setWalletStep("disconnected");
       setSiweAddress(null);
       setSessionKey(null);
+      setCircleWalletId(null);
+      setCircleWalletAddress(null);
     } else if (isConnected && walletStep === "disconnected") {
       setWalletStep("connected");
     }
@@ -158,8 +164,8 @@ export default function AskPage() {
     if (!siweAddress) return;
     setWalletError("");
     setWalletStep("funding");
-    // Generate ephemeral key — lives in browser memory only, never sent to server
-    const key      = generatePrivateKey();
+    const { generatePrivateKey } = await import("viem/accounts");
+    const key = generatePrivateKey();
     const { sessionEOAAddress } = await import("@/lib/x402-client");
     const sessAddr = sessionEOAAddress(key);
     try {
@@ -177,11 +183,33 @@ export default function AskPage() {
     }
   }
 
+  async function handleCreateCircleWallet() {
+    if (!siweAddress) return;
+    setWalletError("");
+    setWalletStep("circle_creating");
+    try {
+      const res = await fetch("/api/auth/circle-session", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ siweAddress }),
+      }).then((r) => r.json());
+      if (res.error) throw new Error(res.error);
+      setCircleWalletId(res.walletId);
+      setCircleWalletAddress(res.address);
+      setWalletStep("circle_ready");
+    } catch (err) {
+      setWalletError(String(err));
+      setWalletStep("authed");
+    }
+  }
+
   async function handleDisconnect() {
     await disconnectAsync();
     setWalletStep("disconnected");
     setSiweAddress(null);
     setSessionKey(null);
+    setCircleWalletId(null);
+    setCircleWalletAddress(null);
   }
 
   // ── Stream event handler ──────────────────────────────────────────────────
@@ -236,11 +264,67 @@ export default function AskPage() {
     traceIdRef.current = 0;
     startMsRef.current = Date.now();
     setStep("waiting_payment");
-    if (useWalletMode && sessionKey) {
+    if (walletStep === "circle_ready" && circleWalletId && circleWalletAddress && siweAddress) {
+      await runCircleWalletMode(circleWalletId, circleWalletAddress, siweAddress);
+    } else if (walletStep === "funded" && sessionKey) {
       await runWalletMode(sessionKey);
     } else {
       await runDemoMode();
     }
+  }
+
+  async function runCircleWalletMode(walletId: string, walletAddress: string, siweAddr: string) {
+    // Step 1: Prove the 402 gate
+    addTrace({ icon: "→", text: "POST /api/ask", sub: "no payment header — proving x402 gate" });
+    const res1 = await fetch("/api/ask", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ query, budget: parseFloat(budget), policy: policyKey }),
+    });
+    if (res1.status !== 402) { setStep("error"); setError(`Expected 402, got ${res1.status}`); return; }
+    addTrace({ icon: "←", text: "402 Payment Required", sub: "x402 payment requirements received", badge: "402", badgeClass: "text-amber-400 border-amber-600/40 bg-amber-900/10" });
+
+    // Step 2: Sign EIP-3009 via Circle DCW HSM — no browser key
+    addTrace({ icon: "◈", text: "Requesting EIP-3009 signature from Circle Programmable Wallet…", sub: `DCW ${walletId.slice(0, 8)}… · HSM signs, no raw key in browser`, badgeClass: "text-[#a78bfa]" });
+    let paymentSignature: string;
+    try {
+      const signRes = await fetch("/api/auth/sign-payment", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ walletId, walletAddress, siweAddress: siweAddr }),
+      }).then((r) => r.json());
+      if (signRes.error) throw new Error(signRes.error);
+      paymentSignature = signRes.paymentSignature;
+    } catch (err) { setStep("error"); setError("Circle DCW signing failed: " + String(err)); return; }
+    addTrace({ icon: "✓", text: "EIP-3009 signed by Circle Programmable Wallet · sending to /api/ask…", sub: `Circle HSM · ${walletAddress.slice(0, 10)}… · no private key in browser`, badgeClass: "text-[#00ff88]" });
+
+    // Step 3: Submit with Circle-signed payment
+    setStep("running");
+    const res2 = await fetch("/api/ask", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "payment-signature": paymentSignature },
+      body: JSON.stringify({ query, budget: parseFloat(budget), policy: policyKey }),
+    });
+    if (!res2.ok) {
+      const err = await res2.json().catch(() => ({ error: `HTTP ${res2.status}` }));
+      const msg = err.detail || err.error || `Payment failed (${res2.status})`;
+      addTrace({ icon: "✗", text: msg, badgeClass: "text-red-400" });
+      setStep("error"); setError(msg); return;
+    }
+    addTrace({ icon: "✓", text: "Circle Programmable Wallet payment settled · Circle Gateway · Arc Testnet", badgeClass: "text-[#00ff88]" });
+    addTrace({ icon: "✍", text: "Agent scoring + generating answer…" });
+
+    const data: QueryResult = await res2.json();
+    data.decisions.forEach((d) => {
+      const isSuffStop = d.sufficiencyStop;
+      const badge      = isSuffStop ? "STOP" : d.decision === "BLOCKED_BY_POLICY" ? "BLOCKED" : d.decision;
+      const badgeClass = DECISION_BADGE[isSuffStop ? "STOP" : d.decision] ?? DECISION_BADGE.SKIP;
+      addTrace({ icon: d.decision === "PAY" ? "→" : isSuffStop ? "⚡" : "·", text: d.source, sub: `rel ${d.scores.relevance}  score ${d.scores.total}  ${d.reason}`, badge, badgeClass });
+    });
+    const paid = data.decisions.filter((x) => x.decision === "PAY").length;
+    addTrace({ icon: "✅", text: `Done · ${paid} cited · $${(data.totalPaid / 1_000_000).toFixed(4)} USDC routed`, badgeClass: "text-[#00ff88]" });
+    setResult(data);
+    setStep("done");
   }
 
   async function runWalletMode(key: `0x${string}`) {
@@ -337,27 +421,34 @@ export default function AskPage() {
   // ── Wallet bar ────────────────────────────────────────────────────────────
 
   const WALLET_LABEL: Record<WalletStep, string> = {
-    disconnected:  "Connect MetaMask →",
-    connected:     "Sign In with Ethereum →",
-    siwe_pending:  "Check MetaMask…",
-    authed:        "Fund session (free) →",
-    funding:       "Funding…",
-    funded:        `✓ Ready · ${address?.slice(0, 6)}…${address?.slice(-4)}`,
+    disconnected:    "Connect MetaMask →",
+    connected:       "Sign In with Ethereum →",
+    siwe_pending:    "Check MetaMask…",
+    authed:          walletMode === "circle" ? "Create Circle Wallet →" : "Fund session (free) →",
+    funding:         "Funding…",
+    funded:          `✓ EOA Ready · ${address?.slice(0, 6)}…${address?.slice(-4)}`,
+    circle_creating: "Creating Circle Wallet…",
+    circle_ready:    `✓ Circle Wallet · ${circleWalletAddress?.slice(0, 6)}…${circleWalletAddress?.slice(-4)}`,
   };
 
   const WALLET_BTN: Record<WalletStep, string> = {
-    disconnected: "border-[#3e3e4e] text-[#8b8b9e] hover:border-[#6366f1] hover:text-[#6366f1]",
-    connected:    "border-[#6366f1]/40 text-[#6366f1] hover:border-[#6366f1]",
-    siwe_pending: "border-[#4a4a5e] text-[#8b8b9e] cursor-not-allowed",
-    authed:       "border-[#a78bfa]/40 text-[#a78bfa] hover:border-[#a78bfa]",
-    funding:      "border-[#4a4a5e] text-[#8b8b9e] cursor-not-allowed",
-    funded:       "border-[#00ff88]/40 text-[#00ff88] bg-[#00ff88]/5 cursor-default",
+    disconnected:    "border-[#3e3e4e] text-[#8b8b9e] hover:border-[#6366f1] hover:text-[#6366f1]",
+    connected:       "border-[#6366f1]/40 text-[#6366f1] hover:border-[#6366f1]",
+    siwe_pending:    "border-[#4a4a5e] text-[#8b8b9e] cursor-not-allowed",
+    authed:          "border-[#a78bfa]/40 text-[#a78bfa] hover:border-[#a78bfa]",
+    funding:         "border-[#4a4a5e] text-[#8b8b9e] cursor-not-allowed",
+    funded:          "border-[#00ff88]/40 text-[#00ff88] bg-[#00ff88]/5 cursor-default",
+    circle_creating: "border-[#4a4a5e] text-[#8b8b9e] cursor-not-allowed",
+    circle_ready:    "border-[#a78bfa]/40 text-[#a78bfa] bg-[#a78bfa]/5 cursor-default",
   };
 
   function walletClick() {
     if (walletStep === "disconnected") handleConnect();
     else if (walletStep === "connected") handleSIWE();
-    else if (walletStep === "authed")   handleFundSession();
+    else if (walletStep === "authed") {
+      if (walletMode === "circle") handleCreateCircleWallet();
+      else handleFundSession();
+    }
   }
 
   const isWalletClickable = ["disconnected", "connected", "authed"].includes(walletStep);
@@ -377,17 +468,38 @@ export default function AskPage() {
             <span className="font-mono shrink-0">🔐</span>
             <span className="font-semibold text-[#8b8b9e] shrink-0">Non-custodial</span>
             <span className="text-[#4a4a5e] truncate">
-              {walletStep === "disconnected" && "Connect MetaMask to sign real x402 payments from your browser — server never sees your key"}
-              {walletStep === "connected"    && `${address?.slice(0, 10)}… on ${chain?.name ?? "unknown network"} · Sign in with Ethereum to continue`}
-              {walletStep === "siwe_pending" && "Sign the message in MetaMask…"}
-              {walletStep === "authed"       && `Verified as ${siweAddress?.slice(0, 10)}… · fund a $0.001 session EOA to enable non-custodial payments`}
-              {walletStep === "funding"      && "Sending $0.001 USDC to your browser-generated session EOA…"}
-              {walletStep === "funded"       && "Session EOA funded · browser signs EIP-3009 · Circle Gateway settles on Arc Testnet"}
+              {walletStep === "disconnected"    && "Connect MetaMask to sign real x402 payments — server never sees your key"}
+              {walletStep === "connected"       && `${address?.slice(0, 10)}… on ${chain?.name ?? "unknown network"} · Sign in with Ethereum to continue`}
+              {walletStep === "siwe_pending"    && "Sign the message in MetaMask…"}
+              {walletStep === "authed"          && (walletMode === "circle"
+                ? `Verified as ${siweAddress?.slice(0, 10)}… · Circle creates a Programmable Wallet (DCW) — no raw key in browser`
+                : `Verified as ${siweAddress?.slice(0, 10)}… · fund a $0.001 session EOA to enable non-custodial payments`)}
+              {walletStep === "funding"         && "Sending $0.001 USDC to browser-generated session EOA…"}
+              {walletStep === "funded"          && "Session EOA funded · browser signs EIP-3009 · Circle Gateway settles on Arc"}
+              {walletStep === "circle_creating" && "Creating Circle Programmable Wallet on Arc Testnet via Circle DCW API…"}
+              {walletStep === "circle_ready"    && `Circle Wallet ${circleWalletAddress?.slice(0, 10)}… ready · EIP-3009 signed by Circle HSM · no browser key`}
             </span>
             {walletError && <span className="text-red-400 shrink-0 text-[11px]">{walletError}</span>}
           </div>
           <div className="flex items-center gap-2 shrink-0">
-            {walletStep !== "disconnected" && walletStep !== "funded" && (
+            {/* Mode toggle — visible once SIWE authenticated */}
+            {(walletStep === "authed") && (
+              <div className="flex items-center rounded border border-[#1e1e2e] overflow-hidden text-[10px] font-mono">
+                <button
+                  onClick={() => setWalletMode("circle")}
+                  className={`px-2 py-1 transition-colors ${walletMode === "circle" ? "bg-[#a78bfa]/20 text-[#a78bfa] border-r border-[#1e1e2e]" : "text-[#4a4a5e] border-r border-[#1e1e2e] hover:text-[#8b8b9e]"}`}
+                >
+                  Circle DCW
+                </button>
+                <button
+                  onClick={() => setWalletMode("eoa")}
+                  className={`px-2 py-1 transition-colors ${walletMode === "eoa" ? "bg-[#6366f1]/20 text-[#6366f1]" : "text-[#4a4a5e] hover:text-[#8b8b9e]"}`}
+                >
+                  EOA
+                </button>
+              </div>
+            )}
+            {walletStep !== "disconnected" && walletStep !== "funded" && walletStep !== "circle_ready" && (
               <button onClick={handleDisconnect} className="text-[#4a4a5e] hover:text-[#8b8b9e] text-xs underline">disconnect</button>
             )}
             <button
@@ -402,8 +514,10 @@ export default function AskPage() {
 
         {/* Mode tag */}
         <div className="mb-4 text-xs font-mono text-[#4a4a5e]">
-          mode: {useWalletMode
-            ? <span className="text-[#00ff88]">non-custodial · browser signs EIP-3009 · Circle Gateway verifies + settles on-chain</span>
+          mode: {walletStep === "circle_ready"
+            ? <span className="text-[#a78bfa]">Circle Programmable Wallet · DCW HSM signs EIP-3009 · no browser private key · Circle Gateway settles on-chain</span>
+            : useWalletMode
+            ? <span className="text-[#00ff88]">non-custodial EOA · browser signs EIP-3009 · Circle Gateway verifies + settles on-chain</span>
             : <span className="text-[#6366f1]">demo · server GatewayClient · streaming agent console</span>}
         </div>
 
@@ -449,12 +563,14 @@ export default function AskPage() {
             <button
               type="submit"
               disabled={!query.trim() || isActive}
-              className={`w-full font-semibold px-6 py-3 rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${useWalletMode ? "bg-[#00ff88] hover:bg-emerald-400 text-black" : "bg-[#6366f1] hover:bg-indigo-500 text-white"}`}
+              className={`w-full font-semibold px-6 py-3 rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${walletStep === "circle_ready" ? "bg-[#a78bfa] hover:bg-violet-400 text-black" : useWalletMode ? "bg-[#00ff88] hover:bg-emerald-400 text-black" : "bg-[#6366f1] hover:bg-indigo-500 text-white"}`}
             >
-              {isActive ? "Running…" : useWalletMode ? "Sign & Ask →" : "Ask →"}
+              {isActive ? "Running…" : walletStep === "circle_ready" ? "Circle Pay & Ask →" : useWalletMode ? "Sign & Ask →" : "Ask →"}
             </button>
             <p className="text-[#4a4a5e] text-xs mt-3">
-              {useWalletMode
+              {walletStep === "circle_ready"
+                ? "Circle DCW HSM signs EIP-3009 · no private key in browser · Circle Gateway settles on Arc Testnet"
+                : useWalletMode
                 ? "Your browser signs the EIP-3009 auth · server never sees your session key · Circle Gateway settles on Arc"
                 : `Demo mode · $${(policy.maxPricePerCitation / 1_000_000).toFixed(3)} max · ${policy.name} policy`}
             </p>
@@ -509,7 +625,8 @@ export default function AskPage() {
                   <p className="text-[#8b8b9e] text-xs mt-0.5">{result.decisions.length} sources · <span className="text-[#6366f1]">{result.policyProfile}</span> policy</p>
                 </div>
                 <div className="flex items-center gap-2">
-                  {useWalletMode && <span className="px-2.5 py-1 rounded-full bg-[#00ff88]/10 border border-[#00ff88]/40 text-[#00ff88] text-xs font-mono">non-custodial</span>}
+                  {walletStep === "circle_ready" && <span className="px-2.5 py-1 rounded-full bg-[#a78bfa]/10 border border-[#a78bfa]/40 text-[#a78bfa] text-xs font-mono">Circle DCW</span>}
+                {walletStep === "funded" && <span className="px-2.5 py-1 rounded-full bg-[#00ff88]/10 border border-[#00ff88]/40 text-[#00ff88] text-xs font-mono">non-custodial</span>}
                   {result.stoppedEarly && <span className="px-2.5 py-1 rounded-full bg-amber-900/30 border border-amber-600/40 text-amber-400 text-xs font-mono">⚡ early stop</span>}
                 </div>
               </div>
