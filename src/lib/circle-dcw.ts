@@ -65,11 +65,12 @@ export async function payCreatorViaDCW(opts: {
     fee: { type: "level", config: { feeLevel: "HIGH" } },
   });
 
+  // Response shape: { data: { id: string, state: TransactionState } }
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const tx = (resp.data as any)?.transaction ?? (resp.data as any)?.contractExecution;
-  const txId: string = tx?.id ?? "";
-  let txHash: string = tx?.txHash ?? `dcw-pending-${opts.receiptId}`;
-  let state: string = tx?.state ?? "INITIATED";
+  const txData = resp.data as any;
+  const txId: string = txData?.id ?? txData?.transaction?.id ?? "";
+  let txHash: string = txData?.txHash ?? txData?.transaction?.txHash ?? `dcw-pending-${opts.receiptId}`;
+  let state: string = txData?.state ?? txData?.transaction?.state ?? "INITIATED";
 
   console.log(`[dcw] tx submitted id=${txId} state=${state}`);
 
