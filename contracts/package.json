@@ -6,7 +6,8 @@
     "compile": "hardhat compile",
     "test": "hardhat test",
     "deploy:local": "hardhat run scripts/deploy.ts --network localhost",
-    "deploy:baseSepolia": "hardhat run scripts/deploy.ts --network baseSepolia",
+    "deploy:arcTestnet": "hardhat run scripts/deploy-all.ts --network arcTestnet",
+    "deploy:all:local": "hardhat run scripts/deploy-all.ts --network localhost",
     "node": "hardhat node"
   },
   "devDependencies": {

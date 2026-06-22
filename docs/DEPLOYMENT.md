@@ -49,6 +49,8 @@ First cold start auto-seeds 10 creator sources into SQLite at `/tmp/citepay.db`.
 |---|---|---|
 | `ARC_RPC_URL` | Arc Testnet RPC | `https://rpc.testnet.arc.network` |
 | `ARC_CONTRACT_ADDRESS` | `CitePayMarket.sol` address | `0x396cf1646EbAeF85ee8428C2d9239C46Ae956085` |
+| `ARC_CREATOR_BOND_ADDRESS` | `CreatorBond.sol` address | Set after deploy |
+| `ARC_CITATION_MANDATE_ADDRESS` | `CitationMandate.sol` address | Set after deploy |
 | `ARC_USDC_ADDRESS` | Arc USDC precompile | `0x3600000000000000000000000000000000000000` |
 
 ### Circle Developer-Controlled Wallets (optional)
@@ -111,7 +113,9 @@ DEPLOYER_PRIVATE_KEY=<Arc testnet wallet with ETH>
 ARC_RPC_URL=https://rpc.testnet.arc.network
 ```
 
-After deployment, set `ARC_CONTRACT_ADDRESS` in Vercel env to the new address, then authorize the agent wallet:
+Deploys all three contracts — CitePayMarket, CreatorBond, CitationMandate — and prints all addresses.
+
+After deployment, set the three `ARC_*_ADDRESS` env vars in Vercel, then authorize the agent wallet:
 
 ```bash
 npx hardhat run scripts/authorize-agent.ts --network arcTestnet

@@ -26,8 +26,10 @@
 | `/traction` | Live on-chain stats: 109+ CitationPaid events from CitePayMarket.sol |
 | `/mcp` | MCP server install for Claude Code / Cursor integration |
 
-**Contract:** [`0x396cf1646EbAeF85ee8428C2d9239C46Ae956085`](https://testnet.arcscan.app/address/0x396cf1646EbAeF85ee8428C2d9239C46Ae956085)  
-**Network:** Arc Testnet (chainId 5042002)  
+**Contracts:** Arc Testnet (chainId 5042002)  
+· [`CitePayMarket`](https://testnet.arcscan.app/address/0x396cf1646EbAeF85ee8428C2d9239C46Ae956085) `0x396cf164…6085`  
+· [`CreatorBond`](https://testnet.arcscan.app/address/0x7DBa1C67Fd9BA976aE09E744D8cbcC71F805D6C0) `0x7DBa1C67…D6C0`  
+· [`CitationMandate`](https://testnet.arcscan.app/address/0xBad090764dd720B5EdcD8B49e054D5d8Ce13C695) `0xBad09076…C695`  
 **Agent wallet:** `0x5389688243328c26a92b301faEEAb5fbf9AFf105`
 
 ---
@@ -296,8 +298,9 @@ Sources that violate policy rules produce a `BLOCKED_BY_POLICY` decision with a 
 
 ## 10. Contract Overview
 
-**CitePayMarket.sol** — deployed on Arc Testnet  
-Address: [`0x396cf1646EbAeF85ee8428C2d9239C46Ae956085`](https://testnet.arcscan.app/address/0x396cf1646EbAeF85ee8428C2d9239C46Ae956085)
+Three contracts deployed on Arc Testnet (chainId 5042002):
+
+**CitePayMarket.sol** — [`0x396cf1646EbAeF85ee8428C2d9239C46Ae956085`](https://testnet.arcscan.app/address/0x396cf1646EbAeF85ee8428C2d9239C46Ae956085)
 
 | Function | Description |
 |---|---|
@@ -311,6 +314,24 @@ Address: [`0x396cf1646EbAeF85ee8428C2d9239C46Ae956085`](https://testnet.arcscan.
 | `getSource(sourceId)` | Read source metadata |
 | `getReceipt(receiptId)` | Read receipt details |
 | `getMarketStats()` | Aggregated market metrics |
+
+**CreatorBond.sol** — [`0x7DBa1C67Fd9BA976aE09E744D8cbcC71F805D6C0`](https://testnet.arcscan.app/address/0x7DBa1C67Fd9BA976aE09E744D8cbcC71F805D6C0)
+
+| Function | Description |
+|---|---|
+| `postBond()` | Creator posts ETH bond → earns `isBonded=true` (+20 agent score) |
+| `slashBond(receiptId)` | Anyone slashes bond if content hash changed post-payment; bond burned |
+| `withdrawBond()` | Creator withdraws after 7-day challenge window |
+| `isBonded(creator)` | Read bond status for agent scoring |
+
+**CitationMandate.sol** — [`0xBad090764dd720B5EdcD8B49e054D5d8Ce13C695`](https://testnet.arcscan.app/address/0xBad090764dd720B5EdcD8B49e054D5d8Ce13C695)
+
+| Function | Description |
+|---|---|
+| `createMandate(policyHash, maxPerCitation, sessionCap, minRelevance, requireBonded)` | Agent registers policy intent before querying |
+| `checkAndRecord(mandateId, sourceId, evidenceHash, amount, relevance, bonded)` | Records `CitationAllowed` or `CitationBlocked` per PAY decision |
+| `closeMandate(mandateId)` | Closes session, emits final tally on-chain |
+| `getMarketStats()` | Total mandates / allows / blocks across all agents |
 
 ---
 
@@ -374,7 +395,7 @@ Slashing is **objective-only**. The only automatic slash condition:
 3. Anyone calls `POST /api/challenge/:receiptId`.
 4. System compares `source.contentHash` vs `receipt.contentHashAtDecision`.
 5. If hashes differ → challenge succeeds: receipt marked challenged, creator reputation drops, agent reputation adjusted.
-6. On Arc Mainnet: bond forfeiture is triggered. On Testnet: reputation slash is recorded, honest note is returned.
+6. Anyone calls `slashBond(receiptId)` on **CreatorBond.sol** — the creator's ETH bond is burned on-chain (live on Arc Testnet).
 
 **What is NOT a valid challenge:** subjective quality judgment, AI opinion, price disputes after payment.
 
@@ -427,6 +448,8 @@ DEMO_BUYER_KEY=0x...                # Separate buyer wallet (must differ from ag
 # ── Arc Testnet (optional overrides) ──────────────────────────
 ARC_RPC_URL=https://rpc.testnet.arc.network
 ARC_USDC_ADDRESS=0x3600000000000000000000000000000000000000
+ARC_CREATOR_BOND_ADDRESS=0x7DBa1C67Fd9BA976aE09E744D8cbcC71F805D6C0
+ARC_CITATION_MANDATE_ADDRESS=0xBad090764dd720B5EdcD8B49e054D5d8Ce13C695
 
 # ── Security (optional) ───────────────────────────────────────
 SEED_KEY=...                        # Protects POST /api/seed (DB reset endpoint)
@@ -481,7 +504,7 @@ REGISTER_API_KEY=...                # Protects POST /api/sources/register (spam 
 - **SQLite persistence**: Sources are auto-seeded (with baked on-chain IDs) on every cold start. Receipts accumulate on warm Vercel instances and reset on cold starts. Suitable for demo; production needs a managed DB.
 - **Testnet only**: All payments are Arc Testnet USDC with no real monetary value. Circle Gateway testnet settles on Arc chainId 5042002.
 - **Relevance scoring**: Claude Haiku scores relevance from title + description only (not full content fetch). Scores are probabilistic.
-- **Bond forfeiture**: Objective slashing on challenge records reputation changes; actual bond forfeiture via `challengeHashChanged()` requires Arc Mainnet deployment.
+- **Bond withdrawal window**: Creator bond withdrawals are locked for 7 days after posting to allow challengers to act. Bonds can be slashed immediately on hash change via `CreatorBond.slashBond()`.
 
 ---
 
@@ -504,6 +527,8 @@ REGISTER_API_KEY=...                # Protects POST /api/sources/register (spam 
 | Contract | Network | Address |
 |---|---|---|
 | CitePayMarket | Arc Testnet (5042002) | [`0x396cf1646EbAeF85ee8428C2d9239C46Ae956085`](https://testnet.arcscan.app/address/0x396cf1646EbAeF85ee8428C2d9239C46Ae956085) |
+| CreatorBond | Arc Testnet (5042002) | [`0x7DBa1C67Fd9BA976aE09E744D8cbcC71F805D6C0`](https://testnet.arcscan.app/address/0x7DBa1C67Fd9BA976aE09E744D8cbcC71F805D6C0) |
+| CitationMandate | Arc Testnet (5042002) | [`0xBad090764dd720B5EdcD8B49e054D5d8Ce13C695`](https://testnet.arcscan.app/address/0xBad090764dd720B5EdcD8B49e054D5d8Ce13C695) |
 | USDC precompile | Arc Testnet | `0x3600000000000000000000000000000000000000` |
 
 ---

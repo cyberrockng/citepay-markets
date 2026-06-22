@@ -21,6 +21,7 @@ const config: HardhatUserConfig = {
         ? [process.env.DEPLOYER_PRIVATE_KEY]
         : [],
       chainId: 5042002,
+      gasPrice: 21_000_000_000, // 21 gwei — above Arc Testnet's 20 gwei base fee
     },
     baseSepolia: {
       url: process.env.BASE_SEPOLIA_RPC_URL || "https://sepolia.base.org",

@@ -5,7 +5,7 @@ import { build402Response, verifyGatewayPayment, QUERY_FEE_MICRO } from "@/lib/x
 import { runBuyerAgent, getAgentAddress } from "@/lib/agent";
 import { buildEvidencePreimage, hashEvidence, sha256, parseUSDC } from "@/lib/evidence";
 import { payCreator } from "@/lib/payments";
-import { anchorPAY, checkAnchorReady } from "@/lib/anchor";
+import { anchorPAY, checkAnchorReady, createMandateOnChain, closeMandateOnChain } from "@/lib/anchor";
 import { resolvePolicy } from "@/lib/policy";
 import { signReceiptHash } from "@/lib/signature";
 import { agentEvents } from "@/lib/events";
@@ -87,7 +87,11 @@ export async function POST(req: NextRequest) {
   };
   insertQuery(queryRecord);
 
-  // ── Step 4: Run buyer agent ───────────────────────────────────────────────
+  // ── Step 4: Pre-register session mandate on-chain ────────────────────────
+  // Runs concurrently with nothing else; fail-open (null = no mandate contract configured)
+  const mandateId = await createMandateOnChain(policy);
+
+  // ── Step 5: Run buyer agent ───────────────────────────────────────────────
   const sources = getAllSources(category).filter((s) => s.active);
   let decisions;
   try {
@@ -97,7 +101,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Agent error", detail: String(err) }, { status: 500 });
   }
 
-  // ── Step 5: Process each decision ─────────────────────────────────────────
+  // ── Step 6: Process each decision ─────────────────────────────────────────
   const receiptIds: string[] = [];
   let totalPaid = 0;
   let budgetRemaining = budgetMicro;
@@ -193,6 +197,11 @@ export async function POST(req: NextRequest) {
         onChainSourceId: d.source.onChainId,
         queryHash,
         evidenceHash,
+        // Mandate integration — records CitationAllowed/Blocked on CitationMandate.sol
+        mandateId:      mandateId ?? undefined,
+        amountMicro:    d.weightedAmount ?? d.source.price,
+        relevanceScore: d.scores.relevance,
+        creatorBonded:  d.source.bonded,
       });
       if (anchor) {
         updateReceiptOnChain(receiptId, anchor.onChainReceiptId, anchor.txHash);
@@ -224,7 +233,10 @@ export async function POST(req: NextRequest) {
     });
   }
 
-  // ── Step 6: Generate answer ───────────────────────────────────────────────
+  // Close session mandate — records final tally (fire-and-forget, don't block response)
+  if (mandateId) void closeMandateOnChain(mandateId);
+
+  // ── Step 7: Generate answer ───────────────────────────────────────────────
   const paidSources = decisions.filter((d) => d.decision === "PAY");
   let answer = "No sources were paid for this query.";
 
@@ -258,7 +270,7 @@ Provide a concise answer with inline citations.`,
     }
   }
 
-  // ── Step 7: Update query record ───────────────────────────────────────────
+  // ── Step 8: Update query record ───────────────────────────────────────────
   updateQuery(queryId, { status: "completed", answer, receiptIds, totalPaid });
 
   return NextResponse.json({
@@ -276,6 +288,7 @@ Provide a concise answer with inline citations.`,
     queryUrl: `/api/query/${queryId}`,
     policyProfile: policy.name,
     stoppedEarly,
+    mandateId: mandateId ?? null,
   });
 }
 
