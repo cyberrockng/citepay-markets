@@ -2,7 +2,7 @@
 
 ## Overview
 
-CitePay Markets includes `CitePayMarket.sol` deployed on Base Sepolia. It provides on-chain anchoring of source registrations, citation decisions, and content-integrity challenges.
+CitePay Markets includes `CitePayMarket.sol` deployed on **Arc Testnet**. It provides on-chain anchoring of source registrations, citation decisions, and content-integrity challenges.
 
 The backend mirrors all data to SQLite for fast reads. The contract is the authoritative on-chain record.
 
@@ -10,11 +10,11 @@ The backend mirrors all data to SQLite for fast reads. The contract is the autho
 
 ## Contract: CitePayMarket.sol
 
-**Network:** Base Sepolia (chainId 84532)  
+**Network:** Arc Testnet (chainId 5042002)  
 **Compiler:** Solidity ^0.8.24  
-**Address:** [`0x396cf1646EbAeF85ee8428C2d9239C46Ae956085`](https://sepolia.basescan.org/address/0x396cf1646EbAeF85ee8428C2d9239C46Ae956085)  
-**Token:** USDC on Base Sepolia (`0x036CbD53842c5426634e7929541eC2318f3dCF7e`)  
-**Explorer:** https://sepolia.basescan.org/address/0x396cf1646EbAeF85ee8428C2d9239C46Ae956085
+**Address:** [`0x396cf1646EbAeF85ee8428C2d9239C46Ae956085`](https://testnet.arcscan.app/address/0x396cf1646EbAeF85ee8428C2d9239C46Ae956085)  
+**Token:** USDC on Arc Testnet (`0x3600000000000000000000000000000000000000`)  
+**Explorer:** https://testnet.arcscan.app/address/0x396cf1646EbAeF85ee8428C2d9239C46Ae956085
 
 ---
 
@@ -118,8 +118,8 @@ The backend records every decision in SQLite for fast API reads. The contract se
 
 | Network | Address |
 |---|---|
-| Base Sepolia | [`0x396cf1646EbAeF85ee8428C2d9239C46Ae956085`](https://sepolia.basescan.org/address/0x396cf1646EbAeF85ee8428C2d9239C46Ae956085) |
-| Base Mainnet | Not deployed |
+| Arc Testnet | [`0x396cf1646EbAeF85ee8428C2d9239C46Ae956085`](https://testnet.arcscan.app/address/0x396cf1646EbAeF85ee8428C2d9239C46Ae956085) |
+| Arc Mainnet | Not yet deployed |
 
 ---
 
@@ -138,11 +138,11 @@ npx hardhat test
 
 ```bash
 cd contracts
-npm run deploy:baseSepolia
+npm run deploy:arcTestnet
 ```
 
 Required environment variables in `contracts/.env`:
 ```
-DEPLOYER_PRIVATE_KEY=   # Wallet private key with Base Sepolia ETH
-BASE_SEPOLIA_RPC_URL=https://sepolia.base.org
+DEPLOYER_PRIVATE_KEY=   # Wallet private key with Arc Testnet ETH
+ARC_RPC_URL=https://rpc.testnet.arc.network
 ```

@@ -17,7 +17,8 @@
 |---|---|
 | `/orchestrate` | Pilot Agent reads onchain reputation → attests plan → hires researcher agents via x402 |
 | `/agents` | 3 competing source agents with live Healthy/Watch/Stop reputation from CitationPaid events |
-| `/wallet` | Circle DCW + App Kit: unified USDC balance, MPC payout path, all 4 Circle SDKs |
+| `/wallet` | Circle DCW + App Kit + Modular Wallets + Gas Station: unified USDC balance, all 6 Circle products |
+| `/register` | WebAuthn passkey creator onboarding — source registration with Circle Modular Wallets |
 | `/live` | Real-time SSE agent decision feed (auto-reconnects) |
 | `/demo` | Auto-runs 4 proofs: tamper → x402 pay → query → challenge |
 | `/ask` | Agent workbench with configurable spend policy + proof console |
@@ -60,7 +61,7 @@ CitePay Markets is a live agentic citation economy where:
 - **AI veracity agent** (Claude Haiku) receives a query and a USDC budget, evaluates source claims on relevance, price, creator bond, and reputation, subject to a configurable **Agent Spend Policy**.
 - **Every decision** — PAY, REFUSE, SKIP, or BLOCKED_BY_POLICY — generates a public receipt with an evidence hash, content hash, payment proof, and human-readable reason.
 - **Multi-agent orchestration** — An orchestrator agent decomposes complex queries, hires researcher agents via real x402 Circle Gateway payments, and synthesizes a comprehensive answer. Agent-to-agent USDC flows are live.
-- **Circle stack**: Gateway + x402 (pay per query), DCW (MPC-secured creator payouts), App Kit (Unified Balance Kit + Circle Wallets Adapter), CitePayMarket.sol (onchain receipts).
+- **Circle stack (6 products)**: Gateway + x402 (pay per query), DCW (MPC-secured creator payouts), App Kit (Unified Balance Kit + Circle Wallets Adapter), Modular Wallets (passkey smart accounts for creators + non-custodial buyer), Gas Station (gasless creator onboarding), CCTP groundwork (cross-chain USDC funding).
 - **MCP server** at `/api/mcp` exposes `cite_query`, `get_receipt`, and `check_policy` as tools for Claude Code and Cursor integration.
 
 ### Live Traction (Arc Testnet)
