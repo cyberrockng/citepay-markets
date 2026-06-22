@@ -1,72 +1,163 @@
 /**
- * Persistent traction counters via Upstash Redis.
- * Layered on top of ephemeral SQLite — Redis survives cold starts, SQLite doesn't.
- * All functions are fail-open: if Redis isn't configured, they silently no-op.
+ * Persistent traction counters via Vercel Edge Config.
+ * Drop-in replacement for the Upstash Redis layer — same exported function signatures.
+ *
+ * Architecture:
+ *   - In-memory accumulator per serverless instance (fast, no I/O on every call)
+ *   - Flushes to Edge Config via Vercel API after every PAY decision and every N ops
+ *   - Reads from Edge Config on first call (cold-start recovery)
+ *   - Fail-open: if Edge Config is not configured, everything silently no-ops
  */
 
-import { Redis } from "@upstash/redis";
+const EC_URL   = process.env.EDGE_CONFIG;            // connection string for reads
+const EC_ID    = process.env.EDGE_CONFIG_ID;         // ecfg_xxx for writes
+const API_TOK  = process.env.VERCEL_API_TOKEN;       // Vercel API token for writes
+const TEAM_ID  = process.env.VERCEL_TEAM_ID;         // team scope for API writes
 
-let _redis: Redis | null = null;
-
-function getRedis(): Redis | null {
-  if (_redis) return _redis;
-  const url = process.env.UPSTASH_REDIS_REST_URL;
-  const token = process.env.UPSTASH_REDIS_REST_TOKEN;
-  if (!url || !token) return null;
-  _redis = new Redis({ url, token });
-  return _redis;
+function isConfigured(): boolean {
+  return !!(EC_URL && EC_ID && API_TOK);
 }
 
-export const REDIS_KEYS = {
-  totalQueries:     "citepay:totalQueries",
-  totalDecisions:   "citepay:totalDecisions",
-  paidCitations:    "citepay:paidCitations",
-  refusals:         "citepay:refusals",
-  skips:            "citepay:skips",
-  totalUSDCMicro:   "citepay:totalUSDCMicro",
-  shareCards:       "citepay:shareCardsGenerated",
-  shareOpened:      "citepay:shareCardsOpened",
-  challengeCount:   "citepay:challengeCount",
-} as const;
+// ── In-memory accumulator ─────────────────────────────────────────────────────
 
-export async function redisIncrQuery() {
-  const r = getRedis();
-  if (!r) return;
-  await r.incr(REDIS_KEYS.totalQueries).catch(() => {});
+interface Counters {
+  totalQueries: number;
+  totalDecisions: number;
+  paidCitations: number;
+  refusals: number;
+  skips: number;
+  totalUSDCMicro: number;
+  shareCardsGenerated: number;
+  shareCardsOpened: number;
+  challengeCount: number;
 }
 
-export async function redisIncrDecision(decision: "PAY" | "REFUSE" | "SKIP" | "BLOCKED_BY_POLICY", amountMicro = 0) {
-  const r = getRedis();
-  if (!r) return;
-  const pipe = r.pipeline();
-  pipe.incr(REDIS_KEYS.totalDecisions);
+interface SourceCounts {
+  paid: Record<string, number>;
+  refused: Record<string, number>;
+}
+
+let _loaded = false;
+let _dirty  = 0;   // ops since last flush
+const _mem: Counters = {
+  totalQueries: 0, totalDecisions: 0, paidCitations: 0,
+  refusals: 0, skips: 0, totalUSDCMicro: 0,
+  shareCardsGenerated: 0, shareCardsOpened: 0, challengeCount: 0,
+};
+const _src: SourceCounts = { paid: {}, refused: {} };
+
+// ── Edge Config read (cold-start restore) ────────────────────────────────────
+
+async function loadFromEC(): Promise<void> {
+  if (_loaded || !isConfigured()) return;
+  _loaded = true;
+  try {
+    // Read counters item
+    const r1 = await fetch(`${EC_URL}/item/counters`);
+    if (r1.ok) {
+      const counters = await r1.json() as Partial<Counters>;
+      Object.assign(_mem, counters);
+    }
+    // Read source counts item
+    const r2 = await fetch(`${EC_URL}/item/sourceCounts`);
+    if (r2.ok) {
+      const src = await r2.json() as Partial<SourceCounts>;
+      if (src.paid)   Object.assign(_src.paid,   src.paid);
+      if (src.refused) Object.assign(_src.refused, src.refused);
+    }
+  } catch { /* fail-open */ }
+}
+
+// ── Edge Config write (flush accumulator) ────────────────────────────────────
+
+async function flushToEC(): Promise<void> {
+  if (!isConfigured()) return;
+  _dirty = 0;
+  const teamQ = TEAM_ID ? `?teamId=${TEAM_ID}` : "";
+  try {
+    await fetch(`https://api.vercel.com/v1/edge-config/${EC_ID}/items${teamQ}`, {
+      method: "PATCH",
+      headers: {
+        Authorization: `Bearer ${API_TOK}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        items: [
+          { operation: "upsert", key: "counters",     value: { ..._mem } },
+          { operation: "upsert", key: "sourceCounts", value: { ..._src } },
+        ],
+      }),
+    });
+  } catch { /* fail-open */ }
+}
+
+// Flush after every PAY (important), or after 10 accumulated ops
+async function maybeFlush(force = false): Promise<void> {
+  _dirty++;
+  if (force || _dirty >= 10) await flushToEC();
+}
+
+// ── Public API — same signatures as the Upstash Redis version ────────────────
+
+export async function redisIncrQuery(): Promise<void> {
+  await loadFromEC();
+  _mem.totalQueries++;
+  void maybeFlush();
+}
+
+export async function redisIncrDecision(
+  decision: "PAY" | "REFUSE" | "SKIP" | "BLOCKED_BY_POLICY",
+  amountMicro = 0
+): Promise<void> {
+  await loadFromEC();
+  _mem.totalDecisions++;
   if (decision === "PAY") {
-    pipe.incr(REDIS_KEYS.paidCitations);
-    if (amountMicro > 0) pipe.incrbyfloat(REDIS_KEYS.totalUSDCMicro, amountMicro);
+    _mem.paidCitations++;
+    if (amountMicro > 0) _mem.totalUSDCMicro += amountMicro;
+    await maybeFlush(true); // always flush on PAY — most important counter
   } else if (decision === "REFUSE" || decision === "BLOCKED_BY_POLICY") {
-    pipe.incr(REDIS_KEYS.refusals);
+    _mem.refusals++;
+    void maybeFlush();
   } else if (decision === "SKIP") {
-    pipe.incr(REDIS_KEYS.skips);
+    _mem.skips++;
+    void maybeFlush();
   }
-  await pipe.exec().catch(() => {});
 }
 
-export async function redisIncrShareCard() {
-  const r = getRedis();
-  if (!r) return;
-  await r.incr(REDIS_KEYS.shareCards).catch(() => {});
+export async function redisIncrShareCard(): Promise<void> {
+  await loadFromEC();
+  _mem.shareCardsGenerated++;
+  void maybeFlush();
 }
 
-export async function redisIncrShareOpened() {
-  const r = getRedis();
-  if (!r) return;
-  await r.incr(REDIS_KEYS.shareOpened).catch(() => {});
+export async function redisIncrShareOpened(): Promise<void> {
+  await loadFromEC();
+  _mem.shareCardsOpened++;
+  void maybeFlush();
 }
 
-export async function redisIncrChallenge() {
-  const r = getRedis();
-  if (!r) return;
-  await r.incr(REDIS_KEYS.challengeCount).catch(() => {});
+export async function redisIncrChallenge(): Promise<void> {
+  await loadFromEC();
+  _mem.challengeCount++;
+  await maybeFlush(true); // flush challenges immediately
+}
+
+export async function redisIncrSourcePaid(sourceId: string): Promise<void> {
+  await loadFromEC();
+  _src.paid[sourceId] = (_src.paid[sourceId] ?? 0) + 1;
+  void maybeFlush();
+}
+
+export async function redisIncrSourceRefused(sourceId: string): Promise<void> {
+  await loadFromEC();
+  _src.refused[sourceId] = (_src.refused[sourceId] ?? 0) + 1;
+  void maybeFlush();
+}
+
+export async function getRedisSourceCounts(): Promise<{ paid: Record<string, number>; refused: Record<string, number> } | null> {
+  if (!isConfigured()) return null;
+  await loadFromEC();
+  return { paid: { ..._src.paid }, refused: { ..._src.refused } };
 }
 
 export interface RedisTractionTotals {
@@ -82,56 +173,20 @@ export interface RedisTractionTotals {
 }
 
 export async function getRedisTotals(): Promise<RedisTractionTotals | null> {
-  const r = getRedis();
-  if (!r) return null;
-  try {
-    const keys = Object.values(REDIS_KEYS);
-    const vals = await r.mget<(number | null)[]>(...keys);
-    const n = (v: number | null) => Number(v ?? 0);
-    return {
-      totalQueries:      n(vals[0]),
-      totalDecisions:    n(vals[1]),
-      paidCitations:     n(vals[2]),
-      refusals:          n(vals[3]),
-      skips:             n(vals[4]),
-      totalUSDCMicro:    n(vals[5]),
-      shareCardsGenerated: n(vals[6]),
-      shareCardsOpened:  n(vals[7]),
-      challengeCount:    n(vals[8]),
-    };
-  } catch {
-    return null;
-  }
+  if (!isConfigured()) return null;
+  await loadFromEC();
+  return { ..._mem };
 }
 
-// ── Per-source reputation (survives cold starts) ──────────────────────────────
-
-export async function redisIncrSourcePaid(sourceId: string): Promise<void> {
-  const r = getRedis();
-  if (!r) return;
-  await r.hincrby("citepay:source:paid", sourceId, 1).catch(() => {});
-}
-
-export async function redisIncrSourceRefused(sourceId: string): Promise<void> {
-  const r = getRedis();
-  if (!r) return;
-  await r.hincrby("citepay:source:refused", sourceId, 1).catch(() => {});
-}
-
-export async function getRedisSourceCounts(): Promise<{ paid: Record<string, number>; refused: Record<string, number> } | null> {
-  const r = getRedis();
-  if (!r) return null;
-  try {
-    const [paid, refused] = await Promise.all([
-      r.hgetall("citepay:source:paid"),
-      r.hgetall("citepay:source:refused"),
-    ]);
-    const toNum = (obj: Record<string, unknown> | null): Record<string, number> => {
-      if (!obj) return {};
-      return Object.fromEntries(Object.entries(obj).map(([k, v]) => [k, Number(v) || 0]));
-    };
-    return { paid: toNum(paid as Record<string, unknown> | null), refused: toNum(refused as Record<string, unknown> | null) };
-  } catch {
-    return null;
-  }
-}
+// Keep REDIS_KEYS export for any code that references it (unused now but prevents import errors)
+export const REDIS_KEYS = {
+  totalQueries:     "citepay:totalQueries",
+  totalDecisions:   "citepay:totalDecisions",
+  paidCitations:    "citepay:paidCitations",
+  refusals:         "citepay:refusals",
+  skips:            "citepay:skips",
+  totalUSDCMicro:   "citepay:totalUSDCMicro",
+  shareCards:       "citepay:shareCardsGenerated",
+  shareOpened:      "citepay:shareCardsOpened",
+  challengeCount:   "citepay:challengeCount",
+} as const;
