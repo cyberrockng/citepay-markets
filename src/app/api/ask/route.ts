@@ -4,7 +4,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { build402Response, verifyGatewayPayment, QUERY_FEE_MICRO } from "@/lib/x402";
 import { runBuyerAgent, getAgentAddress } from "@/lib/agent";
 import { buildEvidencePreimage, hashEvidence, sha256, parseUSDC } from "@/lib/evidence";
-import { payCreator, payWithSplits, type SplitPayment } from "@/lib/payments";
+import { payCreator } from "@/lib/payments";
 import { anchorPAY, checkAnchorReady, createMandateOnChain, closeMandateOnChain } from "@/lib/anchor";
 import { resolvePolicy } from "@/lib/policy";
 import { signReceiptHash } from "@/lib/signature";
@@ -112,7 +112,6 @@ export async function POST(req: NextRequest) {
     const receiptId = uuidv4();
     let txHash: string | null = null;
     let paymentStatus: "confirmed" | "simulated" | null = null;
-    let splitPayments: SplitPayment[] | null = null;
 
     // Build evidence
     const preimage = buildEvidencePreimage({
@@ -133,33 +132,20 @@ export async function POST(req: NextRequest) {
     const evidenceHash = hashEvidence(preimage);
     const agentSignature = await signReceiptHash(evidenceHash);
 
-    // Pay creator if decision is PAY. Distribute atomically across split recipients if defined.
+    // Pay creator if decision is PAY (not BLOCKED_BY_POLICY).
+    // Use weighted amount: same total USDC out, redistributed by relevance contribution.
     if (d.decision === "PAY") {
       const amountToPayMicro = d.weightedAmount ?? d.source.price;
-      if (d.source.splits && d.source.splits.length > 0) {
-        const result = await payWithSplits({
-          splits: d.source.splits,
-          totalMicroUsdc: amountToPayMicro,
-          sourceId: d.source.id,
-          receiptId,
-        });
-        splitPayments = result.payments;
-        txHash = result.payments[0]?.txHash ?? null;
-        paymentStatus = (result.payments[0]?.status as "confirmed" | "simulated") ?? null;
-        totalPaid += amountToPayMicro;
-        budgetRemaining -= amountToPayMicro;
-      } else {
-        const payment = await payCreator({
-          creatorWallet: d.source.payoutWallet,
-          amountMicroUsdc: amountToPayMicro,
-          sourceId: d.source.id,
-          receiptId,
-        });
-        txHash = payment.txHash;
-        paymentStatus = payment.status;
-        totalPaid += amountToPayMicro;
-        budgetRemaining -= amountToPayMicro;
-      }
+      const payment = await payCreator({
+        creatorWallet: d.source.payoutWallet,
+        amountMicroUsdc: amountToPayMicro,
+        sourceId: d.source.id,
+        receiptId,
+      });
+      txHash = payment.txHash;
+      paymentStatus = payment.status;
+      totalPaid += amountToPayMicro;
+      budgetRemaining -= amountToPayMicro;
     }
 
     // Persist receipt FIRST — anchor update must come after insert
@@ -182,7 +168,6 @@ export async function POST(req: NextRequest) {
       reason: d.reason,
       txHash,
       paymentStatus,
-      splitPayments,
       policyProfile: d.policyProfile,
       policyRulesPassed: d.policyRulesPassed,
       policyRulesFailed: d.policyRulesFailed,

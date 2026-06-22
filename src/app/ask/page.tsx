@@ -31,15 +31,6 @@ interface TraceEntry {
   elapsed: number;
 }
 
-interface SplitPayment {
-  wallet: string;
-  label: string;
-  basisPoints: number;
-  amountMicroUsdc: number;
-  txHash: string;
-  status: string;
-}
-
 interface QueryDecision {
   receiptId: string;
   decision: string;
@@ -51,7 +42,6 @@ interface QueryDecision {
   sourcePrice: number;
   contributionWeight: number | null;
   txHash: string | null;
-  splitPayments: SplitPayment[] | null;
   evidenceHash: string;
   receiptUrl: string;
   policyProfile: string;
@@ -793,42 +783,23 @@ export default function AskPage() {
                   </thead>
                   <tbody>
                     {result.decisions.map((d) => (
-                      <>
-                        <tr key={d.receiptId} className={`border-b ${d.splitPayments ? "" : "border-[#1e1e2e]"} hover:bg-[#0a0a0f]/40 transition-colors`}>
-                          <td className="px-4 py-3"><a href={d.url} target="_blank" rel="noopener noreferrer" className="text-[#6366f1] hover:text-indigo-300 transition-colors">{d.source}</a></td>
-                          <td className="px-4 py-3 text-right font-mono text-xs">
-                            <span className={d.decision === "PAY" ? "text-[#00ff88]" : "text-[#8b8b9e]"}>${(d.amountPaid / 1_000_000).toFixed(4)}</span>
-                            {d.decision === "PAY" && d.contributionWeight !== null && (
-                              <span className="ml-1.5 text-[#a78bfa] text-[10px]">({(d.contributionWeight * 100).toFixed(0)}%)</span>
-                            )}
-                            {d.splitPayments && (
-                              <span className="ml-1.5 text-[10px] text-cyan-400 border border-cyan-800/40 rounded px-1">split</span>
-                            )}
-                          </td>
-                          <td className="px-4 py-3 text-right text-[#f0f0f5]">{d.scores.relevance}%</td>
-                          <td className="px-4 py-3 text-right text-[#f0f0f5]">{d.scores.total}</td>
-                          <td className="px-4 py-3 text-center">
-                            <span className={`px-2 py-0.5 rounded border font-mono text-xs ${d.sufficiencyStop ? DECISION_BADGE.STOP : decisionStyle(d.decision)}`}>
-                              {d.sufficiencyStop ? "STOP" : d.decision === "BLOCKED_BY_POLICY" ? "BLOCKED" : d.decision}
-                            </span>
-                          </td>
-                          <td className="px-4 py-3 text-[#8b8b9e] text-xs max-w-[200px] truncate" title={d.reason}>{d.reason}</td>
-                        </tr>
-                        {d.splitPayments && d.splitPayments.length > 0 && (
-                          <tr key={`${d.receiptId}-splits`} className="border-b border-[#1e1e2e] bg-cyan-950/10">
-                            <td colSpan={6} className="px-6 pb-2 pt-1">
-                              <div className="flex flex-wrap gap-2 items-center">
-                                <span className="text-[10px] text-cyan-500 font-mono mr-1">↳ split to:</span>
-                                {d.splitPayments.map((sp) => (
-                                  <span key={sp.wallet} className="text-[10px] font-mono bg-[#0a0a0f] border border-cyan-900/40 rounded px-2 py-0.5 text-cyan-300">
-                                    {sp.label} {sp.wallet.slice(0, 6)}…{sp.wallet.slice(-4)} · ${(sp.amountMicroUsdc / 1e6).toFixed(4)} ({(sp.basisPoints / 100).toFixed(0)}%)
-                                  </span>
-                                ))}
-                              </div>
-                            </td>
-                          </tr>
-                        )}
-                      </>
+                      <tr key={d.receiptId} className="border-b border-[#1e1e2e] hover:bg-[#0a0a0f]/40 transition-colors">
+                        <td className="px-4 py-3"><a href={d.url} target="_blank" rel="noopener noreferrer" className="text-[#6366f1] hover:text-indigo-300 transition-colors">{d.source}</a></td>
+                        <td className="px-4 py-3 text-right font-mono text-xs">
+                          <span className={d.decision === "PAY" ? "text-[#00ff88]" : "text-[#8b8b9e]"}>${(d.amountPaid / 1_000_000).toFixed(4)}</span>
+                          {d.decision === "PAY" && d.contributionWeight !== null && (
+                            <span className="ml-1.5 text-[#a78bfa] text-[10px]">({(d.contributionWeight * 100).toFixed(0)}%)</span>
+                          )}
+                        </td>
+                        <td className="px-4 py-3 text-right text-[#f0f0f5]">{d.scores.relevance}%</td>
+                        <td className="px-4 py-3 text-right text-[#f0f0f5]">{d.scores.total}</td>
+                        <td className="px-4 py-3 text-center">
+                          <span className={`px-2 py-0.5 rounded border font-mono text-xs ${d.sufficiencyStop ? DECISION_BADGE.STOP : decisionStyle(d.decision)}`}>
+                            {d.sufficiencyStop ? "STOP" : d.decision === "BLOCKED_BY_POLICY" ? "BLOCKED" : d.decision}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-[#8b8b9e] text-xs max-w-[200px] truncate" title={d.reason}>{d.reason}</td>
+                      </tr>
                     ))}
                   </tbody>
                 </table>
