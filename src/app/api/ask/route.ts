@@ -223,6 +223,7 @@ export async function POST(req: NextRequest) {
       sourceBonded: d.source.bonded,
       sourceOnChainId: d.source.onChainId ?? null,
       txHash,
+      paymentStatus,
       evidenceHash,
       receiptUrl: `/receipt/${receiptId}`,
       policyProfile: d.policyProfile,
