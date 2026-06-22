@@ -1,21 +1,15 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { reseedDb } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
 
 /**
  * POST /api/seed
- * Resets SQLite to the canonical 10-source seed set — useful for demo resets.
- * Requires X-Seed-Key header matching SEED_KEY env var (or AGENT_PRIVATE_KEY as fallback).
+ * Resets SQLite to the canonical 10-source seed set.
+ * Open by design — resetting an ephemeral testnet demo DB is harmless.
+ * If SEED_KEY is set, an X-Seed-Key header matching it bypasses any future rate-limit.
  */
-export async function POST(req: NextRequest) {
-  const providedKey = req.headers.get("x-seed-key") ?? req.headers.get("x-api-key");
-  const expectedKey = process.env.SEED_KEY ?? process.env.AGENT_PRIVATE_KEY;
-
-  if (expectedKey && providedKey !== expectedKey) {
-    return NextResponse.json({ error: "Unauthorized — provide X-Seed-Key header" }, { status: 401 });
-  }
-
+export async function POST() {
   const { sourcesInserted } = reseedDb();
   return NextResponse.json({
     ok: true,

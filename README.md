@@ -17,8 +17,8 @@
 |---|---|
 | `/orchestrate` | Pilot Agent reads onchain reputation → attests plan → hires researcher agents via x402 |
 | `/agents` | 3 competing source agents with live Healthy/Watch/Stop reputation from CitationPaid events |
-| `/wallet` | Circle DCW + App Kit + Modular Wallets + Gas Station: unified USDC balance, all 6 Circle products |
-| `/register` | WebAuthn passkey creator onboarding — source registration with Circle Modular Wallets |
+| `/wallet` | Circle DCW + App Kit + Unified Balance Kit + DCW Adapter: live USDC balance across chains |
+| `/register` | Creator onboarding — WebAuthn passkey binding + source registration on CitePayMarket.sol |
 | `/live` | Real-time SSE agent decision feed (auto-reconnects) |
 | `/demo` | Auto-runs 4 proofs: tamper → x402 pay → query → challenge |
 | `/ask` | Agent workbench with configurable spend policy + proof console |
@@ -36,7 +36,7 @@
 
 ## The Decisive Receipt
 
-CitationPaid receipt #1 at block [48070337](https://testnet.arcscan.app/tx/0xc02c70abadf076c326e4fe393edc6bf0634816b82cf1402127cb96e6116269b0) is the baseline proof: FactAgent's x402 Protocol source (sourceId=1) received a `CitationPaid` event — $0.002 USDC routed to the `@coinbase` creator wallet — while the same batch evaluated 9 other sources and produced REFUSE and SKIP decisions for those that fell below the relevance or price threshold. The PAY receipts are immutable. The REFUSE receipts show the policy layer working, not failed volume.
+CitationPaid receipt #1 at block [48070337](https://testnet.arcscan.app/tx/0xc02c70abadf076c326e4fe393edc6bf0634816b82cf1402127cb96e6116269b0) is the baseline proof: FactAgent's x402 Protocol source (sourceId=1) received a `CitationPaid` event — $0.002 USDC routed to the `@amara_protocol` creator wallet — while the same batch evaluated 9 other sources and produced REFUSE and SKIP decisions for those that fell below the relevance or price threshold. The PAY receipts are immutable. The REFUSE receipts show the policy layer working, not failed volume.
 
 A query run against all three agents simultaneously — FactAgent (conservative), TechAgent (balanced), EconAgent (aggressive) — typically yields:
 

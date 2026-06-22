@@ -65,8 +65,7 @@ export default function WalletPage() {
               { label: "App Kit",           color: "bg-blue-900/30 border-blue-700/50 text-blue-300"     },
               { label: "Unified Balance",   color: "bg-cyan-900/30 border-cyan-700/50 text-cyan-300"     },
               { label: "DCW Adapter",       color: "bg-violet-900/30 border-violet-700/50 text-violet-300"},
-              { label: "Modular Wallets",   color: "bg-purple-900/30 border-purple-700/50 text-purple-300"},
-              { label: "Gas Station",       color: "bg-amber-900/30 border-amber-700/50 text-amber-300"  },
+              { label: "x402 Batching",     color: "bg-green-900/30 border-green-700/50 text-green-300"  },
             ].map(({ label, color }) => (
               <div key={label} className={`px-3 py-1 rounded-full border text-xs font-mono font-semibold ${color}`}>
                 {label}
@@ -92,11 +91,11 @@ export default function WalletPage() {
           </div>
         </div>
 
-        {/* Modular Wallets CTA */}
+        {/* Creator registration CTA */}
         <div className="bg-[#111118] rounded-xl border border-violet-900/40 p-5 mb-6 flex items-center justify-between gap-4">
           <div>
-            <div className="text-sm font-semibold text-violet-300 mb-1">Circle Modular Wallets + Gas Station</div>
-            <div className="text-xs text-[#8b8b9e]">Register as a creator in one tap — passkey-owned smart account, zero gas cost</div>
+            <div className="text-sm font-semibold text-violet-300 mb-1">Register as a Creator</div>
+            <div className="text-xs text-[#8b8b9e]">Register your source on CitePayMarket.sol — get paid when agents cite your content</div>
           </div>
           <a href="/register" className="flex-shrink-0 bg-[#6366f1] hover:bg-indigo-500 text-white font-semibold px-5 py-2.5 rounded-lg text-sm transition-all hover:scale-105 whitespace-nowrap">
             Register →

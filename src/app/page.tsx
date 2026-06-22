@@ -58,8 +58,6 @@ export default function LandingPage() {
 
   const usdcRouted       = useCountUp(stats?.totalUSDCRouted ?? 0, statsVisible);
   const totalDecisions   = useCountUp(stats?.totalDecisions  ?? 0, statsVisible);
-  const creatorsPaid     = useCountUp(stats?.creatorsPaid    ?? 0, statsVisible);
-  const paidCitations    = useCountUp(stats?.paidCitations   ?? 0, statsVisible);
   const onchainCitations = useCountUp(onchainStats?.citationPaidEvents ?? 0, statsVisible);
 
   return (
@@ -205,7 +203,7 @@ export default function LandingPage() {
         </p>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {[
-            { decision: "PAY",               source: "x402: HTTP-Native Payments", creator: "@coinbase", paid: "$0.0020", reason: "High relevance, bonded creator, fair price.",      score: 72 },
+            { decision: "PAY",               source: "x402: HTTP-Native Payments", creator: "@amara_protocol", paid: "$0.0020", reason: "High relevance, bonded creator, fair price.",      score: 72 },
             { decision: "REFUSE",            source: "Generic Blog Post",           creator: "@unknown",  paid: "$0.0000", reason: "Relevant but overpriced relative to budget.",      score: 41 },
             { decision: "SKIP",              source: "Unrelated Marketing Page",    creator: "@marketer", paid: "$0.0000", reason: "Weak relevance to query.",                          score: 18 },
             { decision: "BLOCKED_BY_POLICY", source: "Unbonded Research Post",      creator: "@anon",     paid: "$0.0000", reason: "Blocked by policy: require_bonded_source.",         score: 67 },
