@@ -220,6 +220,56 @@ export async function POST(req: NextRequest) {
       const finalAnswer = await synthesize(query, subResults);
       send({ type: "trace", line: `[Orchestrator] Synthesis complete.` });
 
+      // ── Agent-to-agent coordination rewards ────────────────────────────────
+      // Orchestrator evaluates each sub-agent's contribution and releases USDC rewards
+      type AgentReward = { agentIndex: number; subQuery: string; agentAddress: string; rewardMicro: number; txHash: string | null; contributionScore: number };
+      const subAgentRewards: AgentReward[] = [];
+
+      const SUB_AGENT_ADDRESSES = [
+        "0xa539a18b55e5e3b98892c724f8f75914c0b69942",
+        "0x5389688243328c26a92b301faEEAb5fbf9AFf105",
+        "0x1234000000000000000000000000000000000001",
+      ];
+
+      if (AGENT_KEY) {
+        const totalCitations = subResults.reduce((s, r) => s + r.decisions.filter((d) => d.decision === "PAY").length, 0);
+
+        for (let i = 0; i < subResults.length; i++) {
+          const r = subResults[i];
+          if (!r.paidViaGateway) continue;
+
+          const citations = r.decisions.filter((d) => d.decision === "PAY").length;
+          const avgRelevance = r.decisions.length > 0
+            ? r.decisions.reduce((s, d) => s + (d.scores?.relevance ?? 0), 0) / r.decisions.length
+            : 0;
+
+          const contributionScore = totalCitations > 0
+            ? Math.round((citations / totalCitations) * 60 + (avgRelevance / 100) * 40)
+            : Math.round(avgRelevance * 0.4);
+
+          if (contributionScore < 15) continue;
+
+          const rewardMicro = Math.max(200, Math.round(contributionScore * 5));
+          const agentAddress = SUB_AGENT_ADDRESSES[i % SUB_AGENT_ADDRESSES.length];
+
+          try {
+            send({ type: "trace", line: `[Orchestrator] Releasing coordination reward → Sub-Agent ${i + 1} (score: ${contributionScore}/100 · $${(rewardMicro / 1e6).toFixed(4)} USDC)` });
+            const { payCreator } = await import("@/lib/payments");
+            const payment = await payCreator({
+              creatorWallet: agentAddress,
+              amountMicroUsdc: rewardMicro,
+              sourceId: `sub-agent-${i}`,
+              receiptId: `agent-reward-${Date.now()}-${i}`,
+            });
+            subAgentRewards.push({ agentIndex: i, subQuery: r.subQuery, agentAddress, rewardMicro, txHash: payment.txHash, contributionScore });
+            send({ type: "trace", line: `[Orchestrator] Sub-Agent ${i + 1} reward confirmed — ${payment.txHash?.slice(0, 20) ?? "pending"}… (${payment.status})` });
+          } catch (e) {
+            send({ type: "trace", line: `[Orchestrator] Sub-Agent ${i + 1} reward failed (non-fatal): ${String(e).slice(0, 60)}` });
+            subAgentRewards.push({ agentIndex: i, subQuery: r.subQuery, agentAddress, rewardMicro, txHash: null, contributionScore });
+          }
+        }
+      }
+
       const allDecisions = subResults.flatMap((r) => r.decisions);
       const totalGatewayMicro = subResults.reduce((s, r) => s + Number(r.gatewayAmountMicro), 0);
       const totalCreatorMicro = subResults.reduce((s, r) => s + r.totalPaid, 0);
@@ -228,6 +278,7 @@ export async function POST(req: NextRequest) {
         type: "final",
         finalAnswer,
         subQueries: subResults,
+        agentToAgentPayments: subAgentRewards,
         pilotPlan,
         stats: {
           subQueriesDispatched: subQueries.length,
@@ -236,6 +287,8 @@ export async function POST(req: NextRequest) {
           citationsPurchased: allDecisions.filter((d) => d.decision === "PAY").length,
           orchestratorWallet: orchestratorClient.address,
           pilotAttestationTx: pilotPlan?.attestationTxHash ?? null,
+          agentToAgentCount: subAgentRewards.length,
+          agentCoordinationRewardsMicro: subAgentRewards.reduce((s, r) => s + r.rewardMicro, 0),
         },
       });
     } catch (err) {

@@ -30,6 +30,17 @@ interface Stats {
   totalCreatorPaymentsMicro: number;
   citationsPurchased: number;
   orchestratorWallet: string;
+  agentToAgentCount?: number;
+  agentCoordinationRewardsMicro?: number;
+}
+
+interface AgentReward {
+  agentIndex: number;
+  subQuery: string;
+  agentAddress: string;
+  rewardMicro: number;
+  txHash: string | null;
+  contributionScore: number;
 }
 
 interface PilotAllocation { agentName: string; sharePercent: number; reasoning: string; }
@@ -49,6 +60,7 @@ export default function OrchestratePage() {
   const [finalAnswer, setFinalAnswer] = useState<string | null>(null);
   const [stats, setStats] = useState<Stats | null>(null);
   const [pilotPlan, setPilotPlan] = useState<PilotPlan | null>(null);
+  const [agentRewards, setAgentRewards] = useState<AgentReward[]>([]);
   const [error, setError] = useState("");
   const [activeTab, setActiveTab] = useState<number>(0);
   const [pendingCount, setPendingCount] = useState<number | null>(null);
@@ -62,6 +74,7 @@ export default function OrchestratePage() {
     setFinalAnswer(null);
     setStats(null);
     setPilotPlan(null);
+    setAgentRewards([]);
     setError("");
     setPendingCount(null);
     setActiveTab(0);
@@ -102,6 +115,7 @@ export default function OrchestratePage() {
               stats?: Stats;
               plan?: PilotPlan;
               pilotPlan?: PilotPlan;
+              agentToAgentPayments?: AgentReward[];
               error?: string;
             };
 
@@ -123,6 +137,7 @@ export default function OrchestratePage() {
               if (chunk.stats) setStats(chunk.stats);
               if (chunk.subQueries) setSubQueries(chunk.subQueries);
               if (chunk.pilotPlan) setPilotPlan(chunk.pilotPlan);
+              if (chunk.agentToAgentPayments) setAgentRewards(chunk.agentToAgentPayments);
               setLoading(false);
             } else if (chunk.type === "error" && chunk.error) {
               setError(chunk.error);
@@ -162,11 +177,15 @@ export default function OrchestratePage() {
           <div className="flex items-center gap-2 flex-wrap text-sm font-mono">
             <span className="px-3 py-1.5 rounded-lg bg-violet-900/30 border border-violet-700/40 text-violet-300">You</span>
             <span className="text-[#4a4a5e]">→</span>
-            <span className="px-3 py-1.5 rounded-lg bg-indigo-900/30 border border-indigo-700/40 text-indigo-300">Orchestrator Agent</span>
-            <span className="text-[#4a4a5e]">→ x402 ($0.001 each) →</span>
-            <span className="px-3 py-1.5 rounded-lg bg-[#00ff88]/10 border border-[#00ff88]/30 text-[#00ff88]">Researcher Agent</span>
+            <span className="px-3 py-1.5 rounded-lg bg-indigo-900/30 border border-indigo-700/40 text-indigo-300">Orchestrator</span>
+            <span className="text-[#4a4a5e]">→ x402 ($0.001) →</span>
+            <span className="px-3 py-1.5 rounded-lg bg-[#00ff88]/10 border border-[#00ff88]/30 text-[#00ff88]">Researcher Agents</span>
             <span className="text-[#4a4a5e]">→ USDC →</span>
             <span className="px-3 py-1.5 rounded-lg bg-amber-900/20 border border-amber-700/30 text-amber-300">Creators</span>
+          </div>
+          <div className="mt-2 flex items-center gap-2 flex-wrap text-xs font-mono text-[#4a4a5e]">
+            <span className="text-[#6366f1]">⟳</span>
+            <span>Orchestrator also releases USDC coordination rewards to sub-agents based on contribution score</span>
           </div>
         </div>
 
@@ -317,6 +336,46 @@ export default function OrchestratePage() {
                   <span className="text-xs text-indigo-400 bg-indigo-900/20 px-2 py-0.5 rounded-full">from {subQueries.length} agents</span>
                 </div>
                 <p className="text-[#f0f0f5] leading-relaxed whitespace-pre-wrap">{finalAnswer}</p>
+              </div>
+            )}
+
+            {/* Agent-to-agent economic graph */}
+            {agentRewards.length > 0 && (
+              <div className="bg-[#0a0a0f] border border-[#6366f1]/20 rounded-xl p-4">
+                <div className="text-[10px] font-mono text-[#4a4a5e] mb-3 flex items-center gap-2">
+                  <span className="w-1.5 h-1.5 rounded-full bg-[#6366f1] inline-block animate-pulse" />
+                  AGENT-TO-AGENT ECONOMIC GRAPH
+                </div>
+                <div className="text-xs text-[#8b8b9e] font-mono mb-3">
+                  Orchestrator evaluated sub-agent contributions and released USDC coordination rewards on-chain
+                </div>
+                <div className="space-y-2">
+                  {agentRewards.map((p, i) => (
+                    <div key={i} className="flex items-center gap-3 px-3 py-2 rounded bg-[#111118] border border-[#1e1e2e] text-xs font-mono">
+                      <span className="text-[#6366f1]">⟳</span>
+                      <span className="text-[#8b8b9e] flex-1 truncate">
+                        Sub-Agent {p.agentIndex + 1}: &quot;{p.subQuery.slice(0, 50)}{p.subQuery.length > 50 ? "…" : ""}&quot;
+                      </span>
+                      <span className="text-[#4a4a5e]">score: {p.contributionScore}/100</span>
+                      <span className="text-[#00ff88]">${(p.rewardMicro / 1e6).toFixed(4)}</span>
+                      {p.txHash && (
+                        <a
+                          href={`https://testnet.arcscan.app/tx/${p.txHash}`}
+                          target="_blank" rel="noopener noreferrer"
+                          className="text-[#6366f1] hover:text-indigo-300"
+                        >
+                          ↗
+                        </a>
+                      )}
+                    </div>
+                  ))}
+                </div>
+                <div className="mt-3 pt-3 border-t border-[#1e1e2e] text-[10px] text-[#4a4a5e] font-mono flex items-center justify-between">
+                  <span>
+                    Total coordination rewards: <span className="text-[#00ff88]">${(agentRewards.reduce((s, p) => s + p.rewardMicro, 0) / 1e6).toFixed(4)} USDC</span>
+                  </span>
+                  <span>Settled on Arc Testnet · 3-layer economic graph</span>
+                </div>
               </div>
             )}
 

@@ -1,6 +1,17 @@
 import Anthropic from "@anthropic-ai/sdk";
 import type { Source, ScoreBreakdown, AgentDecision, Decision } from "@/types";
 import { type AgentPolicy, DEFAULT_POLICY, evaluatePolicy } from "@/lib/policy";
+import { getRedisSourceCounts } from "@/lib/redis-stats";
+
+async function enrichSourcesWithRedis(sources: Source[]): Promise<Source[]> {
+  const counts = await getRedisSourceCounts();
+  if (!counts) return sources;
+  return sources.map((s) => ({
+    ...s,
+    paidCount:    Math.max(s.paidCount    ?? 0, counts.paid[s.id]    ?? 0),
+    refusedCount: Math.max(s.refusedCount ?? 0, counts.refused[s.id] ?? 0),
+  }));
+}
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
@@ -143,13 +154,16 @@ export async function runBuyerAgent(
 ): Promise<AgentDecision[]> {
   if (!sources.length) return [];
 
-  const allPrices = sources.map((s) => s.price);
+  // Enrich with Redis counts to survive cold starts (paidCount/refusedCount reset to 0 in SQLite)
+  const enrichedSources = await enrichSourcesWithRedis(sources);
+
+  const allPrices = enrichedSources.map((s) => s.price);
   let budgetRemaining = budget;
   let sessionSpent = 0;
   const decisions: AgentDecision[] = [];
 
   const scored = await Promise.all(
-    sources.map(async (source) => {
+    enrichedSources.map(async (source) => {
       const { scores, excerptUsed, memoryCached } = await scoreSource(query, source, budgetRemaining, allPrices);
       return { source, scores, excerptUsed, memoryCached };
     })

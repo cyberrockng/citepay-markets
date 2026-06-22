@@ -103,3 +103,35 @@ export async function getRedisTotals(): Promise<RedisTractionTotals | null> {
     return null;
   }
 }
+
+// ── Per-source reputation (survives cold starts) ──────────────────────────────
+
+export async function redisIncrSourcePaid(sourceId: string): Promise<void> {
+  const r = getRedis();
+  if (!r) return;
+  await r.hincrby("citepay:source:paid", sourceId, 1).catch(() => {});
+}
+
+export async function redisIncrSourceRefused(sourceId: string): Promise<void> {
+  const r = getRedis();
+  if (!r) return;
+  await r.hincrby("citepay:source:refused", sourceId, 1).catch(() => {});
+}
+
+export async function getRedisSourceCounts(): Promise<{ paid: Record<string, number>; refused: Record<string, number> } | null> {
+  const r = getRedis();
+  if (!r) return null;
+  try {
+    const [paid, refused] = await Promise.all([
+      r.hgetall("citepay:source:paid"),
+      r.hgetall("citepay:source:refused"),
+    ]);
+    const toNum = (obj: Record<string, unknown> | null): Record<string, number> => {
+      if (!obj) return {};
+      return Object.fromEntries(Object.entries(obj).map(([k, v]) => [k, Number(v) || 0]));
+    };
+    return { paid: toNum(paid as Record<string, unknown> | null), refused: toNum(refused as Record<string, unknown> | null) };
+  } catch {
+    return null;
+  }
+}

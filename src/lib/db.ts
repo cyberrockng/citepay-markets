@@ -3,6 +3,7 @@ import path from "path";
 import fs from "fs";
 import { v4 as uuidv4 } from "uuid";
 import type { Source, Receipt, QueryRecord } from "@/types";
+import { redisIncrSourcePaid, redisIncrSourceRefused } from "@/lib/redis-stats";
 
 const DATA_DIR = process.env.NODE_ENV === "production"
   ? "/tmp"
@@ -207,10 +208,15 @@ export function updateSourceStats(id: string, decision: "PAY" | "REFUSE" | "SKIP
   const db = getDb();
   if (decision === "PAY") {
     db.prepare("UPDATE sources SET paid_count = paid_count + 1, reputation = reputation + 1 WHERE id = ?").run(id);
+    void redisIncrSourcePaid(id);
   } else if (decision === "REFUSE") {
     db.prepare("UPDATE sources SET refused_count = refused_count + 1, reputation = reputation - 1 WHERE id = ?").run(id);
+    void redisIncrSourceRefused(id);
+  } else if (decision === "BLOCKED_BY_POLICY") {
+    db.prepare("UPDATE sources SET skip_count = skip_count + 1 WHERE id = ?").run(id);
+    void redisIncrSourceRefused(id);
   } else {
-    // SKIP and BLOCKED_BY_POLICY: no reputation change
+    // SKIP: no reputation change
     db.prepare("UPDATE sources SET skip_count = skip_count + 1 WHERE id = ?").run(id);
   }
 }

@@ -94,29 +94,35 @@ export default function LandingPage() {
               <span className="text-[#4a4a5e]">loading chain…</span>
             )}
           </div>
-          <h1 className="text-5xl sm:text-6xl font-bold mb-5 leading-tight tracking-tight">
-            The Policy &amp; Payment Layer<br />
-            <span className="gradient-text">for Autonomous AI Citations</span>
+          <h1 className="text-5xl sm:text-6xl font-bold mb-4 leading-tight tracking-tight">
+            AI agents are paying creators<br />
+            <span className="gradient-text">in USDC — right now, on-chain.</span>
           </h1>
-          <p className="text-xl text-[#8b8b9e] max-w-2xl mx-auto mb-10 leading-relaxed">
-            Agents enforce configurable spend policies, pay creators in USDC nanopayments via Circle Gateway on Arc, and publish tamper-evident Policy Receipts.
+          <p className="text-sm text-[#4a4a5e] font-mono mb-5">
+            Micro-payments too small for Ethereum → settled instantly on Arc · Verified by Circle Gateway
           </p>
+          {/* Live proof pulse — above the fold */}
+          <div className="inline-flex items-center gap-3 mb-8 px-4 py-2.5 rounded-xl bg-[#111118]/80 border border-[#00ff88]/20 backdrop-blur">
+            <span className="w-2 h-2 rounded-full bg-[#00ff88] animate-pulse flex-shrink-0" />
+            <span className="font-mono text-sm">
+              <span className="text-[#00ff88] font-bold">{stats?.paidCitations ?? "—"}</span>
+              <span className="text-[#4a4a5e]"> citations paid · </span>
+              <span className="text-[#00ff88] font-bold">
+                {stats ? `$${(stats.totalUSDCRouted / 1e6).toFixed(4)}` : "—"}
+              </span>
+              <span className="text-[#4a4a5e]"> USDC to creators · Arc Testnet</span>
+            </span>
+          </div>
           <div className="flex flex-col sm:flex-row gap-3 justify-center flex-wrap">
-            <Link href="/orchestrate" className="bg-[#00ff88] hover:bg-[#00e87a] text-black font-bold px-8 py-3.5 rounded-xl transition-all hover:scale-105 card-lift">
-              Multi-Agent Demo →
+            <Link href="/ask" className="bg-[#00ff88] hover:bg-[#00e87a] text-black font-bold px-10 py-4 rounded-xl transition-all hover:scale-105 card-lift text-lg">
+              Run a Query →
             </Link>
-            <Link href="/agents" className="bg-[#6366f1] hover:bg-indigo-500 text-white font-semibold px-8 py-3.5 rounded-xl transition-all hover:scale-105 card-lift">
-              Source Agents
+            <Link href="/orchestrate" className="bg-[#6366f1] hover:bg-indigo-500 text-white font-semibold px-8 py-3.5 rounded-xl transition-all hover:scale-105 card-lift">
+              Multi-Agent Demo
             </Link>
             <Link href="/live" className="border border-[#00ff88]/20 hover:border-[#00ff88]/50 text-[#00ff88]/70 hover:text-[#00ff88] font-semibold px-8 py-3.5 rounded-xl transition-colors flex items-center gap-2">
               <span className="w-1.5 h-1.5 rounded-full bg-[#00ff88] inline-block animate-pulse" />
               Live Feed
-            </Link>
-            <Link href="/wallet" className="border border-[#1e1e2e] hover:border-[#8b8b9e] text-[#8b8b9e] hover:text-[#f0f0f5] font-semibold px-8 py-3.5 rounded-xl transition-colors">
-              Agent Wallet
-            </Link>
-            <Link href="/register" className="border border-violet-600/40 hover:border-violet-500 text-violet-400 hover:text-violet-300 font-semibold px-8 py-3.5 rounded-xl transition-colors">
-              Register Creator
             </Link>
             <Link href="/mcp" className="border border-[#6366f1]/40 hover:border-[#6366f1] text-[#6366f1] hover:text-indigo-300 font-semibold px-8 py-3.5 rounded-xl transition-colors">
               Add to Claude (MCP)
