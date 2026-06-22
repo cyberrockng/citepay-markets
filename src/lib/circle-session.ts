@@ -51,10 +51,11 @@ export function isCircleSessionEnabled(): boolean {
 }
 
 /**
- * Create a new Circle DCW wallet on Arc Testnet and fund it with QUERY_FEE_MICRO USDC.
+ * Create a new Circle DCW wallet on Arc Testnet and fund it.
+ * budget defaults to QUERY_FEE_MICRO (1 query); pass 5 * QUERY_FEE_MICRO for 5 queries.
  * The funding tx is fire-and-forget — it confirms well before the user submits their query.
  */
-export async function createAndFundSessionWallet(): Promise<{ walletId: string; address: string }> {
+export async function createAndFundSessionWallet(budget = QUERY_FEE_MICRO): Promise<{ walletId: string; address: string }> {
   const client = getDCWClient();
   if (!client) throw new Error("Circle DCW not configured (CIRCLE_API_KEY / CIRCLE_ENTITY_SECRET missing)");
 
@@ -75,7 +76,7 @@ export async function createAndFundSessionWallet(): Promise<{ walletId: string; 
   // Fund: send USDC from agent wallet to the new session wallet (fire-and-forget)
   void payCreator({
     creatorWallet: wallet.address as string,
-    amountMicroUsdc: QUERY_FEE_MICRO,
+    amountMicroUsdc: budget,
     sourceId:  "circle-session",
     receiptId: `circle-session-${wallet.id as string}`,
   }).catch(() => { /* non-fatal — settlement will fail gracefully */ });
