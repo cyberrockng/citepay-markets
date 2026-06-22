@@ -25,7 +25,7 @@ async function scoreSource(
   source: Source,
   budgetRemaining: number,
   allPrices: number[]
-): Promise<{ scores: ScoreBreakdown; excerptUsed: string }> {
+): Promise<{ scores: ScoreBreakdown; excerptUsed: string; memoryCached: boolean }> {
   const daysOld = (Date.now() - new Date(source.createdAt).getTime()) / (1000 * 60 * 60 * 24);
   const freshnessBonus = daysOld < 7 ? 5 : daysOld < 30 ? 2 : 0;
 
@@ -70,6 +70,12 @@ Score the relevance from 0 to 100. A score of 80+ means this source directly ans
   const bondScore = source.bonded ? 20 : 0;
   const repScore = Math.max(0, Math.min(30, source.reputation * 3 + 15));
 
+  // Citation memory bonus: sources with prior PAY history get a pre-trust boost
+  const memoryBonus = source.paidCount >= 7 ? 12 : source.paidCount >= 3 ? 8 : 0;
+  // Persistent low-value penalty: consistently refused sources get penalized
+  const memoryPenalty = source.refusedCount > source.paidCount * 2 && source.refusedCount > 2 ? -5 : 0;
+  const memoryCached = source.paidCount >= 3;
+
   const total = Math.min(
     100,
     Math.round(
@@ -77,13 +83,16 @@ Score the relevance from 0 to 100. A score of 80+ means this source directly ans
       adjustedPriceScore * W_PRICE +
       bondScore * W_BOND +
       repScore * W_REPUTATION +
-      freshnessBonus
+      freshnessBonus +
+      memoryBonus +
+      memoryPenalty
     )
   );
 
   return {
     scores: { relevance, price: adjustedPriceScore, bond: bondScore, reputation: repScore, total },
     excerptUsed,
+    memoryCached,
   };
 }
 
@@ -123,7 +132,7 @@ const BUDGET_STOP_FRACTION = 0.88;
 
 export type AgentEvent =
   | { type: "scoring_complete"; count: number }
-  | { type: "decision"; sourceTitle: string; decision: string; reason: string; relevance: number; score: number; sufficiencyStop: boolean };
+  | { type: "decision"; sourceTitle: string; decision: string; reason: string; relevance: number; score: number; sufficiencyStop: boolean; memoryCached?: boolean };
 
 export async function runBuyerAgent(
   query: string,
@@ -141,8 +150,8 @@ export async function runBuyerAgent(
 
   const scored = await Promise.all(
     sources.map(async (source) => {
-      const { scores, excerptUsed } = await scoreSource(query, source, budgetRemaining, allPrices);
-      return { source, scores, excerptUsed };
+      const { scores, excerptUsed, memoryCached } = await scoreSource(query, source, budgetRemaining, allPrices);
+      return { source, scores, excerptUsed, memoryCached };
     })
   );
 
@@ -164,7 +173,7 @@ export async function runBuyerAgent(
   let citedCount = 0;
   let cumulativeRelevance = 0;
 
-  for (const { source, scores, excerptUsed } of scored) {
+  for (const { source, scores, excerptUsed, memoryCached } of scored) {
     // Sufficiency check: have we gathered enough high-quality citations?
     // Triggered by: citation count, cumulative relevance, or hard budget floor.
     const budgetFloorHit = sessionSpent >= budget * BUDGET_STOP_FRACTION;
@@ -190,8 +199,9 @@ export async function runBuyerAgent(
         policyRulesFailed: [],
         policyReason: null,
         sufficiencyStop: true,
+        memoryCached,
       });
-      onEvent?.({ type: "decision", sourceTitle: source.title, decision: "SKIP", reason: stopReason, relevance: scores.relevance, score: scores.total, sufficiencyStop: true });
+      onEvent?.({ type: "decision", sourceTitle: source.title, decision: "SKIP", reason: stopReason, relevance: scores.relevance, score: scores.total, sufficiencyStop: true, memoryCached });
       continue;
     }
 
@@ -228,8 +238,9 @@ export async function runBuyerAgent(
       policyRulesPassed: policyEval.rulesPassed,
       policyRulesFailed: policyEval.rulesFailed,
       policyReason,
+      memoryCached,
     });
-    onEvent?.({ type: "decision", sourceTitle: source.title, decision, reason, relevance: scores.relevance, score: scores.total, sufficiencyStop: false });
+    onEvent?.({ type: "decision", sourceTitle: source.title, decision, reason, relevance: scores.relevance, score: scores.total, sufficiencyStop: false, memoryCached });
   }
 
   // Compute contribution weights for PAY decisions.

@@ -135,6 +135,21 @@ export default function AuditPage() {
               </div>
             </div>
 
+            {/* Accountability mechanism */}
+            <div className="bg-[#111118] rounded-xl border border-[#1e1e2e] p-6 font-mono text-sm">
+              <div className="text-[10px] text-[#4a4a5e] mb-4 tracking-widest">ACCOUNTABILITY MECHANISM</div>
+              <div className="space-y-3 text-xs text-[#8b8b9e]">
+                <p>Every PAY decision records a SHA-256 hash of the source content at decision time.</p>
+                <p>If a creator modifies their content after receiving payment, any user can challenge the receipt.</p>
+                <p>Challenge success → creator reputation slashed · on Arc mainnet, bonded USDC is forfeited.</p>
+                <p className="text-[#4a4a5e]">Neither Muse DNA nor AXON Protocol implements this accountability primitive.</p>
+              </div>
+              <div className="mt-4 pt-4 border-t border-[#1e1e2e] text-[10px] text-[#4a4a5e]">
+                <span>Policy enforcement: </span>
+                <span className="text-[#8b8b9e]">BLOCKED_BY_POLICY decisions anchored on CitationMandate.sol</span>
+              </div>
+            </div>
+
             {/* CLI verification */}
             <div className="bg-[#111118] rounded-xl border border-[#1e1e2e] p-6 font-mono text-xs text-[#8b8b9e]">
               <div className="text-[#4a4a5e] mb-3 text-[10px] tracking-widest">INDEPENDENT VERIFICATION</div>

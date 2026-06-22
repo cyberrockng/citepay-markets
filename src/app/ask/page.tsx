@@ -37,6 +37,7 @@ interface SourceStatus {
   decision?: string;
   score?: number;
   amountPaid?: number;
+  memoryCached?: boolean;
 }
 
 interface QueryDecision {
@@ -344,7 +345,7 @@ export default function AskPage() {
         : "";
       addTrace({ icon: event.decision === "PAY" ? "→" : isSuffStop ? "⚡" : "·", text: event.sourceTitle as string, sub: `rel ${event.relevance}  score ${event.score}  ${event.reason}${policyNote}`, badge, badgeClass });
       setSourceGrid((prev) => {
-        const entry: SourceStatus = { title: event.sourceTitle as string, state: "settled", decision: event.decision as string, score: event.score as number, amountPaid: event.amountPaid as number };
+        const entry: SourceStatus = { title: event.sourceTitle as string, state: "settled", decision: event.decision as string, score: event.score as number, amountPaid: event.amountPaid as number, memoryCached: event.memoryCached as boolean | undefined };
         const existing = prev.findIndex((s) => s.title === event.sourceTitle);
         if (existing >= 0) { const n = [...prev]; n[existing] = entry; return n; }
         return [...prev.filter((s) => s.state === "scoring").slice(1), ...prev.filter((s) => s.state !== "scoring"), entry];
@@ -744,6 +745,9 @@ export default function AskPage() {
                 return (
                   <div key={i} className="flex items-center gap-2 px-2 py-1.5 rounded bg-[#111118] border border-[#1e1e2e]">
                     <span className={`font-mono text-sm w-4 flex-shrink-0 ${glyphColor}`}>{glyph}</span>
+                    {s.memoryCached && s.state === "settled" && (
+                      <span className="text-[10px] font-mono text-[#6366f1] flex-shrink-0" title="Pre-ranked from citation history">↺</span>
+                    )}
                     <span className="text-xs text-[#8b8b9e] truncate flex-1">{s.title || "Evaluating source…"}</span>
                     {s.decision === "PAY" && s.amountPaid != null && s.amountPaid > 0 && (
                       <span className="text-[10px] font-mono text-[#00ff88] flex-shrink-0">${(s.amountPaid / 1e6).toFixed(4)}</span>
@@ -755,6 +759,14 @@ export default function AskPage() {
                 );
               })}
             </div>
+            {step === "done" && (() => {
+              const memorySavings = sourceGrid.filter((s) => s.memoryCached && s.decision === "PAY").length;
+              return memorySavings > 0 ? (
+                <div className="mt-3 pt-3 border-t border-[#1e1e2e] text-[10px] font-mono text-[#6366f1]">
+                  ↺ {memorySavings} source{memorySavings !== 1 ? "s" : ""} pre-ranked from citation history · market intelligence compounds
+                </div>
+              ) : null;
+            })()}
           </div>
         )}
 

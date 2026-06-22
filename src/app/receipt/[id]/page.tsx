@@ -369,22 +369,41 @@ Powered by CitePay Markets`}
         </div>
       )}
 
-      {/* Challenge */}
-      {isPay && !receipt.challenged && (
-        <div className="bg-[#111118] rounded-xl p-5 border border-[#1e1e2e] text-xs text-[#8b8b9e]">
-          <strong className="text-[#f0f0f5]">Content Integrity Challenge:</strong>{" "}
-          If the creator updated this source after payment, the content hash will differ.{" "}
-          <button
-            onClick={async () => {
-              const res = await fetch(`/api/challenge/${receipt.id}`, { method: "POST" });
-              const d = await res.json();
-              if (res.ok) alert(`Challenge succeeded: ${d.message}`);
-              else alert(`Challenge failed: ${d.error}`);
-            }}
-            className="text-[#6366f1] hover:text-indigo-300 underline cursor-pointer transition-colors"
-          >
-            Submit objective challenge →
-          </button>
+      {/* Content Integrity Proof */}
+      {receipt.contentHashAtDecision && (
+        <div className="bg-[#0a0a0f] border border-[#1e1e2e] rounded-xl p-5 mb-4">
+          <div className="text-[10px] font-mono text-[#4a4a5e] tracking-widest mb-3">CONTENT INTEGRITY PROOF</div>
+          <div className="space-y-2 text-xs font-mono">
+            <div className="flex items-start justify-between gap-4">
+              <span className="text-[#8b8b9e] flex-shrink-0">Hash at payment</span>
+              <span className="text-[#00ff88] break-all text-right">{receipt.contentHashAtDecision}</span>
+            </div>
+          </div>
+          {receipt.challenged ? (
+            <div className="mt-3 flex items-start gap-2 bg-orange-900/10 border border-orange-700/30 rounded-lg px-3 py-2 text-xs">
+              <span className="text-orange-400 flex-shrink-0">⚠</span>
+              <span className="text-orange-400">Challenge resolved — content was modified after payment. Creator reputation slashed.</span>
+            </div>
+          ) : (
+            <div className="mt-3 flex items-start gap-2 bg-[#00ff88]/5 border border-[#00ff88]/20 rounded-lg px-3 py-2 text-xs">
+              <span className="text-[#00ff88] flex-shrink-0">✓</span>
+              <span className="text-[#8b8b9e]">Content integrity verified — creator has not modified this source since payment</span>
+            </div>
+          )}
+          {isPay && !receipt.challenged && (
+            <button
+              onClick={async () => {
+                const res = await fetch(`/api/challenge/${receipt.id}`, { method: "POST" });
+                const d = await res.json();
+                if (res.ok) alert(`Challenge resolved: ${d.message}`);
+                else alert(`Challenge failed: ${d.error}`);
+                window.location.reload();
+              }}
+              className="mt-3 text-[10px] font-mono text-[#4a4a5e] hover:text-orange-400 underline transition-colors"
+            >
+              Verify content integrity →
+            </button>
+          )}
         </div>
       )}
     </PageShell>

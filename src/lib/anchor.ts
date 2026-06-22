@@ -265,6 +265,39 @@ async function recordMandateDecision(opts: {
 }
 
 /**
+ * Anchors a BLOCKED_BY_POLICY decision on CitationMandate.sol.
+ * Records on-chain proof that a policy rule blocked a citation — not just PAY decisions.
+ * Fail-open: never throws or blocks the response.
+ */
+export async function anchorBLOCKED(opts: {
+  queryHash:   string;
+  evidenceHash: string;
+  policyRule:  string;
+  mandateId?:  number;
+}): Promise<void> {
+  const mandateContract = getMandateContract();
+  if (!mandateContract || !opts.mandateId) {
+    console.log(`[anchor] BLOCKED_BY_POLICY — rule: ${opts.policyRule} (mandate not configured, skipping on-chain)`);
+    return;
+  }
+  try {
+    // Use checkAndRecord with amount=0 to record the blocked decision
+    const tx = await mandateContract.checkAndRecord(
+      BigInt(opts.mandateId),
+      BigInt(0), // sourceId 0 = blocked before source was identified
+      toBytes32(opts.evidenceHash),
+      BigInt(0), // amount = 0 (blocked, no payment)
+      BigInt(0), // relevanceScore = 0
+      false,     // creatorBonded = false (we don't know at this point)
+    );
+    await tx.wait();
+    console.log(`[anchor] BLOCKED_BY_POLICY anchored on-chain — rule: ${opts.policyRule} mandate: ${opts.mandateId}`);
+  } catch (e: unknown) {
+    console.log(`[anchor] anchorBLOCKED failed (non-fatal): ${String(e)}`);
+  }
+}
+
+/**
  * Closes the session mandate and records final tally on-chain.
  */
 export async function closeMandateOnChain(mandateId: number): Promise<void> {

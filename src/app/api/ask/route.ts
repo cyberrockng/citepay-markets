@@ -5,7 +5,7 @@ import { build402Response, verifyGatewayPayment, QUERY_FEE_MICRO } from "@/lib/x
 import { runBuyerAgent, getAgentAddress } from "@/lib/agent";
 import { buildEvidencePreimage, hashEvidence, sha256, parseUSDC } from "@/lib/evidence";
 import { payCreator } from "@/lib/payments";
-import { anchorPAY, checkAnchorReady, createMandateOnChain, closeMandateOnChain } from "@/lib/anchor";
+import { anchorPAY, anchorBLOCKED, checkAnchorReady, createMandateOnChain, closeMandateOnChain } from "@/lib/anchor";
 import { resolvePolicy } from "@/lib/policy";
 import { signReceiptHash } from "@/lib/signature";
 import { agentEvents } from "@/lib/events";
@@ -192,6 +192,16 @@ export async function POST(req: NextRequest) {
       query,
       timestamp: new Date().toISOString(),
     });
+
+    // Anchor BLOCKED_BY_POLICY decisions on CitationMandate — on-chain proof of policy enforcement
+    if (d.decision === "BLOCKED_BY_POLICY" && mandateId) {
+      void anchorBLOCKED({
+        queryHash,
+        evidenceHash,
+        policyRule: d.policyRulesFailed?.[0] ?? "unknown",
+        mandateId,
+      });
+    }
 
     // Anchor PAY decision on-chain after receipt row exists
     if (d.decision === "PAY" && d.source.onChainId) {

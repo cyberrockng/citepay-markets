@@ -16,9 +16,10 @@ const FLOW_STEPS = [
   { n: "01", title: "POST /api/ask",           desc: "Submit a research query with budget and agent spend policy." },
   { n: "02", title: "← 402 Payment Required",  desc: "Server returns x402 payment challenge. No payment = no query." },
   { n: "03", title: "Pay query fee in USDC",   desc: "Client attaches X-PAYMENT header and retries the request." },
-  { n: "04", title: "Agent scores sources",    desc: "CitePay evaluates creators on relevance, price, bond, and reputation." },
+  { n: "04", title: "Agent scores sources",    desc: "CitePay evaluates creators on relevance, price, bond, and reputation. Prior citations boost pre-trust." },
   { n: "05", title: "PAY best sources",        desc: "Winners receive USDC instantly. Weak sources get REFUSE or SKIP." },
   { n: "06", title: "Public receipt + anchor", desc: "Every decision becomes a signed Policy Receipt, anchored on Arc via Circle Gateway." },
+  { n: "07", title: "Content stays honest",    desc: "Hash at payment locks what was cited. If creator modifies content after payment, challenge triggers reputation slash." },
 ];
 
 function useCountUp(target: number, active: boolean, duration = 1200): number {
@@ -176,6 +177,10 @@ export default function LandingPage() {
                     <div className="flex justify-between">
                       <span className="text-[#8b8b9e]">Equivalent cost on Ethereum L1 <span className="text-[#4a4a5e]">($2.50/tx avg gas)</span></span>
                       <span className="text-amber-400">${ethL1Cost.toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-[#4a4a5e]">Market memory accumulated</span>
+                      <span className="text-[#4a4a5e]">{citations.toLocaleString()} citation decisions</span>
                     </div>
                     <div className="border-t border-[#1e1e2e] pt-2 mt-1 flex justify-between items-center">
                       <span className="text-[#4a4a5e]">ARC MAKES THIS MARKET POSSIBLE</span>

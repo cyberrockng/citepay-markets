@@ -45,6 +45,7 @@ export interface AgentDecision {
   contributionWeight?: number; // 0–1, share of creator budget this source earned
   weightedAmount?: number;     // actual micro-USDC paid (weighted, not flat listed price)
   sufficiencyStop?: boolean;   // true when SKIP was due to early-stop, not weak relevance
+  memoryCached?: boolean;      // true when source has ≥3 prior PAY decisions (citation memory)
 }
 
 export interface EvidencePreimage {
