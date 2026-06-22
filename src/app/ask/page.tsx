@@ -1,11 +1,17 @@
 "use client";
 import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
+import { useAccount, useConnect, useDisconnect, useSignMessage } from "wagmi";
+import { injected } from "@wagmi/connectors";
+import { SiweMessage } from "siwe";
+import { generatePrivateKey } from "viem/accounts";
 import { decisionStyle } from "@/components/ui";
 import { BackButton } from "@/components/back-button";
 import { POLICY_PRESETS, type AgentPolicy } from "@/lib/policy";
+import { arcTestnet } from "@/lib/wagmi";
 
-type Step = "idle" | "waiting_payment" | "paid" | "running" | "done" | "error";
+type Step = "idle" | "waiting_payment" | "running" | "done" | "error";
+type WalletStep = "disconnected" | "connected" | "siwe_pending" | "authed" | "funding" | "funded";
 
 interface TraceEntry {
   id: number;
@@ -48,49 +54,141 @@ interface QueryResult {
 }
 
 const DECISION_BADGE: Record<string, string> = {
-  PAY:              "border-[#00ff88]/60 text-[#00ff88] bg-[#00ff88]/10",
-  REFUSE:           "border-red-600/50 text-red-400 bg-red-900/10",
-  SKIP:             "border-[#3e3e4e] text-[#8b8b9e]",
-  BLOCKED_BY_POLICY:"border-orange-600/50 text-orange-400 bg-orange-900/10",
-  STOP:             "border-amber-600/40 text-amber-400 bg-amber-900/10",
+  PAY:               "border-[#00ff88]/60 text-[#00ff88] bg-[#00ff88]/10",
+  REFUSE:            "border-red-600/50 text-red-400 bg-red-900/10",
+  SKIP:              "border-[#3e3e4e] text-[#8b8b9e]",
+  BLOCKED_BY_POLICY: "border-orange-600/50 text-orange-400 bg-orange-900/10",
+  STOP:              "border-amber-600/40 text-amber-400 bg-amber-900/10",
 };
 
 const POLICY_OPTIONS = [
-  { key: "conservative", label: "Conservative", desc: "Bonded only · max $0.002 · relevance ≥ 70 · spend cap $0.01 · stops at 2 citations", color: "border-yellow-600/40 text-yellow-400", active: "border-yellow-500 bg-yellow-900/20" },
-  { key: "balanced",     label: "Balanced",     desc: "Default · max $0.005 · relevance ≥ 40 · no cap · stops at 3 citations",             color: "border-[#6366f1]/40 text-[#6366f1]", active: "border-[#6366f1] bg-[#6366f1]/10" },
-  { key: "aggressive",   label: "Aggressive",   desc: "Higher spend · max $0.01 · relevance ≥ 20 · no cap · stops at 5 citations",         color: "border-[#00ff88]/30 text-[#00ff88]", active: "border-[#00ff88] bg-[#00ff88]/10" },
+  { key: "conservative", label: "Conservative", desc: "Bonded only · max $0.002 · relevance ≥ 70 · stops at 2 citations", color: "border-yellow-600/40 text-yellow-400", active: "border-yellow-500 bg-yellow-900/20" },
+  { key: "balanced",     label: "Balanced",     desc: "Default · max $0.005 · relevance ≥ 40 · stops at 3 citations",    color: "border-[#6366f1]/40 text-[#6366f1]", active: "border-[#6366f1] bg-[#6366f1]/10" },
+  { key: "aggressive",   label: "Aggressive",   desc: "Higher spend · max $0.01 · relevance ≥ 20 · stops at 5 citations", color: "border-[#00ff88]/30 text-[#00ff88]", active: "border-[#00ff88] bg-[#00ff88]/10" },
 ] as const;
 
 export default function AskPage() {
-  const [query, setQuery]       = useState("");
-  const [budget, setBudget]     = useState("0.05");
+  const [query, setQuery]         = useState("");
+  const [budget, setBudget]       = useState("0.05");
   const [policyKey, setPolicyKey] = useState<"conservative" | "balanced" | "aggressive">("balanced");
-  const [step, setStep]         = useState<Step>("idle");
-  const [result, setResult]     = useState<QueryResult | null>(null);
-  const [error, setError]       = useState("");
-  const [traces, setTraces]     = useState<TraceEntry[]>([]);
-  const consoleRef              = useRef<HTMLDivElement>(null);
-  const traceIdRef              = useRef(0);
-  const startMsRef              = useRef(0);
+  const [step, setStep]           = useState<Step>("idle");
+  const [result, setResult]       = useState<QueryResult | null>(null);
+  const [error, setError]         = useState("");
+  const [traces, setTraces]       = useState<TraceEntry[]>([]);
 
-  const isActive = step !== "idle" && step !== "error" && step !== "done";
+  // Non-custodial wallet state
+  const [walletStep, setWalletStep]   = useState<WalletStep>("disconnected");
+  const [siweAddress, setSiweAddress] = useState<string | null>(null);
+  const [sessionKey, setSessionKey]   = useState<`0x${string}` | null>(null);
+  const [walletError, setWalletError] = useState("");
+
+  const consoleRef = useRef<HTMLDivElement>(null);
+  const traceIdRef = useRef(0);
+  const startMsRef = useRef(0);
+
+  const { address, isConnected, chain } = useAccount();
+  const { connectAsync }                = useConnect();
+  const { disconnectAsync }             = useDisconnect();
+  const { signMessageAsync }            = useSignMessage();
+
+  const isActive      = step !== "idle" && step !== "error" && step !== "done";
   const policy: AgentPolicy = POLICY_PRESETS[policyKey];
+  const useWalletMode = walletStep === "funded" && sessionKey !== null;
 
-  // Auto-scroll console as entries arrive
   useEffect(() => {
-    if (consoleRef.current) {
-      consoleRef.current.scrollTop = consoleRef.current.scrollHeight;
+    if (!isConnected && walletStep !== "disconnected") {
+      setWalletStep("disconnected");
+      setSiweAddress(null);
+      setSessionKey(null);
+    } else if (isConnected && walletStep === "disconnected") {
+      setWalletStep("connected");
     }
+  }, [isConnected, walletStep]);
+
+  useEffect(() => {
+    if (consoleRef.current) consoleRef.current.scrollTop = consoleRef.current.scrollHeight;
   }, [traces]);
 
   function addTrace(entry: Omit<TraceEntry, "id" | "elapsed">) {
     setTraces((t) => [...t, { ...entry, id: traceIdRef.current++, elapsed: Date.now() - startMsRef.current }]);
   }
 
+  // ── Wallet actions ────────────────────────────────────────────────────────
+
+  async function handleConnect() {
+    setWalletError("");
+    try {
+      await connectAsync({ connector: injected() });
+      setWalletStep("connected");
+    } catch (err) { setWalletError(String(err)); }
+  }
+
+  async function handleSIWE() {
+    if (!address) return;
+    setWalletError("");
+    setWalletStep("siwe_pending");
+    try {
+      const { nonce, sessionId } = await fetch("/api/auth/nonce").then((r) => r.json());
+      const siweMsg = new SiweMessage({
+        domain:    window.location.host,
+        address,
+        statement: "Sign in to CitePay Markets to use non-custodial payments.",
+        uri:       window.location.origin,
+        version:   "1",
+        chainId:   arcTestnet.id,
+        nonce,
+      });
+      const message   = siweMsg.prepareMessage();
+      const signature = await signMessageAsync({ message });
+      const res = await fetch("/api/auth/siwe", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message, signature, sessionId }),
+      }).then((r) => r.json());
+      if (!res.success) throw new Error(res.error);
+      setSiweAddress(res.address);
+      setWalletStep("authed");
+    } catch (err) {
+      setWalletError(String(err));
+      setWalletStep("connected");
+    }
+  }
+
+  async function handleFundSession() {
+    if (!siweAddress) return;
+    setWalletError("");
+    setWalletStep("funding");
+    // Generate ephemeral key — lives in browser memory only, never sent to server
+    const key      = generatePrivateKey();
+    const { sessionEOAAddress } = await import("@/lib/x402-client");
+    const sessAddr = sessionEOAAddress(key);
+    try {
+      const res = await fetch("/api/auth/fund-session", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sessionAddress: sessAddr, siweAddress }),
+      }).then((r) => r.json());
+      if (res.error && !res.alreadyFunded) throw new Error(res.error);
+      setSessionKey(key);
+      setWalletStep("funded");
+    } catch (err) {
+      setWalletError(String(err));
+      setWalletStep("authed");
+    }
+  }
+
+  async function handleDisconnect() {
+    await disconnectAsync();
+    setWalletStep("disconnected");
+    setSiweAddress(null);
+    setSessionKey(null);
+  }
+
+  // ── Stream event handler ──────────────────────────────────────────────────
+
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   function applyStreamEvent(event: Record<string, any>) {
     const { type } = event;
-
     if (type === "payment_accepted") {
       addTrace({ icon: "✓", text: `Demo payment accepted · ${event.formatted} USDC via Circle Gateway`, badgeClass: "text-[#00ff88]" });
     } else if (type === "scoring_start") {
@@ -101,23 +199,15 @@ export default function AskPage() {
       const isSuffStop = event.sufficiencyStop;
       const badge      = isSuffStop ? "STOP" : event.decision === "BLOCKED_BY_POLICY" ? "BLOCKED" : event.decision;
       const badgeClass = DECISION_BADGE[isSuffStop ? "STOP" : event.decision] ?? DECISION_BADGE.SKIP;
-      const icon       = event.decision === "PAY" ? "→" : isSuffStop ? "⚡" : "·";
-      addTrace({
-        icon,
-        text: event.sourceTitle,
-        sub: `rel ${event.relevance}  score ${event.score}  ${event.reason}`,
-        badge, badgeClass,
-      });
+      addTrace({ icon: event.decision === "PAY" ? "→" : isSuffStop ? "⚡" : "·", text: event.sourceTitle, sub: `rel ${event.relevance}  score ${event.score}  ${event.reason}`, badge, badgeClass });
     } else if (type === "weights") {
-      const list = (event.weights as { sourceTitle: string; weight: number; weightedAmount: number }[])
-        .map((w) => `${w.sourceTitle.split(":")[0].trim()} ${(w.weight * 100).toFixed(0)}%`)
-        .join("  ·  ");
+      const list = (event.weights as { sourceTitle: string; weight: number }[])
+        .map((w) => `${w.sourceTitle.split(":")[0].trim()} ${(w.weight * 100).toFixed(0)}%`).join("  ·  ");
       addTrace({ icon: "⚖", text: "Contribution weights computed", sub: list, badgeClass: "text-[#a78bfa]" });
     } else if (type === "paying") {
       addTrace({ icon: "💸", text: `Paying ${event.sourceTitle}`, sub: `${event.formatted} USDC → creator wallet` });
     } else if (type === "paid") {
-      const status = event.status === "confirmed" ? "✓ on-chain" : "⚠ simulated";
-      addTrace({ icon: "✓", text: `Paid ${event.sourceTitle} · ${event.formatted} USDC`, sub: `${status}  tx ${(event.txHash as string).slice(0, 22)}…`, badgeClass: "text-[#00ff88]" });
+      addTrace({ icon: "✓", text: `Paid ${event.sourceTitle} · ${event.formatted} USDC`, sub: `${event.status === "confirmed" ? "✓ on-chain" : "⚠ simulated"}  tx ${(event.txHash as string).slice(0, 22)}…`, badgeClass: "text-[#00ff88]" });
     } else if (type === "anchoring") {
       addTrace({ icon: "⛓", text: `Anchoring ${event.sourceTitle} on-chain…` });
     } else if (type === "anchored") {
@@ -127,14 +217,7 @@ export default function AskPage() {
     } else if (type === "done") {
       const d = event.decisions as QueryDecision[];
       const paid = d.filter((x) => x.decision === "PAY").length;
-      const refused = d.filter((x) => x.decision === "REFUSE").length;
-      const skipped = d.filter((x) => x.decision === "SKIP").length;
-      addTrace({
-        icon: "✅",
-        text: `Done · ${paid} cited · $${(event.totalPaid / 1_000_000).toFixed(4)} USDC routed`,
-        sub:  `PAY ${paid}  REFUSE ${refused}  SKIP ${skipped}${event.stoppedEarly ? "  ⚡ early stop" : ""}`,
-        badgeClass: "text-[#00ff88]",
-      });
+      addTrace({ icon: "✅", text: `Done · ${paid} cited · $${(event.totalPaid / 1_000_000).toFixed(4)} USDC routed`, sub: `PAY ${paid}  REFUSE ${d.filter((x) => x.decision === "REFUSE").length}  SKIP ${d.filter((x) => x.decision === "SKIP").length}${event.stoppedEarly ? "  ⚡ early stop" : ""}`, badgeClass: "text-[#00ff88]" });
       setResult(event as QueryResult);
       setStep("done");
     } else if (type === "error") {
@@ -144,36 +227,87 @@ export default function AskPage() {
     }
   }
 
+  // ── Submit ────────────────────────────────────────────────────────────────
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!query.trim()) return;
-    setResult(null);
-    setError("");
-    setTraces([]);
+    setResult(null); setError(""); setTraces([]);
     traceIdRef.current = 0;
     startMsRef.current = Date.now();
-
     setStep("waiting_payment");
+    if (useWalletMode && sessionKey) {
+      await runWalletMode(sessionKey);
+    } else {
+      await runDemoMode();
+    }
+  }
 
-    // Step 1: Hit /api/ask to demonstrate the real 402 gate
+  async function runWalletMode(key: `0x${string}`) {
+    // Step 1: Hit /api/ask without payment to show the real 402 gate
     addTrace({ icon: "→", text: "POST /api/ask", sub: "no payment header — proving x402 gate" });
     const res1 = await fetch("/api/ask", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ query, budget: parseFloat(budget), policy: policyKey }),
     });
+    if (res1.status !== 402) { setStep("error"); setError(`Expected 402, got ${res1.status}`); return; }
+    addTrace({ icon: "←", text: "402 Payment Required", sub: "x402 payment requirements received", badge: "402", badgeClass: "text-amber-400 border-amber-600/40 bg-amber-900/10" });
 
-    if (res1.status !== 402) {
-      setStep("error");
-      setError("Expected 402 Payment Required but got: " + res1.status);
-      return;
+    // Step 2: Sign EIP-3009 with session EOA — entirely in browser
+    addTrace({ icon: "🔑", text: "Signing EIP-3009 in browser with session EOA…", sub: "GatewayWalletBatched domain · no server key involved", badgeClass: "text-[#a78bfa]" });
+    let paymentSig: string;
+    try {
+      const { signX402Payment } = await import("@/lib/x402-client");
+      paymentSig = await signX402Payment(key);
+    } catch (err) { setStep("error"); setError("Signing failed: " + String(err)); return; }
+    addTrace({ icon: "✓", text: "Payment signed · sending payment-signature to /api/ask…", badgeClass: "text-[#00ff88]" });
+
+    // Step 3: Real /api/ask with payment-signature header
+    setStep("running");
+    const res2 = await fetch("/api/ask", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "payment-signature": paymentSig },
+      body: JSON.stringify({ query, budget: parseFloat(budget), policy: policyKey }),
+    });
+    if (!res2.ok) {
+      const err = await res2.json().catch(() => ({ error: `HTTP ${res2.status}` }));
+      const msg = err.detail || err.error || `Payment failed (${res2.status})`;
+      addTrace({ icon: "✗", text: msg, badgeClass: "text-red-400" });
+      setStep("error"); setError(msg); return;
     }
-    addTrace({ icon: "←", text: "402 Payment Required", sub: "x402 payment details in WWW-Authenticate header", badge: "402", badgeClass: "text-amber-400 border-amber-600/40 bg-amber-900/10" });
+
+    addTrace({ icon: "✓", text: "Non-custodial payment settled · Circle Gateway · Arc Testnet", badgeClass: "text-[#00ff88]" });
+    addTrace({ icon: "✍", text: "Agent scoring + generating answer…" });
+
+    const data: QueryResult = await res2.json();
+    // Render decisions in console
+    data.decisions.forEach((d) => {
+      const isSuffStop = d.sufficiencyStop;
+      const badge      = isSuffStop ? "STOP" : d.decision === "BLOCKED_BY_POLICY" ? "BLOCKED" : d.decision;
+      const badgeClass = DECISION_BADGE[isSuffStop ? "STOP" : d.decision] ?? DECISION_BADGE.SKIP;
+      addTrace({ icon: d.decision === "PAY" ? "→" : isSuffStop ? "⚡" : "·", text: d.source, sub: `rel ${d.scores.relevance}  score ${d.scores.total}  ${d.reason}`, badge, badgeClass });
+    });
+    const paid = data.decisions.filter((x) => x.decision === "PAY").length;
+    addTrace({ icon: "✅", text: `Done · ${paid} cited · $${(data.totalPaid / 1_000_000).toFixed(4)} USDC routed`, badgeClass: "text-[#00ff88]" });
+    setResult(data);
+    setStep("done");
+  }
+
+  async function runDemoMode() {
+    // Step 1: Show 402 proof
+    addTrace({ icon: "→", text: "POST /api/ask", sub: "no payment header — proving x402 gate" });
+    const res1 = await fetch("/api/ask", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ query, budget: parseFloat(budget), policy: policyKey }),
+    });
+    if (res1.status !== 402) { setStep("error"); setError("Expected 402 Payment Required but got: " + res1.status); return; }
+    addTrace({ icon: "←", text: "402 Payment Required", sub: "x402 payment details in header", badge: "402", badgeClass: "text-amber-400 border-amber-600/40 bg-amber-900/10" });
     addTrace({ icon: "◈", text: `${policy.name} policy`, sub: `max $${(policy.maxPricePerCitation / 1_000_000).toFixed(3)}  min relevance ${policy.minRelevanceScore}${policy.requireBonded ? "  bonded only" : ""}  stop at ${policy.sufficiencyMaxCitations} citations` });
 
+    // Step 2: Stream agent execution
     setStep("running");
-
-    // Step 2: Stream from demo-query-stream
     let res2: Response;
     try {
       res2 = await fetch("/api/demo-query-stream", {
@@ -181,22 +315,12 @@ export default function AskPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ query, budget: parseFloat(budget), policy: policyKey }),
       });
-    } catch (err) {
-      setStep("error");
-      setError(String(err));
-      return;
-    }
-
-    if (!res2.ok || !res2.body) {
-      setStep("error");
-      setError("Stream failed: " + res2.status);
-      return;
-    }
+    } catch (err) { setStep("error"); setError(String(err)); return; }
+    if (!res2.ok || !res2.body) { setStep("error"); setError("Stream failed: " + res2.status); return; }
 
     const reader  = res2.body.getReader();
     const decoder = new TextDecoder();
     let buffer    = "";
-
     while (true) {
       const { done, value } = await reader.read();
       if (done) break;
@@ -205,10 +329,38 @@ export default function AskPage() {
       buffer = lines.pop() ?? "";
       for (const line of lines) {
         if (!line.startsWith("data: ")) continue;
-        try { applyStreamEvent(JSON.parse(line.slice(6))); } catch { /* skip malformed */ }
+        try { applyStreamEvent(JSON.parse(line.slice(6))); } catch { /* skip */ }
       }
     }
   }
+
+  // ── Wallet bar ────────────────────────────────────────────────────────────
+
+  const WALLET_LABEL: Record<WalletStep, string> = {
+    disconnected:  "Connect MetaMask →",
+    connected:     "Sign In with Ethereum →",
+    siwe_pending:  "Check MetaMask…",
+    authed:        "Fund session (free) →",
+    funding:       "Funding…",
+    funded:        `✓ Ready · ${address?.slice(0, 6)}…${address?.slice(-4)}`,
+  };
+
+  const WALLET_BTN: Record<WalletStep, string> = {
+    disconnected: "border-[#3e3e4e] text-[#8b8b9e] hover:border-[#6366f1] hover:text-[#6366f1]",
+    connected:    "border-[#6366f1]/40 text-[#6366f1] hover:border-[#6366f1]",
+    siwe_pending: "border-[#4a4a5e] text-[#8b8b9e] cursor-not-allowed",
+    authed:       "border-[#a78bfa]/40 text-[#a78bfa] hover:border-[#a78bfa]",
+    funding:      "border-[#4a4a5e] text-[#8b8b9e] cursor-not-allowed",
+    funded:       "border-[#00ff88]/40 text-[#00ff88] bg-[#00ff88]/5 cursor-default",
+  };
+
+  function walletClick() {
+    if (walletStep === "disconnected") handleConnect();
+    else if (walletStep === "connected") handleSIWE();
+    else if (walletStep === "authed")   handleFundSession();
+  }
+
+  const isWalletClickable = ["disconnected", "connected", "authed"].includes(walletStep);
 
   return (
     <main className="min-h-screen bg-[#0a0a0f] text-[#f0f0f5]">
@@ -219,12 +371,46 @@ export default function AskPage() {
           <p className="text-[#8b8b9e] mt-1">Set a spend policy · Pay to query · Every decision gets a public Policy Receipt</p>
         </div>
 
+        {/* Wallet bar */}
+        <div className="bg-[#111118] rounded-xl px-5 py-3 border border-[#1e1e2e] mb-4 flex items-center justify-between gap-4 flex-wrap">
+          <div className="flex items-center gap-2 text-xs min-w-0">
+            <span className="font-mono shrink-0">🔐</span>
+            <span className="font-semibold text-[#8b8b9e] shrink-0">Non-custodial</span>
+            <span className="text-[#4a4a5e] truncate">
+              {walletStep === "disconnected" && "Connect MetaMask to sign real x402 payments from your browser — server never sees your key"}
+              {walletStep === "connected"    && `${address?.slice(0, 10)}… on ${chain?.name ?? "unknown network"} · Sign in with Ethereum to continue`}
+              {walletStep === "siwe_pending" && "Sign the message in MetaMask…"}
+              {walletStep === "authed"       && `Verified as ${siweAddress?.slice(0, 10)}… · fund a $0.001 session EOA to enable non-custodial payments`}
+              {walletStep === "funding"      && "Sending $0.001 USDC to your browser-generated session EOA…"}
+              {walletStep === "funded"       && "Session EOA funded · browser signs EIP-3009 · Circle Gateway settles on Arc Testnet"}
+            </span>
+            {walletError && <span className="text-red-400 shrink-0 text-[11px]">{walletError}</span>}
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            {walletStep !== "disconnected" && walletStep !== "funded" && (
+              <button onClick={handleDisconnect} className="text-[#4a4a5e] hover:text-[#8b8b9e] text-xs underline">disconnect</button>
+            )}
+            <button
+              onClick={walletClick}
+              disabled={!isWalletClickable}
+              className={`border rounded px-3 py-1.5 text-xs font-mono transition-all ${WALLET_BTN[walletStep]}`}
+            >
+              {WALLET_LABEL[walletStep]}
+            </button>
+          </div>
+        </div>
+
+        {/* Mode tag */}
+        <div className="mb-4 text-xs font-mono text-[#4a4a5e]">
+          mode: {useWalletMode
+            ? <span className="text-[#00ff88]">non-custodial · browser signs EIP-3009 · Circle Gateway verifies + settles on-chain</span>
+            : <span className="text-[#6366f1]">demo · server GatewayClient · streaming agent console</span>}
+        </div>
+
         {/* Policy Selector */}
         <div className="bg-[#111118] rounded-xl p-5 border border-[#1e1e2e] mb-6">
-          <div className="flex items-center gap-2 mb-3">
-            <span className="text-xs font-semibold text-[#8b8b9e] uppercase tracking-widest">Agent Spend Policy</span>
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <span className="text-xs font-semibold text-[#8b8b9e] uppercase tracking-widest">Agent Spend Policy</span>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-3">
             {POLICY_OPTIONS.map((opt) => (
               <button
                 key={opt.key}
@@ -237,17 +423,11 @@ export default function AskPage() {
               </button>
             ))}
           </div>
-          <div className="mt-3 grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs text-[#4a4a5e] font-mono">
-            <span>max price: <span className="text-[#8b8b9e]">${(policy.maxPricePerCitation / 1_000_000).toFixed(3)}</span></span>
-            <span>min relevance: <span className="text-[#8b8b9e]">{policy.minRelevanceScore}</span></span>
-            <span>bonded only: <span className="text-[#8b8b9e]">{policy.requireBonded ? "yes" : "no"}</span></span>
-            <span>early stop: <span className="text-[#8b8b9e]">{policy.sufficiencyMaxCitations} citations</span></span>
-          </div>
         </div>
 
-        {/* Two-column layout */}
+        {/* Two-column */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-          {/* Query Form */}
+          {/* Form */}
           <form onSubmit={handleSubmit} className="bg-[#111118] rounded-xl p-6 border border-[#1e1e2e]">
             <h2 className="font-semibold text-[#f0f0f5] mb-4">Research Question</h2>
             <textarea
@@ -263,35 +443,39 @@ export default function AskPage() {
               <input
                 type="number" step="0.01" min="0.01" max="1.0"
                 className="w-full bg-[#0a0a0f] border border-[#1e1e2e] focus:border-[#6366f1] rounded-lg px-4 py-2 text-[#f0f0f5] focus:outline-none transition-colors"
-                value={budget}
-                onChange={(e) => setBudget(e.target.value)}
+                value={budget} onChange={(e) => setBudget(e.target.value)}
               />
             </div>
             <button
               type="submit"
               disabled={!query.trim() || isActive}
-              className="w-full bg-[#6366f1] hover:bg-indigo-500 disabled:opacity-40 disabled:cursor-not-allowed text-white font-semibold px-6 py-3 rounded-lg transition-colors"
+              className={`w-full font-semibold px-6 py-3 rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${useWalletMode ? "bg-[#00ff88] hover:bg-emerald-400 text-black" : "bg-[#6366f1] hover:bg-indigo-500 text-white"}`}
             >
-              {isActive ? "Running…" : "Ask →"}
+              {isActive ? "Running…" : useWalletMode ? "Sign & Ask →" : "Ask →"}
             </button>
             <p className="text-[#4a4a5e] text-xs mt-3">
-              Real $0.001 USDC via Circle Gateway on Arc · Policy: {policy.name} · Budget: up to ${budget} USDC
+              {useWalletMode
+                ? "Your browser signs the EIP-3009 auth · server never sees your session key · Circle Gateway settles on Arc"
+                : `Demo mode · $${(policy.maxPricePerCitation / 1_000_000).toFixed(3)} max · ${policy.name} policy`}
             </p>
           </form>
 
-          {/* Agent Console */}
+          {/* Console */}
           <div className="bg-[#0a0a0f] rounded-xl border border-[#1e1e2e] flex flex-col min-h-[300px]">
             <div className="px-4 py-2.5 border-b border-[#1e1e2e] flex items-center justify-between">
               <span className="text-[#4a4a5e] text-xs font-mono">// Agent Console</span>
-              {isActive && <span className="flex h-2 w-2"><span className="animate-ping absolute h-2 w-2 rounded-full bg-[#6366f1] opacity-75" /><span className="relative rounded-full h-2 w-2 bg-[#6366f1]" /></span>}
+              {isActive && (
+                <span className="flex h-2 w-2 relative">
+                  <span className="animate-ping absolute h-2 w-2 rounded-full bg-[#6366f1] opacity-75" />
+                  <span className="relative rounded-full h-2 w-2 bg-[#6366f1]" />
+                </span>
+              )}
             </div>
-
             {traces.length === 0 && step === "idle" && (
-              <div className="flex-1 flex items-center justify-center text-[#4a4a5e] text-xs font-mono px-4">
-                Agent reasoning trace will stream here live
+              <div className="flex-1 flex items-center justify-center text-[#4a4a5e] text-xs font-mono px-4 text-center">
+                {useWalletMode ? "EIP-3009 signing + agent reasoning will appear here" : "Agent reasoning trace will stream here live"}
               </div>
             )}
-
             <div ref={consoleRef} className="flex-1 overflow-y-auto p-4 space-y-1.5 font-mono text-xs max-h-[400px]">
               {traces.map((t) => (
                 <div key={t.id} className="flex items-start gap-2 leading-relaxed">
@@ -302,11 +486,7 @@ export default function AskPage() {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
                       <span className={t.badgeClass ?? "text-[#f0f0f5]"}>{t.text}</span>
-                      {t.badge && (
-                        <span className={`px-1.5 py-0 rounded border text-[10px] ${t.badgeClass ?? "border-[#3e3e4e] text-[#8b8b9e]"}`}>
-                          {t.badge}
-                        </span>
-                      )}
+                      {t.badge && <span className={`px-1.5 py-0 rounded border text-[10px] ${t.badgeClass ?? "border-[#3e3e4e] text-[#8b8b9e]"}`}>{t.badge}</span>}
                     </div>
                     {t.sub && <div className="text-[#4a4a5e] mt-0.5 truncate" title={t.sub}>{t.sub}</div>}
                   </div>
@@ -317,51 +497,37 @@ export default function AskPage() {
           </div>
         </div>
 
-        {/* Error */}
-        {error && (
-          <div className="bg-red-900/20 border border-red-800 rounded-xl p-4 mb-6 text-red-400 text-sm">{error}</div>
-        )}
+        {error && <div className="bg-red-900/20 border border-red-800 rounded-xl p-4 mb-6 text-red-400 text-sm">{error}</div>}
 
         {/* Results */}
         {result && (
           <div className="space-y-6">
-            {/* Source Competition Board */}
             <div className="bg-[#111118] rounded-xl border border-[#1e1e2e] overflow-hidden">
               <div className="px-6 py-4 border-b border-[#1e1e2e] flex items-center justify-between">
                 <div>
                   <h2 className="font-semibold text-[#f0f0f5]">Source Competition Board</h2>
-                  <p className="text-[#8b8b9e] text-xs mt-0.5">
-                    {result.decisions.length} sources evaluated under <span className="text-[#6366f1]">{result.policyProfile}</span> policy
-                  </p>
+                  <p className="text-[#8b8b9e] text-xs mt-0.5">{result.decisions.length} sources · <span className="text-[#6366f1]">{result.policyProfile}</span> policy</p>
                 </div>
-                {result.stoppedEarly && (
-                  <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-amber-900/30 border border-amber-600/40 text-amber-400 text-xs font-mono">
-                    ⚡ early stop
-                  </span>
-                )}
+                <div className="flex items-center gap-2">
+                  {useWalletMode && <span className="px-2.5 py-1 rounded-full bg-[#00ff88]/10 border border-[#00ff88]/40 text-[#00ff88] text-xs font-mono">non-custodial</span>}
+                  {result.stoppedEarly && <span className="px-2.5 py-1 rounded-full bg-amber-900/30 border border-amber-600/40 text-amber-400 text-xs font-mono">⚡ early stop</span>}
+                </div>
               </div>
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b border-[#1e1e2e]">
-                      <th className="px-4 py-3 text-left text-xs text-[#8b8b9e] font-medium">Source</th>
-                      <th className="px-4 py-3 text-right text-xs text-[#8b8b9e] font-medium">Price</th>
-                      <th className="px-4 py-3 text-right text-xs text-[#8b8b9e] font-medium">Rel%</th>
-                      <th className="px-4 py-3 text-right text-xs text-[#8b8b9e] font-medium">Score</th>
-                      <th className="px-4 py-3 text-center text-xs text-[#8b8b9e] font-medium">Decision</th>
-                      <th className="px-4 py-3 text-left text-xs text-[#8b8b9e] font-medium">Reason</th>
+                      {["Source","Price","Rel%","Score","Decision","Reason"].map((h) => (
+                        <th key={h} className={`px-4 py-3 text-xs text-[#8b8b9e] font-medium ${h === "Source" || h === "Reason" ? "text-left" : h === "Decision" ? "text-center" : "text-right"}`}>{h}</th>
+                      ))}
                     </tr>
                   </thead>
                   <tbody>
                     {result.decisions.map((d) => (
                       <tr key={d.receiptId} className="border-b border-[#1e1e2e] hover:bg-[#0a0a0f]/40 transition-colors">
-                        <td className="px-4 py-3">
-                          <a href={d.url} target="_blank" rel="noopener noreferrer" className="text-[#6366f1] hover:text-indigo-300 transition-colors">{d.source}</a>
-                        </td>
+                        <td className="px-4 py-3"><a href={d.url} target="_blank" rel="noopener noreferrer" className="text-[#6366f1] hover:text-indigo-300 transition-colors">{d.source}</a></td>
                         <td className="px-4 py-3 text-right font-mono text-xs">
-                          <span className={d.decision === "PAY" ? "text-[#00ff88]" : "text-[#8b8b9e]"}>
-                            ${(d.amountPaid / 1_000_000).toFixed(4)}
-                          </span>
+                          <span className={d.decision === "PAY" ? "text-[#00ff88]" : "text-[#8b8b9e]"}>${(d.amountPaid / 1_000_000).toFixed(4)}</span>
                           {d.decision === "PAY" && d.contributionWeight !== null && (
                             <span className="ml-1.5 text-[#a78bfa] text-[10px]">({(d.contributionWeight * 100).toFixed(0)}%)</span>
                           )}
@@ -381,13 +547,11 @@ export default function AskPage() {
               </div>
             </div>
 
-            {/* Answer */}
             <div className="bg-[#111118] rounded-xl p-6 border border-[#1e1e2e]">
               <h2 className="font-semibold mb-3 text-[#f0f0f5]">Answer</h2>
               <p className="text-[#f0f0f5] leading-relaxed whitespace-pre-wrap">{result.answer}</p>
             </div>
 
-            {/* Receipt Links */}
             <div className="bg-[#111118] rounded-xl p-6 border border-[#1e1e2e]">
               <div className="flex items-baseline justify-between mb-3">
                 <h2 className="font-semibold text-[#f0f0f5]">Policy Receipt Audit Trail</h2>
@@ -398,24 +562,12 @@ export default function AskPage() {
                   const isPay = d.decision === "PAY";
                   const isBlocked = d.decision === "BLOCKED_BY_POLICY";
                   return (
-                    <Link
-                      key={d.receiptId}
-                      href={d.receiptUrl}
-                      className={`flex items-center justify-between p-3 rounded-lg border transition-colors ${
-                        isPay ? "border-[#00ff88]/30 hover:border-[#00ff88]/60 bg-[#00ff88]/5"
-                        : isBlocked ? "border-orange-700/30 hover:border-orange-600/50 bg-orange-900/10"
-                        : "border-[#1e1e2e] hover:border-[#6366f1]/30 opacity-60 hover:opacity-80"
-                      }`}
-                    >
+                    <Link key={d.receiptId} href={d.receiptUrl} className={`flex items-center justify-between p-3 rounded-lg border transition-colors ${isPay ? "border-[#00ff88]/30 hover:border-[#00ff88]/60 bg-[#00ff88]/5" : isBlocked ? "border-orange-700/30 hover:border-orange-600/50 bg-orange-900/10" : "border-[#1e1e2e] hover:border-[#6366f1]/30 opacity-60 hover:opacity-80"}`}>
                       <div className="flex items-center gap-3">
-                        <span className={`px-2 py-0.5 rounded border font-mono text-xs ${decisionStyle(d.decision)}`}>
-                          {d.decision === "BLOCKED_BY_POLICY" ? "BLOCKED" : d.decision}
-                        </span>
+                        <span className={`px-2 py-0.5 rounded border font-mono text-xs ${decisionStyle(d.decision)}`}>{d.decision === "BLOCKED_BY_POLICY" ? "BLOCKED" : d.decision}</span>
                         <span className={`text-sm ${isPay ? "text-[#f0f0f5]" : "text-[#8b8b9e]"}`}>{d.source}</span>
                       </div>
-                      <span className={`text-xs ${isPay ? "text-[#6366f1]" : isBlocked ? "text-orange-400" : "text-[#4a4a5e]"}`}>
-                        {isPay ? "View receipt →" : isBlocked ? "Policy receipt →" : "Audit log →"}
-                      </span>
+                      <span className={`text-xs ${isPay ? "text-[#6366f1]" : isBlocked ? "text-orange-400" : "text-[#4a4a5e]"}`}>{isPay ? "View receipt →" : isBlocked ? "Policy receipt →" : "Audit log →"}</span>
                     </Link>
                   );
                 })}
