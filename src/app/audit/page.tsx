@@ -1,0 +1,163 @@
+"use client";
+import { useEffect, useState } from "react";
+import Link from "next/link";
+import { BackButton } from "@/components/back-button";
+
+const ARC_RPC    = "https://rpc.testnet.arc.network";
+const DCW_WALLET = "0xa539a18b55e5e3b98892c724f8f75914c0b69942";
+const USDC       = "0x3600000000000000000000000000000000000000";
+const ARCSCAN    = "https://testnet.arcscan.app";
+
+export default function AuditPage() {
+  const [balance,  setBalance]  = useState<string | null>(null);
+  const [txCount,  setTxCount]  = useState<number | null>(null);
+  const [block,    setBlock]    = useState<number | null>(null);
+  const [loading,  setLoading]  = useState(true);
+  const [error,    setError]    = useState<string | null>(null);
+
+  async function rpc(method: string, params: unknown[]) {
+    const r = await fetch(ARC_RPC, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ jsonrpc: "2.0", id: 1, method, params }),
+    });
+    const json = await r.json();
+    if (json.error) throw new Error(JSON.stringify(json.error));
+    return json.result as string;
+  }
+
+  async function load() {
+    setLoading(true);
+    setError(null);
+    try {
+      const [blockHex, balHex, nonceHex] = await Promise.all([
+        rpc("eth_blockNumber", []),
+        rpc("eth_call", [{ to: USDC, data: "0x70a08231000000000000000000000000" + DCW_WALLET.slice(2) }, "latest"]),
+        rpc("eth_getTransactionCount", [DCW_WALLET, "latest"]),
+      ]);
+      setBlock(parseInt(blockHex, 16));
+      setBalance((parseInt(balHex, 16) / 1e6).toFixed(6));
+      setTxCount(parseInt(nonceHex, 16));
+    } catch (e) {
+      setError(String(e));
+    }
+    setLoading(false);
+  }
+
+  useEffect(() => {
+    /* eslint-disable react-hooks/set-state-in-effect */
+    load();
+    /* eslint-enable react-hooks/set-state-in-effect */
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  return (
+    <main className="min-h-screen bg-[#0a0a0f] text-[#f0f0f5]">
+      <div className="max-w-3xl mx-auto px-6 py-12">
+        <BackButton label="Home" />
+
+        <div className="mt-6 mb-8">
+          <div className="flex items-center gap-2 mb-1">
+            <span className="text-xs font-mono text-[#00ff88]">TRUSTLESS</span>
+          </div>
+          <h1 className="text-2xl font-bold font-mono text-[#f0f0f5]">On-Chain Audit</h1>
+          <p className="text-[#8b8b9e] text-sm mt-1">
+            All data read directly from Arc Testnet RPC. No database. No trust required.
+          </p>
+        </div>
+
+        {loading ? (
+          <div className="text-[#4a4a5e] font-mono text-sm animate-pulse">Reading Arc Testnet…</div>
+        ) : error ? (
+          <div className="bg-red-900/20 border border-red-800 rounded-xl p-4 text-red-400 text-sm font-mono">
+            RPC error: {error}
+            <button onClick={load} className="ml-4 text-xs underline hover:no-underline">retry</button>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {/* Chain verification panel */}
+            <div className="bg-[#111118] rounded-xl border border-[#00ff88]/20 p-6 font-mono text-sm">
+              <div className="text-[10px] text-[#4a4a5e] mb-5 tracking-widest">
+                CHAIN VERIFICATION — Arc Testnet (chainId 5042002)
+              </div>
+              <div className="space-y-3">
+                {[
+                  { label: "Current block",    value: block?.toLocaleString() ?? "—",        color: "text-[#f0f0f5]" },
+                  { label: "DCW wallet",       value: DCW_WALLET,                             color: "text-[#00ff88]" },
+                  { label: "USDC balance",     value: balance ? `$${balance}` : "—",          color: "text-[#00ff88]" },
+                  { label: "Outbound txs",     value: txCount?.toString() ?? "—",             color: "text-[#6366f1]" },
+                  { label: "USDC contract",    value: USDC,                                   color: "text-[#8b8b9e]" },
+                ].map(({ label, value, color }) => (
+                  <div key={label} className="flex items-start justify-between gap-4 border-b border-[#1e1e2e] pb-3 last:border-0 last:pb-0">
+                    <span className="text-[#4a4a5e] w-36 flex-shrink-0 text-xs">{label}</span>
+                    <span className={`break-all text-right text-xs ${color}`}>{value}</span>
+                  </div>
+                ))}
+              </div>
+
+              <div className="mt-5 pt-4 border-t border-[#1e1e2e] flex flex-wrap gap-3">
+                <a
+                  href={`${ARCSCAN}/address/${DCW_WALLET}`}
+                  target="_blank" rel="noopener noreferrer"
+                  className="text-[#6366f1] hover:text-indigo-300 text-xs"
+                >
+                  View wallet on ArcScan ↗
+                </a>
+                <a
+                  href={`${ARCSCAN}/token/${USDC}?a=${DCW_WALLET}`}
+                  target="_blank" rel="noopener noreferrer"
+                  className="text-[#6366f1] hover:text-indigo-300 text-xs"
+                >
+                  USDC transfers on ArcScan ↗
+                </a>
+              </div>
+            </div>
+
+            {/* Contracts */}
+            <div className="bg-[#111118] rounded-xl border border-[#1e1e2e] p-6 font-mono text-xs">
+              <div className="text-[#4a4a5e] mb-4 text-[10px] tracking-widest">DEPLOYED CONTRACTS — Arc Testnet</div>
+              <div className="space-y-2">
+                {[
+                  { label: "CitePayMarket.sol",  addr: "0x396cf1646EbAeF85ee8428C2d9239C46Ae956085" },
+                  { label: "CreatorBond.sol",     addr: "0x7DBa1C67Fd9BA976aE09E744D8cbcC71F805D6C0" },
+                  { label: "CitationMandate.sol", addr: "0xBad090764dd720B5EdcD8B49e054D5d8Ce13C695" },
+                ].map(({ label, addr }) => (
+                  <div key={addr} className="flex items-start justify-between gap-4">
+                    <span className="text-[#8b8b9e] w-44 flex-shrink-0">{label}</span>
+                    <a
+                      href={`${ARCSCAN}/address/${addr}`}
+                      target="_blank" rel="noopener noreferrer"
+                      className="text-[#6366f1] hover:text-indigo-300 break-all text-right"
+                    >
+                      {addr.slice(0, 12)}…{addr.slice(-8)} ↗
+                    </a>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* CLI verification */}
+            <div className="bg-[#111118] rounded-xl border border-[#1e1e2e] p-6 font-mono text-xs text-[#8b8b9e]">
+              <div className="text-[#4a4a5e] mb-3 text-[10px] tracking-widest">INDEPENDENT VERIFICATION</div>
+              <div className="text-[#4a4a5e] mb-1">{"# Clone the repo, then run:"}</div>
+              <div className="text-[#00ff88]">{"node scripts/verify-payments.mjs"}</div>
+              <div className="text-[#4a4a5e] mt-1">{"# No API keys. Queries Arc RPC directly."}</div>
+            </div>
+
+            {/* Refresh */}
+            <div className="flex items-center gap-4">
+              <button
+                onClick={load}
+                className="text-xs font-mono text-[#4a4a5e] hover:text-[#8b8b9e] border border-[#1e1e2e] rounded px-3 py-1.5 transition-colors"
+              >
+                ↺ Refresh from chain
+              </button>
+              <Link href="/traction" className="text-xs text-[#6366f1] hover:text-indigo-300 transition-colors">
+                View traction dashboard →
+              </Link>
+            </div>
+          </div>
+        )}
+      </div>
+    </main>
+  );
+}

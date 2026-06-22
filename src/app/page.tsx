@@ -42,6 +42,7 @@ export default function LandingPage() {
   const [onchainStats, setOnchainStats] = useState<{ citationPaidEvents: number; sourceRegisteredEvents: number } | null>(null);
   const statsRef = useRef<HTMLDivElement>(null);
   const [statsVisible, setStatsVisible] = useState(false);
+  const [liveEvents, setLiveEvents] = useState<Array<{decision:string;sourceTitle:string;amountPaid:number;timestamp:string}>>([]);
 
   useEffect(() => {
     fetch("/api/traction").then((r) => r.json()).then((d) => setStats(d.stats)).catch(() => {});
@@ -56,9 +57,19 @@ export default function LandingPage() {
     return () => obs.disconnect();
   }, []);
 
+  useEffect(() => {
+    function pollLive() {
+      fetch("/api/live-events?limit=5").then((r) => r.json()).then((d) => setLiveEvents(d.events ?? [])).catch(() => {});
+    }
+    pollLive();
+    const id = setInterval(pollLive, 6000);
+    return () => clearInterval(id);
+  }, []);
+
   const usdcRouted       = useCountUp(stats?.totalUSDCRouted ?? 0, statsVisible);
   const totalDecisions   = useCountUp(stats?.totalDecisions  ?? 0, statsVisible);
   const onchainCitations = useCountUp(onchainStats?.citationPaidEvents ?? 0, statsVisible);
+  const paidCitations    = useCountUp(stats?.paidCitations ?? 0, statsVisible);
 
   return (
     <main className="min-h-screen bg-[#0a0a0f] text-[#f0f0f5] pb-20 sm:pb-0">
@@ -126,9 +137,9 @@ export default function LandingPage() {
             { label: "CitationPaid Events", value: onchainCitations, accent: "text-[#00ff88]", prefix: "", onchain: true },
             { label: "USDC Routed",         value: usdcRouted,       accent: "text-[#00ff88]", prefix: "$", divisor: 1_000_000, decimals: 4 },
             { label: "Agent Decisions",     value: totalDecisions,   accent: "text-[#6366f1]", prefix: "" },
-            { label: "Source Agents",       value: 3,                accent: "text-[#6366f1]", prefix: "", fixed: true },
-          ].map(({ label, value, accent, prefix, divisor, decimals, onchain, fixed }) => {
-            const display = (fixed || onchain) ? `${prefix}${value}`
+            { label: "Citations Paid",      value: paidCitations,    accent: "text-[#6366f1]", prefix: "" },
+          ].map(({ label, value, accent, prefix, divisor, decimals, onchain }) => {
+            const display = onchain ? `${prefix}${value}`
               : stats == null ? "—"
               : divisor ? `${prefix}${(value / divisor).toFixed(decimals ?? 2)}`
               : `${prefix}${value}`;
@@ -141,6 +152,47 @@ export default function LandingPage() {
             );
           })}
         </div>
+
+        {/* Margin Proof Panel */}
+        {(() => {
+          const actualUSDC = (stats?.totalUSDCRouted ?? 0) / 1e6;
+          const citations  = stats?.paidCitations ?? 0;
+          const ethL1Cost  = citations * 2.50;
+          const multiplier = actualUSDC > 0.0001 ? Math.round(ethL1Cost / actualUSDC) : 0;
+          return (
+            <div className="mt-4 bg-[#0a0a0f] rounded-xl border border-[#00ff88]/20 p-5 font-mono text-xs">
+              <div className="text-[#4a4a5e] text-[10px] tracking-widest mb-3">PROOF OF ECONOMICS</div>
+              <div className="border-t border-[#1e1e2e] pt-3 space-y-1.5">
+                {citations > 0 ? (
+                  <>
+                    <div className="flex justify-between">
+                      <span className="text-[#8b8b9e]">Citations settled on Arc Testnet</span>
+                      <span className="text-[#f0f0f5]">{citations.toLocaleString()}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-[#8b8b9e]">USDC paid to creators (actual)</span>
+                      <span className="text-[#00ff88]">${actualUSDC.toFixed(4)}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-[#8b8b9e]">Equivalent cost on Ethereum L1 <span className="text-[#4a4a5e]">($2.50/tx avg gas)</span></span>
+                      <span className="text-amber-400">${ethL1Cost.toFixed(2)}</span>
+                    </div>
+                    <div className="border-t border-[#1e1e2e] pt-2 mt-1 flex justify-between items-center">
+                      <span className="text-[#4a4a5e]">ARC MAKES THIS MARKET POSSIBLE</span>
+                      {multiplier > 1 && (
+                        <span className="text-[#00ff88] font-bold">~{multiplier.toLocaleString()}× cheaper per citation</span>
+                      )}
+                    </div>
+                  </>
+                ) : (
+                  <div className="text-[#4a4a5e] py-2">Run a query to generate proof of economics →{" "}
+                    <a href="/ask" className="text-[#6366f1] hover:text-indigo-300">try /ask</a>
+                  </div>
+                )}
+              </div>
+            </div>
+          );
+        })()}
 
         {/* Share prompt */}
         <div className="mt-6 flex flex-col sm:flex-row items-center justify-between gap-3 bg-[#111118] rounded-xl border border-[#1e1e2e] px-5 py-4">
@@ -163,6 +215,31 @@ export default function LandingPage() {
           </div>
         </div>
       </section>
+
+      {/* ── Live Market Activity ── */}
+      {liveEvents.length > 0 && (
+        <section className="max-w-4xl mx-auto px-6 py-8 border-t border-[#1e1e2e]">
+          <div className="flex items-center gap-2 mb-4">
+            <span className="w-2 h-2 rounded-full bg-[#00ff88] animate-pulse inline-block" />
+            <span className="text-xs font-mono text-[#4a4a5e]">LIVE MARKET ACTIVITY</span>
+            <a href="/live" className="ml-auto text-xs text-[#6366f1] hover:text-indigo-300 transition-colors">Full feed →</a>
+          </div>
+          <div className="space-y-1.5">
+            {liveEvents.map((e, i) => (
+              <div key={i} className="flex items-center gap-3 px-3 py-2 rounded-lg bg-[#111118] border border-[#1e1e2e] text-xs font-mono">
+                <span className={e.decision === "PAY" ? "text-[#00ff88]" : e.decision === "REFUSE" ? "text-red-400" : "text-[#4a4a5e]"}>
+                  {e.decision === "PAY" ? "▰" : e.decision === "REFUSE" ? "✗" : "—"}
+                </span>
+                <span className="text-[#8b8b9e] flex-1 truncate">{e.sourceTitle}</span>
+                {e.decision === "PAY" && e.amountPaid > 0 && (
+                  <span className="text-[#00ff88]">${(e.amountPaid / 1e6).toFixed(4)}</span>
+                )}
+                <span className="text-[#2e2e3e]">{new Date(e.timestamp).toLocaleTimeString()}</span>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
 
       {/* ── How It Works — Vertical Stepper ── */}
       <section className="max-w-4xl mx-auto px-6 py-16 border-t border-[#1e1e2e]">
@@ -333,6 +410,7 @@ const { data } = await client.pay("https://citepay-markets.vercel.app/api/ask", 
             <Link href="/market"      className="hover:text-[#f0f0f5] transition-colors">Market</Link>
             <Link href="/leaderboard" className="hover:text-[#f0f0f5] transition-colors">Leaderboard</Link>
             <Link href="/traction"    className="hover:text-[#f0f0f5] transition-colors">Traction</Link>
+            <Link href="/audit"       className="hover:text-[#f0f0f5] transition-colors">Audit</Link>
             <Link href="/ask"         className="hover:text-[#f0f0f5] transition-colors">Ask</Link>
             <a href="https://github.com/cyberrockng/citepay-markets" target="_blank" rel="noopener noreferrer"
                className="hover:text-[#f0f0f5] transition-colors">GitHub</a>

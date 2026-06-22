@@ -33,6 +33,7 @@ export default function LivePage() {
   const [events, setEvents] = useState<FeedEvent[]>([]);
   const [connState, setConnState] = useState<ConnState>("connecting");
   const [sessionCount, setSessionCount] = useState(0);
+  const [sessionTotals, setSessionTotals] = useState({ pay: 0, refuse: 0, skip: 0 });
   const esRef = useRef<EventSource | null>(null);
   const reconnectTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -48,7 +49,14 @@ export default function LivePage() {
     es.onmessage = (e) => {
       try {
         const ev = JSON.parse(e.data) as FeedEvent;
-        if (!ev.historical) setSessionCount((n) => n + 1);
+        if (!ev.historical) {
+          setSessionCount((n) => n + 1);
+          setSessionTotals((t) => ({
+            pay:    ev.decision === "PAY"    ? t.pay + 1    : t.pay,
+            refuse: ev.decision === "REFUSE" ? t.refuse + 1 : t.refuse,
+            skip:   (ev.decision !== "PAY" && ev.decision !== "REFUSE") ? t.skip + 1 : t.skip,
+          }));
+        }
         setEvents((prev) => {
           const next = [ev, ...prev];
           return next.slice(0, 50);
@@ -108,7 +116,10 @@ export default function LivePage() {
               </span>
               {sessionCount > 0 && (
                 <span className="text-xs font-mono text-[#8b8b9e]">
-                  +{sessionCount} this session
+                  +{sessionCount} ·{" "}
+                  <span className="text-[#00ff88]">{sessionTotals.pay} PAY</span>{" · "}
+                  <span className="text-red-400">{sessionTotals.refuse} REFUSE</span>{" · "}
+                  <span className="text-[#4a4a5e]">{sessionTotals.skip} other</span>
                 </span>
               )}
             </div>
@@ -164,8 +175,17 @@ export default function LivePage() {
                     <span className="text-[#2e2e3e]">query: </span>
                     <span className="text-[#8b8b9e]">{ev.query.slice(0, 80)}{ev.query.length > 80 ? "…" : ""}</span>
                   </div>
-                  <div className="mt-1 text-xs text-[#2e2e3e] font-mono">
-                    hash: {ev.evidenceHash.slice(0, 20)}…
+                  <div className="mt-1 flex items-center gap-4 text-xs font-mono">
+                    <span className="text-[#2e2e3e]">hash: {ev.evidenceHash.slice(0, 20)}…</span>
+                    {ev.decision === "PAY" && (
+                      <a
+                        href={`https://testnet.arcscan.app/address/0xa539a18b55e5e3b98892c724f8f75914c0b69942`}
+                        target="_blank" rel="noopener noreferrer"
+                        className="text-[#6366f1] hover:text-indigo-300"
+                      >
+                        ArcScan ↗
+                      </a>
+                    )}
                   </div>
                 </div>
               );

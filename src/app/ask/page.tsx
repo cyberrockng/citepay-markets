@@ -31,6 +31,14 @@ interface TraceEntry {
   elapsed: number;
 }
 
+interface SourceStatus {
+  title: string;
+  state: "waiting" | "scoring" | "settled";
+  decision?: string;
+  score?: number;
+  amountPaid?: number;
+}
+
 interface QueryDecision {
   receiptId: string;
   decision: string;
@@ -75,6 +83,17 @@ const POLICY_OPTIONS = [
   { key: "aggressive",   label: "Aggressive",   desc: "Higher spend · max $0.01 · relevance ≥ 20 · stops at 5 citations", color: "border-[#00ff88]/30 text-[#00ff88]", active: "border-[#00ff88] bg-[#00ff88]/10" },
 ] as const;
 
+function formatPolicyRule(rule: string): string {
+  const map: Record<string, string> = {
+    "min_relevance_not_met": "low relevance",
+    "price_within_max":      "price too high",
+    "spend_cap_ok":          "budget cap reached",
+    "bonded_ok":             "unbonded source",
+    "on_chain_anchor_ok":    "not on-chain",
+  };
+  return map[rule] ?? rule.replace(/_/g, " ");
+}
+
 export default function AskPage() {
   const [query, setQuery]         = useState("");
   const [budget, setBudget]       = useState("0.05");
@@ -83,6 +102,7 @@ export default function AskPage() {
   const [result, setResult]       = useState<QueryResult | null>(null);
   const [error, setError]         = useState("");
   const [traces, setTraces]       = useState<TraceEntry[]>([]);
+  const [sourceGrid, setSourceGrid] = useState<SourceStatus[]>([]);
 
   // Circle Wallet — independent of MetaMask, persisted in localStorage
   const [circleReady, setCircleReady]         = useState(false);
@@ -319,7 +339,16 @@ export default function AskPage() {
       const isSuffStop = event.sufficiencyStop;
       const badge      = isSuffStop ? "STOP" : event.decision === "BLOCKED_BY_POLICY" ? "BLOCKED" : event.decision;
       const badgeClass = DECISION_BADGE[isSuffStop ? "STOP" : event.decision] ?? DECISION_BADGE.SKIP;
-      addTrace({ icon: event.decision === "PAY" ? "→" : isSuffStop ? "⚡" : "·", text: event.sourceTitle, sub: `rel ${event.relevance}  score ${event.score}  ${event.reason}`, badge, badgeClass });
+      const policyNote = event.decision === "BLOCKED_BY_POLICY" && (event.policyRulesFailed as string[] | undefined)?.length
+        ? `  blocked: ${formatPolicyRule((event.policyRulesFailed as string[])[0])}`
+        : "";
+      addTrace({ icon: event.decision === "PAY" ? "→" : isSuffStop ? "⚡" : "·", text: event.sourceTitle as string, sub: `rel ${event.relevance}  score ${event.score}  ${event.reason}${policyNote}`, badge, badgeClass });
+      setSourceGrid((prev) => {
+        const entry: SourceStatus = { title: event.sourceTitle as string, state: "settled", decision: event.decision as string, score: event.score as number, amountPaid: event.amountPaid as number };
+        const existing = prev.findIndex((s) => s.title === event.sourceTitle);
+        if (existing >= 0) { const n = [...prev]; n[existing] = entry; return n; }
+        return [...prev.filter((s) => s.state === "scoring").slice(1), ...prev.filter((s) => s.state !== "scoring"), entry];
+      });
     } else if (type === "weights") {
       const list = (event.weights as { sourceTitle: string; weight: number }[])
         .map((w) => `${w.sourceTitle.split(":")[0].trim()} ${(w.weight * 100).toFixed(0)}%`).join("  ·  ");
@@ -338,6 +367,7 @@ export default function AskPage() {
       const d = event.decisions as QueryDecision[];
       const paid = d.filter((x) => x.decision === "PAY").length;
       addTrace({ icon: "✅", text: `Done · ${paid} cited · $${(event.totalPaid / 1_000_000).toFixed(4)} USDC routed`, sub: `PAY ${paid}  REFUSE ${d.filter((x) => x.decision === "REFUSE").length}  SKIP ${d.filter((x) => x.decision === "SKIP").length}${event.stoppedEarly ? "  ⚡ early stop" : ""}`, badgeClass: "text-[#00ff88]" });
+      setSourceGrid((prev) => prev.map((s) => s.state === "scoring" ? { ...s, state: "settled", title: "—" } : s));
       setResult(event as QueryResult);
       setStep("done");
     } else if (type === "error") {
@@ -352,7 +382,7 @@ export default function AskPage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!query.trim()) return;
-    setResult(null); setError(""); setTraces([]);
+    setResult(null); setError(""); setTraces([]); setSourceGrid([]);
     traceIdRef.current = 0;
     // eslint-disable-next-line react-hooks/purity
     startMsRef.current = Date.now();
@@ -395,6 +425,7 @@ export default function AskPage() {
 
     // Step 3: Submit with Circle-signed payment
     setStep("running");
+    setSourceGrid(Array(8).fill(null).map(() => ({ title: "Evaluating...", state: "scoring" as const })));
     const res2 = await fetch("/api/ask", {
       method: "POST",
       headers: { "Content-Type": "application/json", "payment-signature": paymentSignature },
@@ -410,11 +441,15 @@ export default function AskPage() {
     addTrace({ icon: "✍", text: "Agent scoring + generating answer…" });
 
     const data: QueryResult = await res2.json();
+    setSourceGrid(data.decisions.map((d) => ({ title: d.source, state: "settled" as const, decision: d.decision, score: d.scores.total, amountPaid: d.amountPaid })));
     data.decisions.forEach((d) => {
       const isSuffStop = d.sufficiencyStop;
       const badge      = isSuffStop ? "STOP" : d.decision === "BLOCKED_BY_POLICY" ? "BLOCKED" : d.decision;
       const badgeClass = DECISION_BADGE[isSuffStop ? "STOP" : d.decision] ?? DECISION_BADGE.SKIP;
-      addTrace({ icon: d.decision === "PAY" ? "→" : isSuffStop ? "⚡" : "·", text: d.source, sub: `rel ${d.scores.relevance}  score ${d.scores.total}  ${d.reason}`, badge, badgeClass });
+      const policyNote = d.decision === "BLOCKED_BY_POLICY" && d.policyRulesFailed?.length
+        ? `  blocked: ${formatPolicyRule(d.policyRulesFailed[0])}`
+        : "";
+      addTrace({ icon: d.decision === "PAY" ? "→" : isSuffStop ? "⚡" : "·", text: d.source, sub: `rel ${d.scores.relevance}  score ${d.scores.total}  ${d.reason}${policyNote}`, badge, badgeClass });
     });
     const paid = data.decisions.filter((x) => x.decision === "PAY").length;
     addTrace({ icon: "✅", text: `Done · ${paid} cited · $${(data.totalPaid / 1_000_000).toFixed(4)} USDC routed`, badgeClass: "text-[#00ff88]" });
@@ -444,6 +479,7 @@ export default function AskPage() {
 
     // Step 3: Real /api/ask with payment-signature header
     setStep("running");
+    setSourceGrid(Array(8).fill(null).map(() => ({ title: "Evaluating...", state: "scoring" as const })));
     const res2 = await fetch("/api/ask", {
       method: "POST",
       headers: { "Content-Type": "application/json", "payment-signature": paymentSig },
@@ -460,12 +496,16 @@ export default function AskPage() {
     addTrace({ icon: "✍", text: "Agent scoring + generating answer…" });
 
     const data: QueryResult = await res2.json();
+    setSourceGrid(data.decisions.map((d) => ({ title: d.source, state: "settled" as const, decision: d.decision, score: d.scores.total, amountPaid: d.amountPaid })));
     // Render decisions in console
     data.decisions.forEach((d) => {
       const isSuffStop = d.sufficiencyStop;
       const badge      = isSuffStop ? "STOP" : d.decision === "BLOCKED_BY_POLICY" ? "BLOCKED" : d.decision;
       const badgeClass = DECISION_BADGE[isSuffStop ? "STOP" : d.decision] ?? DECISION_BADGE.SKIP;
-      addTrace({ icon: d.decision === "PAY" ? "→" : isSuffStop ? "⚡" : "·", text: d.source, sub: `rel ${d.scores.relevance}  score ${d.scores.total}  ${d.reason}`, badge, badgeClass });
+      const policyNote = d.decision === "BLOCKED_BY_POLICY" && d.policyRulesFailed?.length
+        ? `  blocked: ${formatPolicyRule(d.policyRulesFailed[0])}`
+        : "";
+      addTrace({ icon: d.decision === "PAY" ? "→" : isSuffStop ? "⚡" : "·", text: d.source, sub: `rel ${d.scores.relevance}  score ${d.scores.total}  ${d.reason}${policyNote}`, badge, badgeClass });
     });
     const paid = data.decisions.filter((x) => x.decision === "PAY").length;
     addTrace({ icon: "✅", text: `Done · ${paid} cited · $${(data.totalPaid / 1_000_000).toFixed(4)} USDC routed`, badgeClass: "text-[#00ff88]" });
@@ -487,6 +527,7 @@ export default function AskPage() {
 
     // Step 2: Stream agent execution
     setStep("running");
+    setSourceGrid(Array(10).fill(null).map(() => ({ title: "Evaluating...", state: "scoring" as const })));
     let res2: Response;
     try {
       res2 = await fetch("/api/demo-query-stream", {
@@ -681,6 +722,42 @@ export default function AskPage() {
           </div>
         </div>
 
+        {/* Decision Matrix — animated status glyphs */}
+        {(step === "running" || step === "done") && sourceGrid.length > 0 && (
+          <div className="mb-6 bg-[#0a0a0f] rounded-xl border border-[#1e1e2e] p-4">
+            <div className="text-[10px] font-mono text-[#4a4a5e] mb-3 flex items-center gap-2">
+              <span className="w-1.5 h-1.5 rounded-full bg-[#00ff88] inline-block animate-pulse" />
+              AGENT DECISION MATRIX — {sourceGrid.filter((s) => s.state === "settled").length}/{sourceGrid.length} evaluated
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+              {sourceGrid.map((s, i) => {
+                const glyph = s.state === "waiting" ? "□"
+                  : s.state === "scoring" ? "◎"
+                  : s.decision === "PAY" ? "▰"
+                  : s.decision === "REFUSE" || s.decision === "BLOCKED_BY_POLICY" ? "✗"
+                  : "—";
+                const glyphColor = s.decision === "PAY" ? "text-[#00ff88]"
+                  : s.decision === "REFUSE" ? "text-red-400"
+                  : s.decision === "BLOCKED_BY_POLICY" ? "text-orange-400"
+                  : s.state === "scoring" ? "text-yellow-400 animate-pulse"
+                  : "text-[#4a4a5e]";
+                return (
+                  <div key={i} className="flex items-center gap-2 px-2 py-1.5 rounded bg-[#111118] border border-[#1e1e2e]">
+                    <span className={`font-mono text-sm w-4 flex-shrink-0 ${glyphColor}`}>{glyph}</span>
+                    <span className="text-xs text-[#8b8b9e] truncate flex-1">{s.title || "Evaluating source…"}</span>
+                    {s.decision === "PAY" && s.amountPaid != null && s.amountPaid > 0 && (
+                      <span className="text-[10px] font-mono text-[#00ff88] flex-shrink-0">${(s.amountPaid / 1e6).toFixed(4)}</span>
+                    )}
+                    {s.score != null && s.state === "settled" && (
+                      <span className="text-[10px] font-mono text-[#4a4a5e] flex-shrink-0">{s.score}</span>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
         {/* Two-column */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
           {/* Form */}
@@ -798,7 +875,12 @@ export default function AskPage() {
                             {d.sufficiencyStop ? "STOP" : d.decision === "BLOCKED_BY_POLICY" ? "BLOCKED" : d.decision}
                           </span>
                         </td>
-                        <td className="px-4 py-3 text-[#8b8b9e] text-xs max-w-[200px] truncate" title={d.reason}>{d.reason}</td>
+                        <td className="px-4 py-3 text-[#8b8b9e] text-xs max-w-[200px] truncate" title={d.reason}>
+                          {d.reason}
+                          {d.decision === "BLOCKED_BY_POLICY" && d.policyRulesFailed?.length
+                            ? <span className="ml-1 text-orange-400/70">[{formatPolicyRule(d.policyRulesFailed[0])}]</span>
+                            : null}
+                        </td>
                       </tr>
                     ))}
                   </tbody>

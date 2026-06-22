@@ -297,6 +297,10 @@ export function getAllReceipts(limit = 50): Receipt[] {
   return getDb().prepare("SELECT * FROM receipts ORDER BY created_at DESC LIMIT ?").all(limit).map((r) => rowToReceipt(r as Record<string, unknown>));
 }
 
+export function getRecentReceipts(limit = 8): Receipt[] {
+  return getDb().prepare("SELECT * FROM receipts ORDER BY created_at DESC LIMIT ?").all(limit).map((r) => rowToReceipt(r as Record<string, unknown>));
+}
+
 export function markReceiptChallenged(id: string): void {
   getDb().prepare("UPDATE receipts SET challenged = 1 WHERE id = ?").run(id);
 }
