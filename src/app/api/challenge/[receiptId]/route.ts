@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getReceiptById, getSourceById, markReceiptChallenged, updateSourceStats, incrementTraction } from "@/lib/db";
+import { redisIncrChallenge } from "@/lib/redis-stats";
 
 export const dynamic = "force-dynamic";
 
@@ -35,6 +36,7 @@ export async function POST(
 
   markReceiptChallenged(receiptId);
   incrementTraction("challenge_count");
+  void redisIncrChallenge();
   // Creator reputation drops for modifying source after payment
   updateSourceStats(receipt.sourceId, "REFUSE");
   // Agent reputation drops slightly for curating a now-broken source

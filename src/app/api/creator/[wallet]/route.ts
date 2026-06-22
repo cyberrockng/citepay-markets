@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getReceiptsByCreatorWallet, getAllSources, recordShareCard } from "@/lib/db";
+import { redisIncrShareCard } from "@/lib/redis-stats";
 
 export const dynamic = "force-dynamic";
 
@@ -20,6 +21,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ wal
   const body = await req.json().catch(() => ({}));
   if (body.action === "share" && body.receiptId) {
     const shareId = recordShareCard(body.receiptId, wallet);
+    void redisIncrShareCard();
     return NextResponse.json({ shareId, message: "Share card created" });
   }
   return NextResponse.json({ error: "Unknown action" }, { status: 400 });

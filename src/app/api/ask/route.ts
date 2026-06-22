@@ -9,6 +9,7 @@ import { anchorPAY, checkAnchorReady, createMandateOnChain, closeMandateOnChain 
 import { resolvePolicy } from "@/lib/policy";
 import { signReceiptHash } from "@/lib/signature";
 import { agentEvents } from "@/lib/events";
+import { redisIncrQuery, redisIncrDecision } from "@/lib/redis-stats";
 import {
   getAllSources,
   insertQuery,
@@ -86,6 +87,7 @@ export async function POST(req: NextRequest) {
     createdAt: new Date().toISOString(),
   };
   insertQuery(queryRecord);
+  void redisIncrQuery();
 
   // ── Step 4: Pre-register session mandate on-chain ────────────────────────
   // Runs concurrently with nothing else; fail-open (null = no mandate contract configured)
@@ -209,6 +211,7 @@ export async function POST(req: NextRequest) {
       }
     }
     updateSourceStats(d.source.id, d.decision);
+    void redisIncrDecision(d.decision, d.decision === "PAY" ? (d.weightedAmount ?? d.source.price) : 0);
     receiptIds.push(receiptId);
     receiptsOut.push({
       receiptId,
