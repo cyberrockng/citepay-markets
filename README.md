@@ -63,7 +63,7 @@ CitePay Markets is a live agentic citation economy where:
 - **AI veracity agent** (Claude Haiku) receives a query and a USDC budget, evaluates source claims on relevance, price, creator bond, and reputation, subject to a configurable **Agent Spend Policy**.
 - **Every decision** — PAY, REFUSE, SKIP, or BLOCKED_BY_POLICY — generates a public receipt with an evidence hash, content hash, payment proof, and human-readable reason.
 - **Multi-agent orchestration** — An orchestrator agent decomposes complex queries, hires researcher agents via real x402 Circle Gateway payments, and synthesizes a comprehensive answer. Agent-to-agent USDC flows are live.
-- **Circle stack (6 products)**: Gateway + x402 (pay per query), DCW (MPC-secured creator payouts), App Kit (Unified Balance Kit + Circle Wallets Adapter), Modular Wallets (passkey smart accounts for creators + non-custodial buyer), Gas Station (gasless creator onboarding), CCTP groundwork (cross-chain USDC funding).
+- **Circle stack (7 products)**: Gateway + x402 (pay per query), DCW (MPC-secured creator payouts + `signTypedData` Programmable Wallet buyer), App Kit (Unified Balance Kit + Circle Wallets Adapter), Modular Wallets (Circle HSM signs EIP-3009 — no browser key), Gas Station (gasless creator onboarding), CCTP v2 (`POST /api/cctp/fund-creator` — burn on Arc, mint on Base/Ethereum/Arbitrum via Circle Forwarder).
 - **MCP server** at `/api/mcp` exposes `cite_query`, `get_receipt`, and `check_policy` as tools for Claude Code and Cursor integration.
 
 ### Live Traction (Arc Testnet)
@@ -118,7 +118,13 @@ CitePay Markets solves all three:
 | Objective content-integrity challenge | ✓ | ✗ |
 | 109+ CitationPaid events verifiable on Arc Testnet | ✓ | ✗ |
 
-**Circle SDK coverage:** `@circle-fin/x402-batching` · `@circle-fin/developer-controlled-wallets` · `@circle-fin/adapter-circle-wallets` · `@circle-fin/unified-balance-kit`
+**Circle SDK coverage:** `@circle-fin/x402-batching` · `@circle-fin/developer-controlled-wallets` · `@circle-fin/adapter-circle-wallets` · `@circle-fin/unified-balance-kit` · `@circle-fin/provider-gateway-v1` · `@circle-fin/adapter-viem-v2`
+
+| New Circle product | Where |
+|---|---|
+| Circle Programmable Wallets (DCW `signTypedData`) | `/api/auth/circle-session` + `/api/auth/sign-payment` |
+| CCTP v2 cross-chain creator payouts | `POST /api/cctp/fund-creator` |
+| Circle Gateway V1 (`spend`, `addDelegate`) | `src/lib/cctp.ts` via Unified Balance Kit |
 
 ---
 

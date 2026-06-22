@@ -82,8 +82,8 @@ export default function WalletPage() {
               "@circle-fin/unified-balance-kit",
               "@circle-fin/developer-controlled-wallets",
               "@circle-fin/x402-batching",
-              "circle-modular-wallets (passkey)",
-              "circle-gas-station (UserOp sponsor)",
+              "@circle-fin/provider-gateway-v1",
+              "@circle-fin/adapter-viem-v2",
             ].map((sdk) => (
               <span key={sdk} className="text-xs font-mono text-[#00ff88] bg-[#00ff88]/5 border border-[#00ff88]/20 px-2 py-1 rounded">
                 {sdk}
@@ -196,35 +196,72 @@ export default function WalletPage() {
                     step: "1",
                     color: "bg-violet-900/30 border-violet-700/40 text-violet-300",
                     label: "Query fee",
-                    desc: "User pays $0.001 via Circle Gateway (x402-batching)",
+                    desc: "User pays $0.001 via Circle Gateway (x402-batching) · Circle Programmable Wallet (DCW) signs EIP-3009",
                   },
                   {
                     step: "2",
                     color: "bg-blue-900/30 border-blue-700/40 text-blue-300",
                     label: "Agent evaluates",
-                    desc: "Claude Haiku scores sources under Agent Spend Policy",
+                    desc: "Claude Haiku scores sources under Agent Spend Policy — CitationMandate.sol records CitationAllowed / CitationBlocked on Arc",
                   },
                   {
-                    step: "3",
+                    step: "3a",
                     color: "bg-[#00ff88]/10 border-[#00ff88]/30 text-[#00ff88]",
-                    label: "Creator payout",
-                    desc: "DCW wallet signs ERC-20 transfer via Circle App Kit MPC",
+                    label: "Creator payout — same chain",
+                    desc: "DCW wallet signs ERC-20 transfer on Arc Testnet via Circle App Kit MPC",
+                  },
+                  {
+                    step: "3b",
+                    color: "bg-cyan-900/20 border-cyan-700/30 text-cyan-300",
+                    label: "Creator payout — cross-chain (CCTP)",
+                    desc: "POST /api/cctp/fund-creator: burn USDC on Arc → Circle CCTP v2 attestation → mint on Base / Ethereum / Arbitrum / Optimism via Circle Forwarder (gasless)",
                   },
                   {
                     step: "4",
                     color: "bg-amber-900/20 border-amber-700/30 text-amber-300",
                     label: "Receipt anchored",
-                    desc: "Evidence hash + PAY decision written to CitePayMarket.sol",
+                    desc: "Evidence hash + PAY decision written to CitePayMarket.sol on Arc Testnet",
                   },
                 ].map(({ step, color, label, desc }) => (
                   <div key={step} className={`flex gap-3 p-3 rounded-lg border ${color.split(" ").slice(0, 2).join(" ")}`}>
-                    <span className={`font-bold text-sm w-5 flex-shrink-0 ${color.split(" ")[2]}`}>{step}</span>
+                    <span className={`font-bold text-sm w-6 flex-shrink-0 ${color.split(" ")[2]}`}>{step}</span>
                     <div>
                       <div className={`text-sm font-medium ${color.split(" ")[2]}`}>{label}</div>
                       <div className="text-xs text-[#8b8b9e] mt-0.5">{desc}</div>
                     </div>
                   </div>
                 ))}
+              </div>
+            </div>
+
+            {/* CCTP cross-chain payout */}
+            <div className="bg-[#111118] rounded-xl border border-cyan-900/40 p-6">
+              <div className="flex items-center gap-2 mb-3">
+                <h2 className="font-semibold text-[#f0f0f5]">Cross-Chain Payouts</h2>
+                <span className="text-xs text-cyan-400 bg-cyan-900/20 px-2 py-0.5 rounded-full">Circle CCTP v2</span>
+              </div>
+              <p className="text-xs text-[#8b8b9e] mb-4">
+                Creators can receive citation payments on any Circle-supported chain — not just Arc Testnet.
+                CitePay burns USDC on Arc and uses CCTP v2 + Circle Forwarder to mint on the creator&apos;s preferred chain, gasless.
+              </p>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-4">
+                {["Arc Testnet", "Base Sepolia", "Ethereum Sepolia", "Arbitrum Sepolia", "Optimism Sepolia", "Avalanche Fuji", "Polygon Amoy"].map((chain) => (
+                  <div key={chain} className="text-[10px] font-mono text-cyan-400 bg-cyan-900/10 border border-cyan-800/30 rounded px-2 py-1 text-center">
+                    {chain}
+                  </div>
+                ))}
+              </div>
+              <div className="bg-[#0a0a0f] rounded-lg p-3 text-xs font-mono text-[#8b8b9e]">
+                <div className="text-[#4a4a5e] mb-1">{"// POST /api/cctp/fund-creator"}</div>
+                <div className="text-cyan-400">{"{"}</div>
+                <div className="pl-4">creatorWallet: <span className="text-[#00ff88]">"0xCreator…"</span>,</div>
+                <div className="pl-4">amountMicroUsdc: <span className="text-amber-400">5000</span>,</div>
+                <div className="pl-4">destChain: <span className="text-[#00ff88]">"Base_Sepolia"</span></div>
+                <div className="text-cyan-400">{"}"}</div>
+                <div className="text-[#4a4a5e] mt-2">{"// → burn on Arc · CCTP attestation · mint on Base (gasless)"}</div>
+              </div>
+              <div className="mt-3 text-[10px] text-[#4a4a5e] font-mono">
+                SDK: @circle-fin/unified-balance-kit · spend() · estimateSpend() · CCTP domain 26 (Arc) → 6 (Base)
               </div>
             </div>
 
