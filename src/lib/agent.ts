@@ -121,11 +121,16 @@ function buildReason(
 // regardless of policy — leaves headroom for the query fee and gas.
 const BUDGET_STOP_FRACTION = 0.88;
 
+export type AgentEvent =
+  | { type: "scoring_complete"; count: number }
+  | { type: "decision"; sourceTitle: string; decision: string; reason: string; relevance: number; score: number; sufficiencyStop: boolean };
+
 export async function runBuyerAgent(
   query: string,
   budget: number,
   sources: Source[],
-  policy: AgentPolicy = DEFAULT_POLICY
+  policy: AgentPolicy = DEFAULT_POLICY,
+  onEvent?: (e: AgentEvent) => void
 ): Promise<AgentDecision[]> {
   if (!sources.length) return [];
 
@@ -141,6 +146,7 @@ export async function runBuyerAgent(
     })
   );
 
+  onEvent?.({ type: "scoring_complete", count: scored.length });
   scored.sort((a, b) => b.scores.total - a.scores.total);
 
   const seenDomains = new Set<string>();
@@ -185,6 +191,7 @@ export async function runBuyerAgent(
         policyReason: null,
         sufficiencyStop: true,
       });
+      onEvent?.({ type: "decision", sourceTitle: source.title, decision: "SKIP", reason: stopReason, relevance: scores.relevance, score: scores.total, sufficiencyStop: true });
       continue;
     }
 
@@ -209,18 +216,20 @@ export async function runBuyerAgent(
 
     const policyReason = decision === "BLOCKED_BY_POLICY" ? policyEval.reason : null;
 
+    const reason = buildReason(scores, decision, source, budgetRemaining + (decision === "PAY" ? source.price : 0), policyReason);
     decisions.push({
       sourceId: source.id,
       source,
       decision,
       scores,
-      reason: buildReason(scores, decision, source, budgetRemaining + (decision === "PAY" ? source.price : 0), policyReason),
+      reason,
       excerptUsed,
       policyProfile: policy.name,
       policyRulesPassed: policyEval.rulesPassed,
       policyRulesFailed: policyEval.rulesFailed,
       policyReason,
     });
+    onEvent?.({ type: "decision", sourceTitle: source.title, decision, reason, relevance: scores.relevance, score: scores.total, sufficiencyStop: false });
   }
 
   // Compute contribution weights for PAY decisions.
