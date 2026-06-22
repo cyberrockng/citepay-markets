@@ -117,6 +117,10 @@ function buildReason(
   return scores.relevance < 40 ? "Weak relevance to query." : "Not worth considering given current context.";
 }
 
+// Budget floor: always stop paying when this fraction of budget is spent,
+// regardless of policy — leaves headroom for the query fee and gas.
+const BUDGET_STOP_FRACTION = 0.88;
+
 export async function runBuyerAgent(
   query: string,
   budget: number,
@@ -151,7 +155,39 @@ export async function runBuyerAgent(
     } catch { /* skip malformed URLs */ }
   }
 
+  let citedCount = 0;
+  let cumulativeRelevance = 0;
+
   for (const { source, scores, excerptUsed } of scored) {
+    // Sufficiency check: have we gathered enough high-quality citations?
+    // Triggered by: citation count, cumulative relevance, or hard budget floor.
+    const budgetFloorHit = sessionSpent >= budget * BUDGET_STOP_FRACTION;
+    const citationCapHit = policy.sufficiencyMaxCitations > 0 && citedCount >= policy.sufficiencyMaxCitations;
+    const relevanceTargetHit = policy.sufficiencyRelevanceTarget > 0 && cumulativeRelevance >= policy.sufficiencyRelevanceTarget;
+
+    if (citedCount > 0 && (budgetFloorHit || citationCapHit || relevanceTargetHit)) {
+      const stopReason = budgetFloorHit
+        ? "Budget floor reached — preserving remaining balance."
+        : citationCapHit
+        ? `Sufficient coverage: ${citedCount} citation${citedCount !== 1 ? "s" : ""} gathered (${policy.name} policy limit).`
+        : `Sufficient coverage: cumulative relevance ${cumulativeRelevance} reached target (${policy.name} policy).`;
+
+      decisions.push({
+        sourceId: source.id,
+        source,
+        decision: "SKIP",
+        scores,
+        reason: stopReason,
+        excerptUsed,
+        policyProfile: policy.name,
+        policyRulesPassed: [],
+        policyRulesFailed: [],
+        policyReason: null,
+        sufficiencyStop: true,
+      });
+      continue;
+    }
+
     const policyEval = evaluatePolicy(source, scores, sessionSpent, policy);
     let decision: Decision;
 
@@ -162,6 +198,8 @@ export async function runBuyerAgent(
         decision = "PAY";
         budgetRemaining -= source.price;
         sessionSpent += source.price;
+        citedCount++;
+        cumulativeRelevance += scores.relevance;
       }
     } else if (scores.total >= MIN_SCORE_TO_REFUSE) {
       decision = "REFUSE";

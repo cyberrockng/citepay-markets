@@ -44,6 +44,7 @@ export interface AgentDecision {
   policyReason: string | null;
   contributionWeight?: number; // 0–1, share of creator budget this source earned
   weightedAmount?: number;     // actual micro-USDC paid (weighted, not flat listed price)
+  sufficiencyStop?: boolean;   // true when SKIP was due to early-stop, not weak relevance
 }
 
 export interface EvidencePreimage {

@@ -24,6 +24,7 @@ interface QueryDecision {
   policyRulesPassed: string[];
   policyRulesFailed: string[];
   policyReason: string | null;
+  sufficiencyStop: boolean;
 }
 
 interface QueryResult {
@@ -33,6 +34,7 @@ interface QueryResult {
   totalPaid: number;
   queryFee: number;
   policyProfile: string;
+  stoppedEarly: boolean;
 }
 
 const POLICY_OPTIONS = [
@@ -263,6 +265,11 @@ export default function AskPage() {
                     {result.decisions.length} sources evaluated under <span className="text-[#6366f1]">{result.policyProfile}</span> policy
                   </p>
                 </div>
+                {result.stoppedEarly && (
+                  <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-amber-900/30 border border-amber-600/40 text-amber-400 text-xs font-mono">
+                    ⚡ early stop
+                  </span>
+                )}
               </div>
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
@@ -298,8 +305,8 @@ export default function AskPage() {
                         <td className="px-4 py-3 text-right text-[#f0f0f5]">{d.scores.relevance}%</td>
                         <td className="px-4 py-3 text-right text-[#f0f0f5]">{d.scores.total}</td>
                         <td className="px-4 py-3 text-center">
-                          <span className={`px-2 py-0.5 rounded border font-mono text-xs ${decisionStyle(d.decision)}`}>
-                            {d.decision === "BLOCKED_BY_POLICY" ? "BLOCKED" : d.decision}
+                          <span className={`px-2 py-0.5 rounded border font-mono text-xs ${d.sufficiencyStop ? "border-amber-600/40 text-amber-400 bg-amber-900/10" : decisionStyle(d.decision)}`}>
+                            {d.sufficiencyStop ? "STOP" : d.decision === "BLOCKED_BY_POLICY" ? "BLOCKED" : d.decision}
                           </span>
                         </td>
                         <td className="px-4 py-3 text-[#8b8b9e] text-xs max-w-[200px] truncate" title={d.reason}>{d.reason}</td>

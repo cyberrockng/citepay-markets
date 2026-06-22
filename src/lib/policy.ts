@@ -8,6 +8,9 @@ export interface AgentPolicy {
   sessionSpendCap: number;      // micro USDC (0 = no cap)
   requireOnChainAnchor: boolean;
   allowSimulatedPayout: boolean;
+  // Sufficiency / early-stop thresholds
+  sufficiencyMaxCitations: number;    // stop after this many PAY decisions (0 = no limit)
+  sufficiencyRelevanceTarget: number; // stop when cumulative relevance of cited sources hits this (0 = no limit)
 }
 
 export interface PolicyRuleResult {
@@ -32,6 +35,8 @@ export const POLICY_PRESETS: Record<string, AgentPolicy> = {
     sessionSpendCap: 10000,
     requireOnChainAnchor: true,
     allowSimulatedPayout: false,
+    sufficiencyMaxCitations: 2,   // stop after 2 high-quality citations
+    sufficiencyRelevanceTarget: 150, // or when cumulative relevance hits 150
   },
   balanced: {
     name: "Balanced",
@@ -41,6 +46,8 @@ export const POLICY_PRESETS: Record<string, AgentPolicy> = {
     sessionSpendCap: 0,
     requireOnChainAnchor: false,
     allowSimulatedPayout: true,
+    sufficiencyMaxCitations: 3,   // stop after 3 citations
+    sufficiencyRelevanceTarget: 210, // or cumulative relevance 210 (~3×70)
   },
   aggressive: {
     name: "Aggressive",
@@ -50,6 +57,8 @@ export const POLICY_PRESETS: Record<string, AgentPolicy> = {
     sessionSpendCap: 0,
     requireOnChainAnchor: false,
     allowSimulatedPayout: true,
+    sufficiencyMaxCitations: 5,   // keep going up to 5 citations
+    sufficiencyRelevanceTarget: 350, // or very high cumulative relevance
   },
 };
 

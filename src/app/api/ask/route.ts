@@ -102,6 +102,7 @@ export async function POST(req: NextRequest) {
   let totalPaid = 0;
   let budgetRemaining = budgetMicro;
   const receiptsOut = [];
+  const stoppedEarly = decisions.some((d) => d.sufficiencyStop);
 
   for (const d of decisions) {
     const receiptId = uuidv4();
@@ -219,6 +220,7 @@ export async function POST(req: NextRequest) {
       policyRulesPassed: d.policyRulesPassed,
       policyRulesFailed: d.policyRulesFailed,
       policyReason: d.policyReason,
+      sufficiencyStop: d.sufficiencyStop ?? false,
     });
   }
 
@@ -273,6 +275,7 @@ Provide a concise answer with inline citations.`,
     receiptIds,
     queryUrl: `/api/query/${queryId}`,
     policyProfile: policy.name,
+    stoppedEarly,
   });
 }
 
