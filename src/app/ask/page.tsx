@@ -90,7 +90,6 @@ export default function AskPage() {
   const [circleWalletId, setCircleWalletId]   = useState<string | null>(null);
   const [circleWalletAddress, setCircleWalletAddress] = useState<string | null>(null);
   const [circleBalance, setCircleBalance]     = useState<number | null>(null);
-  const [circleQueriesMax, setCircleQueriesMax] = useState(5);
   const [circleError, setCircleError]         = useState("");
 
   // MetaMask / EOA wallet state (advanced mode)
@@ -115,6 +114,7 @@ export default function AskPage() {
                         (walletStep === "circle_ready" && circleWalletId !== null);
 
   useEffect(() => {
+    /* eslint-disable react-hooks/set-state-in-effect */
     if (!isConnected && walletStep !== "disconnected") {
       setWalletStep("disconnected");
       setSiweAddress(null);
@@ -122,6 +122,7 @@ export default function AskPage() {
     } else if (isConnected && walletStep === "disconnected") {
       setWalletStep("connected");
     }
+    /* eslint-enable react-hooks/set-state-in-effect */
   }, [isConnected, walletStep]);
 
   // Restore Circle session from localStorage on mount
@@ -132,10 +133,11 @@ export default function AskPage() {
       const s: StoredCircleSession = JSON.parse(raw);
       const age = Date.now() - s.createdAt;
       if (age > 24 * 60 * 60 * 1000) { localStorage.removeItem(CIRCLE_SESSION_KEY); return; }
+      /* eslint-disable react-hooks/set-state-in-effect */
       setCircleWalletId(s.walletId);
       setCircleWalletAddress(s.address);
-      setCircleQueriesMax(s.queriesMax ?? 5);
       setCircleReady(true);
+      /* eslint-enable react-hooks/set-state-in-effect */
     } catch { /* ignore */ }
   }, []);
 
@@ -247,7 +249,6 @@ export default function AskPage() {
       localStorage.setItem(CIRCLE_SESSION_KEY, JSON.stringify(session));
       setCircleWalletId(res.walletId);
       setCircleWalletAddress(res.address);
-      setCircleQueriesMax(res.queriesMax ?? 5);
       setCircleReady(true);
     } catch (err) {
       setCircleError(String(err));
@@ -286,7 +287,6 @@ export default function AskPage() {
       localStorage.setItem(CIRCLE_SESSION_KEY, JSON.stringify(session));
       setCircleWalletId(res.walletId);
       setCircleWalletAddress(res.address);
-      setCircleQueriesMax(res.queriesMax ?? 5);
       setCircleReady(true);
       setWalletStep("circle_ready");
     } catch (err) {
@@ -354,6 +354,7 @@ export default function AskPage() {
     if (!query.trim()) return;
     setResult(null); setError(""); setTraces([]);
     traceIdRef.current = 0;
+    // eslint-disable-next-line react-hooks/purity
     startMsRef.current = Date.now();
     setStep("waiting_payment");
     if (circleReady && circleWalletId && circleWalletAddress) {
@@ -720,7 +721,7 @@ export default function AskPage() {
           {/* Console */}
           <div className="bg-[#0a0a0f] rounded-xl border border-[#1e1e2e] flex flex-col min-h-[300px]">
             <div className="px-4 py-2.5 border-b border-[#1e1e2e] flex items-center justify-between">
-              <span className="text-[#4a4a5e] text-xs font-mono">// Agent Console</span>
+              <span className="text-[#4a4a5e] text-xs font-mono">{"// Agent Console"}</span>
               {isActive && (
                 <span className="flex h-2 w-2 relative">
                   <span className="animate-ping absolute h-2 w-2 rounded-full bg-[#6366f1] opacity-75" />

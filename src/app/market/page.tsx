@@ -36,12 +36,14 @@ export default function MarketPage() {
   const [msg, setMsg] = useState("");
 
   useEffect(() => {
+    /* eslint-disable react-hooks/set-state-in-effect */
     setLoading(true);
     const url = activeCategory === "All" ? "/api/sources" : `/api/sources?category=${encodeURIComponent(activeCategory)}`;
     fetch(url)
       .then((r) => r.json())
       .then((d) => { setSources(d.sources || []); setLoading(false); })
       .catch(() => setLoading(false));
+    /* eslint-enable react-hooks/set-state-in-effect */
   }, [activeCategory]);
 
   async function handleRegister(e: React.FormEvent) {

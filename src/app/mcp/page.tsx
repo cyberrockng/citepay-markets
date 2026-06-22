@@ -88,7 +88,7 @@ export default function McpPage() {
               <div>
                 <h2 className="font-semibold text-[#f0f0f5]">Claude Code / Claude Desktop</h2>
                 <p className="text-xs text-[#8b8b9e] mt-0.5">
-                  Add to <code className="text-[#f0f0f5]">~/.claude.json</code> or your project's <code className="text-[#f0f0f5]">CLAUDE.md</code>
+                  Add to <code className="text-[#f0f0f5]">~/.claude.json</code> or your project&apos;s <code className="text-[#f0f0f5]">CLAUDE.md</code>
                 </p>
               </div>
               <CopyButton text={CLAUDE_CONFIG} label="Copy config" />

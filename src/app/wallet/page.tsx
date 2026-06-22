@@ -179,10 +179,10 @@ export default function WalletPage() {
               <div className="mt-4 p-3 bg-[#0a0a0f] rounded-lg text-xs font-mono text-[#8b8b9e]">
                 <div className="text-[#4a4a5e] mb-1">{"// used for creator payouts via DCW"}</div>
                 <div className="text-[#6366f1]">client.createContractExecutionTransaction({"{"}</div>
-                <div className="pl-4">walletId: <span className="text-amber-400">"{wallet.walletId.slice(0, 8)}…"</span>,</div>
-                <div className="pl-4">contractAddress: <span className="text-[#00ff88]">"USDC precompile"</span>,</div>
-                <div className="pl-4">callData: <span className="text-[#00ff88]">"transfer(creator, amount)"</span>,</div>
-                <div className="pl-4">fee: {"{ type: "}<span className="text-amber-400">"level"</span>, config: {"{ feeLevel: "}<span className="text-amber-400">"HIGH"</span> {"} }"}</div>
+                <div className="pl-4">walletId: <span className="text-amber-400">&quot;{wallet.walletId.slice(0, 8)}…&quot;</span>,</div>
+                <div className="pl-4">contractAddress: <span className="text-[#00ff88]">&quot;USDC precompile&quot;</span>,</div>
+                <div className="pl-4">callData: <span className="text-[#00ff88]">&quot;transfer(creator, amount)&quot;</span>,</div>
+                <div className="pl-4">fee: {"{ type: "}<span className="text-amber-400">&quot;level&quot;</span>, config: {"{ feeLevel: "}<span className="text-amber-400">&quot;HIGH&quot;</span> {"} }"}</div>
                 <div className="text-[#6366f1]">{"});"}</div>
               </div>
             </div>
@@ -254,9 +254,9 @@ export default function WalletPage() {
               <div className="bg-[#0a0a0f] rounded-lg p-3 text-xs font-mono text-[#8b8b9e]">
                 <div className="text-[#4a4a5e] mb-1">{"// POST /api/cctp/fund-creator"}</div>
                 <div className="text-cyan-400">{"{"}</div>
-                <div className="pl-4">creatorWallet: <span className="text-[#00ff88]">"0xCreator…"</span>,</div>
+                <div className="pl-4">creatorWallet: <span className="text-[#00ff88]">&quot;0xCreator…&quot;</span>,</div>
                 <div className="pl-4">amountMicroUsdc: <span className="text-amber-400">5000</span>,</div>
-                <div className="pl-4">destChain: <span className="text-[#00ff88]">"Base_Sepolia"</span></div>
+                <div className="pl-4">destChain: <span className="text-[#00ff88]">&quot;Base_Sepolia&quot;</span></div>
                 <div className="text-cyan-400">{"}"}</div>
                 <div className="text-[#4a4a5e] mt-2">{"// → burn on Arc · CCTP attestation · mint on Base (gasless)"}</div>
               </div>
