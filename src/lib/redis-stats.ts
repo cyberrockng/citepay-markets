@@ -9,13 +9,23 @@
  *   - Fail-open: if Edge Config is not configured, everything silently no-ops
  */
 
-const EC_URL   = process.env.EDGE_CONFIG;            // connection string for reads
-const EC_ID    = process.env.EDGE_CONFIG_ID;         // ecfg_xxx for writes
-const API_TOK  = process.env.VERCEL_API_TOKEN;       // Vercel API token for writes
-const TEAM_ID  = process.env.VERCEL_TEAM_ID;         // team scope for API writes
+const EC_CONN  = process.env.EDGE_CONFIG;    // e.g. https://edge-config.vercel.com/ecfg_xxx?token=yyy
+const EC_ID    = process.env.EDGE_CONFIG_ID; // ecfg_xxx for write API calls
+const API_TOK  = process.env.EC_API_TOKEN;   // Vercel API token for writes (EC_* prefix avoids Vercel reserved namespace)
+const TEAM_ID  = process.env.EC_TEAM_ID;     // Vercel team ID for write API calls
 
 function isConfigured(): boolean {
-  return !!(EC_URL && EC_ID && API_TOK);
+  return !!(EC_CONN && EC_ID && API_TOK);
+}
+
+// Build correct item URL: extract base+token from connection string, construct /item/{key}?token=
+function ecItemUrl(key: string): string | null {
+  if (!EC_CONN || !EC_ID) return null;
+  try {
+    const u = new URL(EC_CONN);
+    const token = u.searchParams.get("token") ?? "";
+    return `https://edge-config.vercel.com/${EC_ID}/item/${key}?token=${encodeURIComponent(token)}`;
+  } catch { return null; }
 }
 
 // ── In-memory accumulator ─────────────────────────────────────────────────────
@@ -52,18 +62,19 @@ async function loadFromEC(): Promise<void> {
   if (_loaded || !isConfigured()) return;
   _loaded = true;
   try {
-    // Read counters item
-    const r1 = await fetch(`${EC_URL}/item/counters`);
-    if (r1.ok) {
-      const counters = await r1.json() as Partial<Counters>;
-      Object.assign(_mem, counters);
+    const counterUrl = ecItemUrl("counters");
+    const sourceUrl  = ecItemUrl("sourceCounts");
+    if (counterUrl) {
+      const r1 = await fetch(counterUrl);
+      if (r1.ok) Object.assign(_mem, await r1.json() as Partial<Counters>);
     }
-    // Read source counts item
-    const r2 = await fetch(`${EC_URL}/item/sourceCounts`);
-    if (r2.ok) {
-      const src = await r2.json() as Partial<SourceCounts>;
-      if (src.paid)   Object.assign(_src.paid,   src.paid);
-      if (src.refused) Object.assign(_src.refused, src.refused);
+    if (sourceUrl) {
+      const r2 = await fetch(sourceUrl);
+      if (r2.ok) {
+        const src = await r2.json() as Partial<SourceCounts>;
+        if (src.paid)    Object.assign(_src.paid,    src.paid);
+        if (src.refused) Object.assign(_src.refused, src.refused);
+      }
     }
   } catch { /* fail-open */ }
 }
