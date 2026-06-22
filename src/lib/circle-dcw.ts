@@ -71,23 +71,28 @@ export async function payCreatorViaDCW(opts: {
   let txHash: string = tx?.txHash ?? `dcw-pending-${opts.receiptId}`;
   let state: string = tx?.state ?? "INITIATED";
 
-  // Arc Testnet has sub-500ms finality — poll for confirmation (max 12s)
-  if (txId && state !== "CONFIRMED" && state !== "FAILED") {
-    for (let i = 0; i < 24; i++) {
+  console.log(`[dcw] tx submitted id=${txId} state=${state}`);
+
+  // Arc Testnet has sub-500ms finality — poll for CONFIRMED or COMPLETE (max 15s)
+  if (txId && state !== "CONFIRMED" && state !== "COMPLETE" && state !== "FAILED") {
+    for (let i = 0; i < 30; i++) {
       await new Promise((r) => setTimeout(r, 500));
       try {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const poll = (await client.getTransaction({ id: txId })) as any;
         const polled = poll?.data?.transaction;
+        const prev = state;
         if (polled?.state) state = polled.state;
         if (polled?.txHash) txHash = polled.txHash;
-        if (state === "CONFIRMED" || state === "FAILED") break;
-      } catch { break; }
+        if (state !== prev) console.log(`[dcw] poll ${i + 1} state=${state} txHash=${txHash}`);
+        if (state === "CONFIRMED" || state === "COMPLETE" || state === "FAILED" || state === "CANCELLED") break;
+      } catch (e) { console.log(`[dcw] poll err`, String(e)); break; }
     }
   }
 
+  console.log(`[dcw] done state=${state} txHash=${txHash}`);
   return {
     txHash,
-    status: state === "CONFIRMED" ? "confirmed" : "pending",
+    status: (state === "CONFIRMED" || state === "COMPLETE") ? "confirmed" : "pending",
   };
 }
