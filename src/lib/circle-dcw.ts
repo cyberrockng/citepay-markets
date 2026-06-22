@@ -67,8 +67,24 @@ export async function payCreatorViaDCW(opts: {
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const tx = (resp.data as any)?.transaction ?? (resp.data as any)?.contractExecution;
-  const txHash = tx?.txHash ?? tx?.id ?? `dcw-pending-${opts.receiptId}`;
-  const state: string = tx?.state ?? "INITIATED";
+  const txId: string = tx?.id ?? "";
+  let txHash: string = tx?.txHash ?? `dcw-pending-${opts.receiptId}`;
+  let state: string = tx?.state ?? "INITIATED";
+
+  // Arc Testnet has sub-500ms finality — poll for confirmation (max 12s)
+  if (txId && state !== "CONFIRMED" && state !== "FAILED") {
+    for (let i = 0; i < 24; i++) {
+      await new Promise((r) => setTimeout(r, 500));
+      try {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const poll = (await client.getTransaction({ id: txId })) as any;
+        const polled = poll?.data?.transaction;
+        if (polled?.state) state = polled.state;
+        if (polled?.txHash) txHash = polled.txHash;
+        if (state === "CONFIRMED" || state === "FAILED") break;
+      } catch { break; }
+    }
+  }
 
   return {
     txHash,
