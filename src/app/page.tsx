@@ -95,7 +95,7 @@ export default function LandingPage() {
             )}
           </div>
 
-          <h1 className="text-5xl sm:text-6xl font-bold mb-4 leading-tight tracking-tight">
+          <h1 className="text-3xl sm:text-5xl lg:text-6xl font-bold mb-4 leading-tight tracking-tight">
             AI agents are paying creators<br />
             <span className="gradient-text">in USDC — right now, on-chain.</span>
           </h1>
