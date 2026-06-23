@@ -75,7 +75,7 @@ export default function LandingPage() {
   return (
     <main className="min-h-screen bg-[#0a0a0f] text-[#f0f0f5] pb-20 sm:pb-0">
 
-      {/* ── Hero ── */}
+      {/* ── 1. Hero ── */}
       <section
         className="max-w-4xl mx-auto px-6 pt-24 pb-20 text-center relative"
         style={{
@@ -94,6 +94,7 @@ export default function LandingPage() {
               <span className="text-[#4a4a5e]">loading chain…</span>
             )}
           </div>
+
           <h1 className="text-5xl sm:text-6xl font-bold mb-4 leading-tight tracking-tight">
             AI agents are paying creators<br />
             <span className="gradient-text">in USDC — right now, on-chain.</span>
@@ -101,8 +102,9 @@ export default function LandingPage() {
           <p className="text-sm text-[#4a4a5e] font-mono mb-5">
             Micro-payments too small for Ethereum → settled instantly on Arc · Verified by Circle Gateway
           </p>
-          {/* Live proof pulse — above the fold */}
-          <div className="inline-flex items-center gap-3 mb-8 px-4 py-2.5 rounded-xl bg-[#111118]/80 border border-[#00ff88]/20 backdrop-blur">
+
+          {/* Live proof pulse */}
+          <div className="inline-flex items-center gap-3 mb-10 px-4 py-2.5 rounded-xl bg-[#111118]/80 border border-[#00ff88]/20 backdrop-blur">
             <span className="w-2 h-2 rounded-full bg-[#00ff88] animate-pulse flex-shrink-0" />
             <span className="font-mono text-sm">
               <span className="text-[#00ff88] font-bold">{stats?.paidCitations ?? "—"}</span>
@@ -113,25 +115,65 @@ export default function LandingPage() {
               <span className="text-[#4a4a5e]"> USDC to creators · Arc Testnet</span>
             </span>
           </div>
-          <div className="flex flex-col sm:flex-row gap-3 justify-center flex-wrap">
+
+          {/* Primary CTAs — two audiences, equal weight */}
+          <div className="flex flex-col sm:flex-row gap-3 justify-center mb-4">
             <Link href="/ask" className="bg-[#00ff88] hover:bg-[#00e87a] text-black font-bold px-10 py-4 rounded-xl transition-all hover:scale-105 card-lift text-lg">
               Run a Query →
             </Link>
-            <Link href="/orchestrate" className="bg-[#6366f1] hover:bg-indigo-500 text-white font-semibold px-8 py-3.5 rounded-xl transition-all hover:scale-105 card-lift">
+            <Link href="/register" className="bg-[#6366f1] hover:bg-indigo-500 text-white font-bold px-10 py-4 rounded-xl transition-all hover:scale-105 card-lift text-lg">
+              Register as Creator →
+            </Link>
+          </div>
+
+          {/* Secondary CTAs */}
+          <div className="flex flex-col sm:flex-row gap-2 justify-center">
+            <Link href="/orchestrate" className="border border-[#6366f1]/40 hover:border-[#6366f1] text-[#6366f1] hover:text-indigo-300 font-semibold px-6 py-2.5 rounded-xl transition-colors text-sm">
               Multi-Agent Demo
             </Link>
-            <Link href="/live" className="border border-[#00ff88]/20 hover:border-[#00ff88]/50 text-[#00ff88]/70 hover:text-[#00ff88] font-semibold px-8 py-3.5 rounded-xl transition-colors flex items-center gap-2">
+            <Link href="/live" className="border border-[#00ff88]/20 hover:border-[#00ff88]/50 text-[#00ff88]/70 hover:text-[#00ff88] font-semibold px-6 py-2.5 rounded-xl transition-colors flex items-center gap-2 text-sm">
               <span className="w-1.5 h-1.5 rounded-full bg-[#00ff88] inline-block animate-pulse" />
               Live Feed
             </Link>
-            <Link href="/mcp" className="border border-[#6366f1]/40 hover:border-[#6366f1] text-[#6366f1] hover:text-indigo-300 font-semibold px-8 py-3.5 rounded-xl transition-colors">
+            <Link href="/mcp" className="border border-[#1e1e2e] hover:border-[#8b8b9e] text-[#8b8b9e] hover:text-[#f0f0f5] font-semibold px-6 py-2.5 rounded-xl transition-colors text-sm">
               Add to Claude (MCP)
             </Link>
           </div>
         </div>
       </section>
 
-      {/* ── Live Market Stats ── */}
+      {/* ── 2. Live Market Activity ── */}
+      <section className="max-w-4xl mx-auto px-6 py-8 border-t border-[#1e1e2e]">
+        <div className="flex items-center gap-2 mb-4">
+          <span className="w-2 h-2 rounded-full bg-[#00ff88] animate-pulse inline-block" />
+          <span className="text-xs font-mono text-[#4a4a5e]">LIVE MARKET ACTIVITY</span>
+          <Link href="/live" className="ml-auto text-xs text-[#6366f1] hover:text-indigo-300 transition-colors">Full feed →</Link>
+        </div>
+        {liveEvents.length > 0 ? (
+          <div className="space-y-1.5">
+            {liveEvents.map((e, i) => (
+              <div key={i} className="flex items-center gap-3 px-3 py-2 rounded-lg bg-[#111118] border border-[#1e1e2e] text-xs font-mono">
+                <span className={e.decision === "PAY" ? "text-[#00ff88]" : e.decision === "REFUSE" ? "text-red-400" : "text-[#4a4a5e]"}>
+                  {e.decision === "PAY" ? "▰" : e.decision === "REFUSE" ? "✗" : "—"}
+                </span>
+                <span className="text-[#8b8b9e] flex-1 truncate">{e.sourceTitle}</span>
+                {e.decision === "PAY" && e.amountPaid > 0 && (
+                  <span className="text-[#00ff88]">${(e.amountPaid / 1e6).toFixed(4)}</span>
+                )}
+                <span className="text-[#2e2e3e]">{new Date(e.timestamp).toLocaleTimeString()}</span>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="flex items-center gap-3 px-4 py-3 rounded-lg bg-[#111118] border border-[#1e1e2e] text-xs font-mono text-[#4a4a5e]">
+            <span className="w-1.5 h-1.5 rounded-full bg-[#4a4a5e] inline-block" />
+            Waiting for next transaction ·{" "}
+            <Link href="/ask" className="text-[#6366f1] hover:text-indigo-300">trigger one →</Link>
+          </div>
+        )}
+      </section>
+
+      {/* ── 3. Live Market Stats ── */}
       <section ref={statsRef} className="max-w-4xl mx-auto px-6 py-16 border-t border-[#1e1e2e]">
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-lg font-semibold text-[#f0f0f5]">Live Market Stats</h2>
@@ -160,7 +202,7 @@ export default function LandingPage() {
           })}
         </div>
 
-        {/* Margin Proof Panel */}
+        {/* Proof of Economics */}
         {(() => {
           const actualUSDC = (stats?.totalUSDCRouted ?? 0) / 1e6;
           const citations  = stats?.paidCitations ?? 0;
@@ -184,10 +226,6 @@ export default function LandingPage() {
                       <span className="text-[#8b8b9e]">Equivalent cost on Ethereum L1 <span className="text-[#4a4a5e]">($2.50/tx avg gas)</span></span>
                       <span className="text-amber-400">${ethL1Cost.toFixed(2)}</span>
                     </div>
-                    <div className="flex justify-between">
-                      <span className="text-[#4a4a5e]">Market memory accumulated</span>
-                      <span className="text-[#4a4a5e]">{citations.toLocaleString()} citation decisions</span>
-                    </div>
                     <div className="border-t border-[#1e1e2e] pt-2 mt-1 flex justify-between items-center">
                       <span className="text-[#4a4a5e]">ARC MAKES THIS MARKET POSSIBLE</span>
                       {multiplier > 1 && (
@@ -197,104 +235,68 @@ export default function LandingPage() {
                   </>
                 ) : (
                   <div className="text-[#4a4a5e] py-2">Run a query to generate proof of economics →{" "}
-                    <a href="/ask" className="text-[#6366f1] hover:text-indigo-300">try /ask</a>
+                    <Link href="/ask" className="text-[#6366f1] hover:text-indigo-300">try /ask</Link>
                   </div>
                 )}
               </div>
             </div>
           );
         })()}
+      </section>
 
-        {/* Share prompt */}
-        <div className="mt-6 flex flex-col sm:flex-row items-center justify-between gap-3 bg-[#111118] rounded-xl border border-[#1e1e2e] px-5 py-4">
-          <div className="text-sm text-[#8b8b9e]">
-            Built for{" "}
-            <span className="text-[#f0f0f5] font-semibold">Lepton Hackathon</span>
-            {" "}· Jun 15–29 2026 · Arc Testnet · Circle Gateway
+      {/* ── 4. For Agents / For Creators ── */}
+      <section className="max-w-4xl mx-auto px-6 py-16 border-t border-[#1e1e2e]">
+        <h2 className="text-lg font-semibold text-[#f0f0f5] mb-6">Who is CitePay for?</h2>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+          <div className="bg-[#111118] rounded-xl p-6 border border-[#00ff88]/20 card-lift">
+            <div className="text-xs font-mono text-[#00ff88] mb-3">For AI Agents &amp; Developers</div>
+            <h3 className="font-semibold text-lg text-[#f0f0f5] mb-2">Set a policy. Cite sources. Pay creators. Prove it.</h3>
+            <p className="text-[#8b8b9e] text-sm mb-5 leading-relaxed">
+              POST /api/ask with an Agent Spend Policy. Get structured answers with cited, paid sources — and a Policy Receipt for every decision. Integrates via Circle Gateway x402 or MCP from Claude Code.
+            </p>
+            <div className="flex flex-wrap gap-2">
+              <Link href="/ask" className="text-xs bg-[#00ff88]/10 border border-[#00ff88]/30 text-[#00ff88] px-3 py-1.5 rounded-lg hover:bg-[#00ff88]/20 transition-colors">
+                Run a Query →
+              </Link>
+              <Link href="/orchestrate" className="text-xs border border-[#1e1e2e] text-[#8b8b9e] hover:text-[#f0f0f5] px-3 py-1.5 rounded-lg transition-colors">
+                Multi-Agent Demo
+              </Link>
+              <Link href="/mcp" className="text-xs border border-[#6366f1]/30 text-[#6366f1] hover:border-[#6366f1] px-3 py-1.5 rounded-lg transition-colors">
+                Add to Claude (MCP)
+              </Link>
+            </div>
           </div>
-          <div className="flex gap-2">
-            <a
-              href={`https://twitter.com/intent/tweet?text=${encodeURIComponent("AI agents that actually pay creators in USDC when they cite their work 🤖💰\n\nCitePay Markets: multi-agent orchestrator + Circle Gateway nanopayments + on-chain receipts on Arc\n\nTry it → https://citepay-markets.vercel.app\n\n#Lepton #CircleGateway #x402 #Web3AI")}`}
-              target="_blank" rel="noopener noreferrer"
-              className="text-xs px-3 py-1.5 rounded-lg bg-[#1e1e2e] hover:bg-[#2e2e3e] text-[#8b8b9e] hover:text-[#f0f0f5] transition-colors font-mono"
-            >
-              Share on X
-            </a>
-            <Link href="/mcp" className="text-xs px-3 py-1.5 rounded-lg border border-[#6366f1]/30 hover:border-[#6366f1] text-[#6366f1] transition-colors font-mono">
-              Add MCP →
-            </Link>
+
+          <div className="bg-[#111118] rounded-xl p-6 border border-[#6366f1]/20 card-lift">
+            <div className="text-xs font-mono text-[#6366f1] mb-3">For Creators &amp; Publishers</div>
+            <h3 className="font-semibold text-lg text-[#f0f0f5] mb-2">Get paid every time AI cites your work.</h3>
+            <p className="text-[#8b8b9e] text-sm mb-5 leading-relaxed">
+              Register your articles, research, or content. Earn USDC each time an AI agent cites your work. Add a credibility bond to increase selection priority. One form, no approval needed.
+            </p>
+            <div className="flex flex-wrap gap-2">
+              <Link href="/register" className="text-xs bg-[#6366f1]/10 border border-[#6366f1]/30 text-[#6366f1] px-3 py-1.5 rounded-lg hover:bg-[#6366f1]/20 transition-colors">
+                Register your content →
+              </Link>
+              <Link href="/market" className="text-xs border border-[#1e1e2e] text-[#8b8b9e] hover:text-[#f0f0f5] px-3 py-1.5 rounded-lg transition-colors">
+                Browse market
+              </Link>
+            </div>
           </div>
         </div>
       </section>
 
-      {/* ── Live Market Activity ── */}
-      {liveEvents.length > 0 && (
-        <section className="max-w-4xl mx-auto px-6 py-8 border-t border-[#1e1e2e]">
-          <div className="flex items-center gap-2 mb-4">
-            <span className="w-2 h-2 rounded-full bg-[#00ff88] animate-pulse inline-block" />
-            <span className="text-xs font-mono text-[#4a4a5e]">LIVE MARKET ACTIVITY</span>
-            <a href="/live" className="ml-auto text-xs text-[#6366f1] hover:text-indigo-300 transition-colors">Full feed →</a>
-          </div>
-          <div className="space-y-1.5">
-            {liveEvents.map((e, i) => (
-              <div key={i} className="flex items-center gap-3 px-3 py-2 rounded-lg bg-[#111118] border border-[#1e1e2e] text-xs font-mono">
-                <span className={e.decision === "PAY" ? "text-[#00ff88]" : e.decision === "REFUSE" ? "text-red-400" : "text-[#4a4a5e]"}>
-                  {e.decision === "PAY" ? "▰" : e.decision === "REFUSE" ? "✗" : "—"}
-                </span>
-                <span className="text-[#8b8b9e] flex-1 truncate">{e.sourceTitle}</span>
-                {e.decision === "PAY" && e.amountPaid > 0 && (
-                  <span className="text-[#00ff88]">${(e.amountPaid / 1e6).toFixed(4)}</span>
-                )}
-                <span className="text-[#2e2e3e]">{new Date(e.timestamp).toLocaleTimeString()}</span>
-              </div>
-            ))}
-          </div>
-        </section>
-      )}
-
-      {/* ── How It Works — Vertical Stepper ── */}
+      {/* ── 5. Every Decision is a Receipt ── */}
       <section className="max-w-4xl mx-auto px-6 py-16 border-t border-[#1e1e2e]">
-        <h2 className="text-lg font-semibold text-[#f0f0f5] mb-10">How CitePay Works</h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-12 gap-y-0">
-          {FLOW_STEPS.map((step, i) => {
-            const isLast = i === FLOW_STEPS.length - 1;
-            const col = i % 2;
-            const isPay = step.n === "05";
-            return (
-              <div key={step.n} className={`relative flex gap-4 ${col === 0 ? "sm:pr-6" : ""} ${!isLast ? "pb-8" : ""}`}>
-                {/* Line */}
-                {!isLast && (
-                  <div className="absolute left-3.5 top-7 bottom-0 w-px bg-[#1e1e2e]" style={{ left: "14px" }} />
-                )}
-                {/* Dot */}
-                <div className={`relative z-10 w-7 h-7 rounded-full border-2 flex items-center justify-center shrink-0 mt-0.5 ${
-                  isPay ? "border-[#00ff88] bg-[#00ff88]/10" : "border-[#1e1e2e] bg-[#0a0a0f]"
-                }`}>
-                  <span className={`text-[9px] font-mono font-bold ${isPay ? "text-[#00ff88]" : "text-[#4a4a5e]"}`}>{step.n}</span>
-                </div>
-                {/* Content */}
-                <div className="pb-1">
-                  <h3 className={`font-semibold text-sm font-mono mb-0.5 ${isPay ? "text-[#00ff88]" : "text-[#f0f0f5]"}`}>{step.title}</h3>
-                  <p className="text-[#8b8b9e] text-xs leading-relaxed">{step.desc}</p>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </section>
-
-      {/* ── Sample Receipts ── */}
-      <section className="max-w-4xl mx-auto px-6 py-16 border-t border-[#1e1e2e]">
-        <h2 className="text-lg font-semibold text-[#f0f0f5] mb-2">How a Receipt Looks</h2>
+        <h2 className="text-lg font-semibold text-[#f0f0f5] mb-2">Every decision is a public receipt</h2>
         <p className="text-[#8b8b9e] text-sm mb-8">
-          Every agent decision — Paid, Refused, Skipped, or Blocked by Policy — generates a public Policy Receipt with evidence hash and reasoning.
+          Paid, Refused, Skipped, or Blocked by Policy — every agent decision generates a Policy Receipt with an evidence hash and on-chain anchor. Nothing is hidden.
         </p>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {[
             { decision: "PAY",               source: "x402: HTTP-Native Payments", creator: "@amara_protocol", paid: "$0.0020", reason: "High relevance, bonded creator, fair price.",      score: 72 },
-            { decision: "REFUSE",            source: "Generic Blog Post",           creator: "@unknown",  paid: "$0.0000", reason: "Relevant but overpriced relative to budget.",      score: 41 },
-            { decision: "SKIP",              source: "Unrelated Marketing Page",    creator: "@marketer", paid: "$0.0000", reason: "Weak relevance to query.",                          score: 18 },
-            { decision: "BLOCKED_BY_POLICY", source: "Unbonded Research Post",      creator: "@anon",     paid: "$0.0000", reason: "Blocked by policy: require_bonded_source.",         score: 67 },
+            { decision: "REFUSE",            source: "Generic Blog Post",           creator: "@unknown",        paid: "$0.0000", reason: "Relevant but overpriced relative to budget.",      score: 41 },
+            { decision: "SKIP",              source: "Unrelated Marketing Page",    creator: "@marketer",       paid: "$0.0000", reason: "Weak relevance to query.",                          score: 18 },
+            { decision: "BLOCKED_BY_POLICY", source: "Unbonded Research Post",      creator: "@anon",           paid: "$0.0000", reason: "Blocked by policy: require_bonded_source.",         score: 67 },
           ].map(({ decision, source, creator, paid, reason, score }) => {
             const { card, badge } = DECISION_COLOR[decision];
             return (
@@ -323,25 +325,50 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ── Agent API Callout ── */}
+      {/* ── 6. How CitePay Works ── */}
       <section className="max-w-4xl mx-auto px-6 py-16 border-t border-[#1e1e2e]">
-        <div className="gradient-border rounded-xl bg-[#111118] p-6 sm:p-8" style={{
+        <h2 className="text-lg font-semibold text-[#f0f0f5] mb-10">How CitePay Works</h2>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-12 gap-y-0">
+          {FLOW_STEPS.map((step, i) => {
+            const isLast = i === FLOW_STEPS.length - 1;
+            const col = i % 2;
+            const isPay = step.n === "05";
+            return (
+              <div key={step.n} className={`relative flex gap-4 ${col === 0 ? "sm:pr-6" : ""} ${!isLast ? "pb-8" : ""}`}>
+                {!isLast && (
+                  <div className="absolute left-3.5 top-7 bottom-0 w-px bg-[#1e1e2e]" style={{ left: "14px" }} />
+                )}
+                <div className={`relative z-10 w-7 h-7 rounded-full border-2 flex items-center justify-center shrink-0 mt-0.5 ${
+                  isPay ? "border-[#00ff88] bg-[#00ff88]/10" : "border-[#1e1e2e] bg-[#0a0a0f]"
+                }`}>
+                  <span className={`text-[9px] font-mono font-bold ${isPay ? "text-[#00ff88]" : "text-[#4a4a5e]"}`}>{step.n}</span>
+                </div>
+                <div className="pb-1">
+                  <h3 className={`font-semibold text-sm font-mono mb-0.5 ${isPay ? "text-[#00ff88]" : "text-[#f0f0f5]"}`}>{step.title}</h3>
+                  <p className="text-[#8b8b9e] text-xs leading-relaxed">{step.desc}</p>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </section>
+
+      {/* ── 7. Agent API Callout ── */}
+      <section className="max-w-4xl mx-auto px-6 py-16 border-t border-[#1e1e2e]">
+        <div style={{
           background: "#111118",
           borderRadius: "12px",
           padding: "2rem",
           position: "relative",
           isolation: "isolate",
         }}>
-          <div
-            style={{
-              content: '""',
-              position: "absolute",
-              inset: "-1px",
-              borderRadius: "13px",
-              background: "linear-gradient(135deg, #6366f1 0%, #00ff88 100%)",
-              zIndex: -1,
-            }}
-          />
+          <div style={{
+            position: "absolute",
+            inset: "-1px",
+            borderRadius: "13px",
+            background: "linear-gradient(135deg, #6366f1 0%, #00ff88 100%)",
+            zIndex: -1,
+          }} />
           <div style={{
             position: "absolute",
             inset: "0",
@@ -380,33 +407,7 @@ const { data } = await client.pay("https://citepay-markets.vercel.app/api/ask", 
         </div>
       </section>
 
-      {/* ── For Creators / For Agents ── */}
-      <section className="max-w-4xl mx-auto px-6 py-16 border-t border-[#1e1e2e]">
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-          <div className="bg-[#111118] rounded-xl p-6 border border-[#1e1e2e] card-lift">
-            <div className="text-xs font-mono text-[#8b8b9e] mb-3">For Creators</div>
-            <h3 className="font-semibold text-lg text-[#f0f0f5] mb-2">Get paid when AI cites you</h3>
-            <p className="text-[#8b8b9e] text-sm mb-4 leading-relaxed">
-              Register your articles, research, or content. Earn USDC each time an AI agent cites your work. Add a credibility bond to increase selection priority.
-            </p>
-            <Link href="/register" className="text-[#6366f1] hover:text-indigo-300 text-sm transition-colors">
-              Register your content →
-            </Link>
-          </div>
-          <div className="bg-[#111118] rounded-xl p-6 border border-[#1e1e2e] card-lift">
-            <div className="text-xs font-mono text-[#8b8b9e] mb-3">For AI Agents</div>
-            <h3 className="font-semibold text-lg text-[#f0f0f5] mb-2">Set a policy. Cite sources. Pay creators. Prove it.</h3>
-            <p className="text-[#8b8b9e] text-sm mb-4 leading-relaxed">
-              POST /api/ask with an X-PAYMENT header and an Agent Spend Policy. Get structured answers with cited, paid sources — and a Policy Receipt for every decision.
-            </p>
-            <Link href="/ask" className="text-[#6366f1] hover:text-indigo-300 text-sm transition-colors">
-              Try the API →
-            </Link>
-          </div>
-        </div>
-      </section>
-
-      {/* ── Institutional Framing ── */}
+      {/* ── 8. Institutional Framing ── */}
       <section className="max-w-4xl mx-auto px-6 py-10 border-t border-[#1e1e2e]">
         <div className="rounded-2xl border border-[#6366f1]/20 bg-[#111118] p-6 md:p-8">
           <div className="text-[10px] font-mono text-[#6366f1] tracking-widest mb-3">FOR INSTITUTIONS DEPLOYING AI AGENTS</div>
@@ -435,42 +436,31 @@ const { data } = await client.pay("https://citepay-markets.vercel.app/api/ask", 
             <a href="/audit" className="text-[#6366f1] hover:text-indigo-300 transition-colors">
               On-chain audit →
             </a>
-            <span>Neither Muse DNA nor AXON Protocol has a compliance taxonomy with real data behind it.</span>
           </div>
-        </div>
-      </section>
-
-      {/* ── Creator CTA ── */}
-      <section className="max-w-4xl mx-auto px-6 py-10 border-t border-[#1e1e2e]">
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 bg-[#111118] rounded-xl border border-[#6366f1]/20 px-6 py-5">
-          <div>
-            <span className="text-[#f0f0f5] text-sm font-medium">Are you a creator?</span>
-            <span className="text-[#8b8b9e] text-sm ml-2">Register your content and get paid every time an AI agent cites you.</span>
-          </div>
-          <Link href="/register" className="flex-shrink-0 bg-[#6366f1] hover:bg-indigo-500 text-white text-sm font-medium px-5 py-2.5 rounded-lg transition-colors whitespace-nowrap">
-            Register your content →
-          </Link>
         </div>
       </section>
 
       {/* ── Footer ── */}
       <footer className="border-t border-[#1e1e2e] py-10">
-        <div className="max-w-4xl mx-auto px-6 flex flex-col sm:flex-row items-center justify-between gap-4">
+        <div className="max-w-4xl mx-auto px-6 flex flex-col sm:flex-row items-center justify-between gap-6">
           <div className="text-[#4a4a5e] text-sm font-mono">
-            CitePay Markets · Demo agent:{" "}
-            <span className="text-[#6366f1]">
+            CitePay Markets · Built for{" "}
+            <span className="text-[#f0f0f5]">Lepton Hackathon</span>
+            {" "}· Jun 15–29 2026<br />
+            <span className="text-xs">Demo agent: </span>
+            <span className="text-[#6366f1] text-xs">
               {DEMO_AGENT.slice(0, 6)}…{DEMO_AGENT.slice(-4)}
             </span>
           </div>
           <div className="flex flex-wrap gap-4 text-sm text-[#8b8b9e] justify-center">
+            <Link href="/ask"         className="hover:text-[#f0f0f5] transition-colors">Ask</Link>
+            <Link href="/register"    className="hover:text-[#6366f1] text-[#6366f1]/70 transition-colors">Register</Link>
             <Link href="/orchestrate" className="hover:text-[#f0f0f5] transition-colors">Orchestrate</Link>
-            <Link href="/mcp"         className="hover:text-[#6366f1] text-[#6366f1]/70 transition-colors">MCP</Link>
-            <Link href="/register"    className="hover:text-[#f0f0f5] transition-colors">Register</Link>
+            <Link href="/mcp"         className="hover:text-[#f0f0f5] transition-colors">MCP</Link>
             <Link href="/market"      className="hover:text-[#f0f0f5] transition-colors">Market</Link>
             <Link href="/leaderboard" className="hover:text-[#f0f0f5] transition-colors">Leaderboard</Link>
             <Link href="/traction"    className="hover:text-[#f0f0f5] transition-colors">Traction</Link>
             <Link href="/audit"       className="hover:text-[#f0f0f5] transition-colors">Audit</Link>
-            <Link href="/ask"         className="hover:text-[#f0f0f5] transition-colors">Ask</Link>
             <a href="https://github.com/cyberrockng/citepay-markets" target="_blank" rel="noopener noreferrer"
                className="hover:text-[#f0f0f5] transition-colors">GitHub</a>
           </div>
