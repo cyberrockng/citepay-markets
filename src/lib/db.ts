@@ -14,7 +14,7 @@ const DB_PATH = path.join(DATA_DIR, "citepay.db");
 
 let _db: Database.Database | null = null;
 
-function getDb(): Database.Database {
+export function getDb(): Database.Database {
   if (_db) return _db;
   _db = new Database(DB_PATH);
   _db.pragma("journal_mode = WAL");

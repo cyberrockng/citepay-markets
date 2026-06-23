@@ -226,7 +226,7 @@ export default function RegisterPage() {
                 id="creatorName"
                 type="text"
                 className={inputClass}
-                placeholder="Satoshi Nakamoto"
+                placeholder="Your full name or brand"
                 value={creatorName}
                 onChange={(e) => setCreatorName(e.target.value)}
                 maxLength={72}

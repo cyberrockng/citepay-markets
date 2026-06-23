@@ -43,7 +43,7 @@ export default function LandingPage() {
   const [onchainStats, setOnchainStats] = useState<{ citationPaidEvents: number; sourceRegisteredEvents: number } | null>(null);
   const statsRef = useRef<HTMLDivElement>(null);
   const [statsVisible, setStatsVisible] = useState(false);
-  const [liveEvents, setLiveEvents] = useState<Array<{decision:string;sourceTitle:string;amountPaid:number;timestamp:string}>>([]);
+  const [liveEvents, setLiveEvents] = useState<Array<{id?:string;decision:string;sourceTitle:string;amountPaid:number;timestamp:string;reason?:string;score?:number;creatorHandle?:string;creatorName?:string}>>([]);
 
   useEffect(() => {
     fetch("/api/traction").then((r) => r.json()).then((d) => setStats(d.stats)).catch(() => {});
@@ -291,33 +291,39 @@ export default function LandingPage() {
         <p className="text-[#8b8b9e] text-sm mb-8">
           Paid, Refused, Skipped, or Blocked by Policy — every agent decision generates a Policy Receipt with an evidence hash and on-chain anchor. Nothing is hidden.
         </p>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          {[
-            { decision: "PAY",               source: "x402: HTTP-Native Payments", creator: "@amara_protocol", paid: "$0.0020", reason: "High relevance, bonded creator, fair price.",      score: 72 },
-            { decision: "REFUSE",            source: "Generic Blog Post",           creator: "@unknown",        paid: "$0.0000", reason: "Relevant but overpriced relative to budget.",      score: 41 },
-            { decision: "SKIP",              source: "Unrelated Marketing Page",    creator: "@marketer",       paid: "$0.0000", reason: "Weak relevance to query.",                          score: 18 },
-            { decision: "BLOCKED_BY_POLICY", source: "Unbonded Research Post",      creator: "@anon",           paid: "$0.0000", reason: "Blocked by policy: require_bonded_source.",         score: 67 },
-          ].map(({ decision, source, creator, paid, reason, score }) => {
-            const { card, badge } = DECISION_COLOR[decision];
-            return (
-              <div key={decision} className={`rounded-xl p-5 border card-lift ${card}`} style={{ borderLeftWidth: "3px" }}>
-                <div className="flex items-center justify-between mb-3">
-                  <span className={`text-xs font-mono font-bold px-2 py-0.5 rounded border ${badge}`}>
-                    {decision === "BLOCKED_BY_POLICY" ? "BLOCKED" : decision}
-                  </span>
-                  <span className="text-xs text-[#4a4a5e] font-mono">{score}/100</span>
+        {liveEvents.length > 0 ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {liveEvents.slice(0, 4).map((e, i) => {
+              const { card, badge } = DECISION_COLOR[e.decision] ?? DECISION_COLOR["SKIP"];
+              return (
+                <div key={i} className={`rounded-xl p-5 border card-lift ${card}`} style={{ borderLeftWidth: "3px" }}>
+                  <div className="flex items-center justify-between mb-3">
+                    <span className={`text-xs font-mono font-bold px-2 py-0.5 rounded border ${badge}`}>
+                      {e.decision === "BLOCKED_BY_POLICY" ? "BLOCKED" : e.decision}
+                    </span>
+                    {(e.score ?? 0) > 0 && <span className="text-xs text-[#4a4a5e] font-mono">{e.score}/100</span>}
+                  </div>
+                  <div className="text-sm font-medium text-[#f0f0f5] mb-0.5 truncate">{e.sourceTitle}</div>
+                  {e.creatorHandle && <div className="text-xs text-[#8b8b9e] mb-2">{e.creatorHandle}</div>}
+                  {e.reason && <div className="text-xs text-[#8b8b9e] mb-3 leading-relaxed line-clamp-2">{e.reason}</div>}
+                  <div className="text-xs font-mono text-[#4a4a5e]">
+                    Paid:{" "}
+                    <span className={e.decision === "PAY" ? "text-[#00ff88]" : "text-[#4a4a5e]"}>
+                      ${(e.amountPaid / 1e6).toFixed(4)} USDC
+                    </span>
+                  </div>
                 </div>
-                <div className="text-sm font-medium text-[#f0f0f5] mb-0.5">{source}</div>
-                <div className="text-xs text-[#8b8b9e] mb-2">{creator}</div>
-                <div className="text-xs text-[#8b8b9e] mb-3 leading-relaxed">{reason}</div>
-                <div className="text-xs font-mono text-[#4a4a5e]">
-                  Paid:{" "}
-                  <span className={decision === "PAY" ? "text-[#00ff88]" : "text-[#4a4a5e]"}>{paid} USDC</span>
-                </div>
-              </div>
-            );
-          })}
-        </div>
+              );
+            })}
+          </div>
+        ) : (
+          <div className="flex flex-col items-center justify-center py-12 border border-dashed border-[#1e1e2e] rounded-xl text-center">
+            <div className="text-[#4a4a5e] text-sm mb-4">No receipts yet — run a query to generate the first one.</div>
+            <Link href="/ask" className="bg-[#00ff88] hover:bg-[#00e87a] text-black font-semibold px-6 py-2.5 rounded-lg text-sm transition-colors">
+              Run a Query →
+            </Link>
+          </div>
+        )}
         <div className="text-center mt-6">
           <Link href="/ask" className="text-[#6366f1] hover:text-indigo-300 text-sm transition-colors">
             Try it yourself — ask a question →
