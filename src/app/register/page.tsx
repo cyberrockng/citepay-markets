@@ -163,6 +163,7 @@ export default function RegisterPage() {
                 </span>
                 <button
                   onClick={copyEarningsLink}
+                  aria-label="Copy earnings page link"
                   className="text-xs font-mono px-3 py-1.5 rounded bg-[#1e1e2e] hover:bg-[#2e2e3e] text-[#8b8b9e] hover:text-[#f0f0f5] transition-colors flex-shrink-0"
                 >
                   {copied ? "Copied!" : "Copy"}
@@ -218,10 +219,11 @@ export default function RegisterPage() {
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
             <div>
-              <label className={labelClass}>
+              <label htmlFor="creatorName" className={labelClass}>
                 Your name <span className="text-red-400">*</span>
               </label>
               <input
+                id="creatorName"
                 type="text"
                 className={inputClass}
                 placeholder="Satoshi Nakamoto"
@@ -232,10 +234,11 @@ export default function RegisterPage() {
               />
             </div>
             <div>
-              <label className={labelClass}>
+              <label htmlFor="creatorHandle" className={labelClass}>
                 Handle <span className="text-[#4a4a5e]">(optional)</span>
               </label>
               <input
+                id="creatorHandle"
                 type="text"
                 className={inputClass}
                 placeholder="@satoshi"
@@ -247,10 +250,11 @@ export default function RegisterPage() {
           </div>
 
           <div>
-            <label className={labelClass}>
+            <label htmlFor="contentUrl" className={labelClass}>
               Content URL <span className="text-red-400">*</span>
             </label>
             <input
+              id="contentUrl"
               type="url"
               className={inputClass}
               placeholder="https://yoursite.com/your-article"
@@ -264,10 +268,11 @@ export default function RegisterPage() {
           </div>
 
           <div>
-            <label className={labelClass}>
+            <label htmlFor="contentTitle" className={labelClass}>
               Title <span className="text-red-400">*</span>
             </label>
             <input
+              id="contentTitle"
               type="text"
               className={inputClass}
               placeholder="Bitcoin: A Peer-to-Peer Electronic Cash System"
@@ -279,11 +284,12 @@ export default function RegisterPage() {
           </div>
 
           <div>
-            <label className={labelClass}>
+            <label htmlFor="contentDescription" className={labelClass}>
               Description
               <span className="text-[#4a4a5e] ml-2">{description.length}/340</span>
             </label>
             <textarea
+              id="contentDescription"
               className={`${inputClass} resize-none h-24`}
               placeholder="Explain what your content covers in 1–2 sentences. This is what the agent reads to decide whether to cite you."
               value={description}
@@ -296,10 +302,11 @@ export default function RegisterPage() {
           </div>
 
           <div>
-            <label className={labelClass}>
+            <label htmlFor="payoutWallet" className={labelClass}>
               Your Arc wallet <span className="text-red-400">*</span>
             </label>
             <input
+              id="payoutWallet"
               type="text"
               className={`${inputClass} font-mono`}
               placeholder="0x..."
@@ -314,11 +321,12 @@ export default function RegisterPage() {
           </div>
 
           <div>
-            <label className={labelClass}>
+            <label htmlFor="priceSlider" className={labelClass}>
               Price per citation
               <span className="text-[#6366f1] ml-2">${priceToUsd(price)} USDC</span>
             </label>
             <input
+              id="priceSlider"
               type="range"
               min={MIN_PRICE}
               max={MAX_PRICE}
@@ -326,6 +334,7 @@ export default function RegisterPage() {
               value={price}
               onChange={(e) => setPrice(Number(e.target.value))}
               className="w-full accent-[#6366f1] mb-2"
+              aria-label={`Price per citation: $${priceToUsd(price)} USDC`}
             />
             <div className="flex justify-between text-[10px] font-mono text-[#4a4a5e]">
               <span>${priceToUsd(MIN_PRICE)} min</span>
