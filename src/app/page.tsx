@@ -389,8 +389,8 @@ const { data } = await client.pay("https://citepay-markets.vercel.app/api/ask", 
             <p className="text-[#8b8b9e] text-sm mb-4 leading-relaxed">
               Register your articles, research, or content. Earn USDC each time an AI agent cites your work. Add a credibility bond to increase selection priority.
             </p>
-            <Link href="/market" className="text-[#6366f1] hover:text-indigo-300 text-sm transition-colors">
-              Register a source →
+            <Link href="/register" className="text-[#6366f1] hover:text-indigo-300 text-sm transition-colors">
+              Register your content →
             </Link>
           </div>
           <div className="bg-[#111118] rounded-xl p-6 border border-[#1e1e2e] card-lift">
@@ -440,6 +440,19 @@ const { data } = await client.pay("https://citepay-markets.vercel.app/api/ask", 
         </div>
       </section>
 
+      {/* ── Creator CTA ── */}
+      <section className="max-w-4xl mx-auto px-6 py-10 border-t border-[#1e1e2e]">
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 bg-[#111118] rounded-xl border border-[#6366f1]/20 px-6 py-5">
+          <div>
+            <span className="text-[#f0f0f5] text-sm font-medium">Are you a creator?</span>
+            <span className="text-[#8b8b9e] text-sm ml-2">Register your content and get paid every time an AI agent cites you.</span>
+          </div>
+          <Link href="/register" className="flex-shrink-0 bg-[#6366f1] hover:bg-indigo-500 text-white text-sm font-medium px-5 py-2.5 rounded-lg transition-colors whitespace-nowrap">
+            Register your content →
+          </Link>
+        </div>
+      </section>
+
       {/* ── Footer ── */}
       <footer className="border-t border-[#1e1e2e] py-10">
         <div className="max-w-4xl mx-auto px-6 flex flex-col sm:flex-row items-center justify-between gap-4">
@@ -452,6 +465,7 @@ const { data } = await client.pay("https://citepay-markets.vercel.app/api/ask", 
           <div className="flex flex-wrap gap-4 text-sm text-[#8b8b9e] justify-center">
             <Link href="/orchestrate" className="hover:text-[#f0f0f5] transition-colors">Orchestrate</Link>
             <Link href="/mcp"         className="hover:text-[#6366f1] text-[#6366f1]/70 transition-colors">MCP</Link>
+            <Link href="/register"    className="hover:text-[#f0f0f5] transition-colors">Register</Link>
             <Link href="/market"      className="hover:text-[#f0f0f5] transition-colors">Market</Link>
             <Link href="/leaderboard" className="hover:text-[#f0f0f5] transition-colors">Leaderboard</Link>
             <Link href="/traction"    className="hover:text-[#f0f0f5] transition-colors">Traction</Link>
