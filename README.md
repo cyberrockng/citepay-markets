@@ -18,12 +18,13 @@
 | `/orchestrate` | Pilot Agent reads onchain reputation → attests plan → hires researcher agents via x402 |
 | `/agents` | 3 competing source agents with live Healthy/Watch/Stop reputation from CitationPaid events |
 | `/wallet` | Circle DCW + App Kit + Unified Balance Kit + DCW Adapter: live USDC balance across chains |
-| `/register` | Creator onboarding — WebAuthn passkey binding + source registration on CitePayMarket.sol |
+| `/register` | Public creator onboarding — register content, set price per citation, earn USDC instantly |
+| `/audit` | On-chain audit — reads Arc RPC directly, no database; verify wallet balance + every tx |
 | `/live` | Real-time SSE agent decision feed (auto-reconnects) |
 | `/demo` | Auto-runs 4 proofs: tamper → x402 pay → query → challenge |
 | `/ask` | Agent workbench with configurable spend policy + proof console |
 | `/receipt/:id` | Receipt with evidence preimage viewer + hash recomputation |
-| `/traction` | Live on-chain stats: 109+ CitationPaid events from CitePayMarket.sol |
+| `/traction` | Live on-chain stats: 110+ CitationPaid events from CitePayMarket.sol |
 | `/mcp` | MCP server install for Claude Code / Cursor integration |
 
 **Contracts:** Arc Testnet (chainId 5042002)  
@@ -50,7 +51,7 @@ A query run against all three agents simultaneously — FactAgent (conservative)
 
 One query. Five source agents. Five different outcomes. All decisions signed by the veracity agent and anchored on Arc Testnet via `CitePayMarket.sol`.
 
-**Tx:** [0xc02c70ab…](https://testnet.arcscan.app/tx/0xc02c70abadf076c326e4fe393edc6bf0634816b82cf1402127cb96e6116269b0) · **Block:** 48070337 · **109 total `CitationPaid` events** on-chain
+**Tx:** [0xc02c70ab…](https://testnet.arcscan.app/tx/0xc02c70abadf076c326e4fe393edc6bf0634816b82cf1402127cb96e6116269b0) · **Block:** 48070337 · **110+ total `CitationPaid` events** on-chain
 
 ---
 
@@ -65,12 +66,18 @@ CitePay Markets is a live agentic citation economy where:
 - **Multi-agent orchestration** — An orchestrator agent decomposes complex queries, hires researcher agents via real x402 Circle Gateway payments, and synthesizes a comprehensive answer. Agent-to-agent USDC flows are live.
 - **Circle stack (7 products)**: Gateway + x402 (pay per query), DCW (MPC-secured creator payouts + `signTypedData` Programmable Wallet buyer), App Kit (Unified Balance Kit + Circle Wallets Adapter), Modular Wallets (Circle HSM signs EIP-3009 — no browser key), Gas Station (gasless creator onboarding), CCTP v2 (`POST /api/cctp/fund-creator` — burn on Arc, mint on Base/Ethereum/Arbitrum via Circle Forwarder).
 - **MCP server** at `/api/mcp` exposes `cite_query`, `get_receipt`, and `check_policy` as tools for Claude Code and Cursor integration.
+- **Purpose taxonomy** — every USDC movement is tagged: `CITE`, `QUERY_FEE`, `AGENT_REWARD`, `BOND_SLASH`. Queryable via `/api/audit-summary`.
+- **Citation memory** — source `paidCount` / `refusedCount` persists across serverless cold starts via Vercel Edge Config. Frequently cited sources earn a pre-trust bonus (+8 to +12 score).
+- **Public creator registration** — `/register` lets anyone register their content in 60 seconds, no approval, no API key required.
 
 ### Live Traction (Arc Testnet)
-- **109 `CitationPaid` events** on CitePayMarket.sol (verifiable: [0x396c…6085](https://testnet.arcscan.app/address/0x396cf1646EbAeF85ee8428C2d9239C46Ae956085))
+- **110+ `CitationPaid` events** on CitePayMarket.sol (verifiable: [0x396c…6085](https://testnet.arcscan.app/address/0x396cf1646EbAeF85ee8428C2d9239C46Ae956085))
+- **333+ agent decisions** — PAY / REFUSE / SKIP / BLOCKED_BY_POLICY — all with public receipts
+- **150+ paid citations** with on-chain USDC settlement
 - **10 sources** registered onchain across 3 source agents
 - **3 source agent identities** with distinct wallets, specialties, and reputation scores
 - **1 Pilot Agent** attesting allocation decisions onchain before paying
+- **Citation memory** — source reputation persists across cold starts via Edge Config
 
 ---
 
@@ -116,7 +123,10 @@ CitePay Markets solves all three:
 | Configurable Agent Spend Policies (conservative/balanced/aggressive) | ✓ | ✗ |
 | SHA-256 evidence hash per decision | ✓ | ✗ |
 | Objective content-integrity challenge | ✓ | ✗ |
-| 109+ CitationPaid events verifiable on Arc Testnet | ✓ | ✗ |
+| 110+ CitationPaid events verifiable on Arc Testnet | ✓ | ✗ |
+| Purpose taxonomy: CITE / QUERY_FEE / AGENT_REWARD / BOND_SLASH | ✓ | ✗ |
+| Citation memory: reputation persists across cold starts (Edge Config) | ✓ | ✗ |
+| Public creator registration — no API key, no approval | ✓ | ✗ |
 
 **Circle SDK coverage:** `@circle-fin/x402-batching` · `@circle-fin/developer-controlled-wallets` · `@circle-fin/adapter-circle-wallets` · `@circle-fin/unified-balance-kit` · `@circle-fin/provider-gateway-v1` · `@circle-fin/adapter-viem-v2`
 
@@ -473,6 +483,9 @@ REGISTER_API_KEY=...                # Protects POST /api/sources/register (spam 
 | GET | `/api/health` | Health check |
 | GET | `/api/sources` | List all creator sources |
 | POST | `/api/sources/register` | Register a new source (optional `X-Api-Key` auth) |
+| POST | `/api/sources/register-public` | Auth-free public creator registration (IP rate-limited) |
+| GET | `/api/audit-summary` | Receipts filtered by agent, purpose code, date range |
+| GET | `/api/live-events` | Recent decisions with reason, score, creatorHandle |
 | POST | `/api/ask` | x402 pay-to-query endpoint — returns 402 without payment |
 | POST | `/api/demo-query` | Web UI proxy — Circle Gateway payment server-side, auto-refill |
 | POST | `/api/orchestrate` | Multi-agent orchestrator — hires researcher agents via x402 |
@@ -490,17 +503,20 @@ REGISTER_API_KEY=...                # Protects POST /api/sources/register (spam 
 
 ## 16. Pages
 
-- `/` — Landing: hero, how it works, live market stats, CTAs to all key flows
+- `/` — Landing: hero (agents + creators), live activity ticker, real receipt cards, stats
 - `/ask` — Agent workbench: policy selector, proof console, source competition board
+- `/register` — Public creator onboarding: name, URL, price slider, Arc wallet, instant activation
 - `/orchestrate` — Multi-agent orchestrator: agent flow diagram, stats, per-agent tabs
+- `/audit` — On-chain audit: reads Arc RPC directly, wallet balance, tx count, ArcScan links
 - `/demo` — 4-step interactive demo: tamper → pay → query → challenge
 - `/market` — Creator source registry with price, bond, reputation
-- `/receipt/:id` — Full receipt with evidence preimage viewer + hash recomputation
-- `/creator/:wallet` — Creator earnings dashboard + payout cards
+- `/receipt/:id` — Full receipt with evidence preimage viewer + hash recomputation + purpose code
+- `/creator/:wallet` — Creator earnings dashboard + citation memory badges + ArcScan tx links
 - `/agent/:address` — Agent decision history
 - `/source/:id` — Source detail and receipt history
 - `/traction` — Live on-chain metrics from Arc Testnet
 - `/mcp` — MCP server install guide for Claude Code / Cursor
+- `/live` — Real-time decision feed with glyph colour-coding
 - `/leaderboard` — Creator leaderboard by earnings
 
 ---
@@ -518,7 +534,6 @@ REGISTER_API_KEY=...                # Protects POST /api/sources/register (spam 
 
 | Phase | Feature |
 |---|---|
-| 1 | Passkey onboarding for creators — remove private-key requirement |
 | 1 | Gasless source registration via Coinbase Paymaster |
 | 2 | Managed persistent DB (Vercel Postgres / Turso) for full receipt history |
 | 2 | Arc Mainnet deployment with real bond forfeiture |
@@ -539,4 +554,14 @@ REGISTER_API_KEY=...                # Protects POST /api/sources/register (spam 
 
 ---
 
-*Built for the Lepton Hackathon (Jun 15–29 2026) with x402 + Circle Gateway + Claude Haiku on Arc Testnet.*
+---
+
+## 20. Cross-Project Integration
+
+CitePay Markets is registered as a creator source on [Tollgate](https://tollgate.gudman.xyz) — when Tollgate's agent answers questions about AI payments, MCP tools, or on-chain auditing, it may cite CitePay and pay `0x5389…f105` directly.
+
+CitePay also participates in the [Shadow Float](https://shadow-arc.vercel.app/float) credit line — agent `0x5389…f105` signed a `FloatSpendIntent` (EIP-712) giving Shadow's treasury-fronted x402 credit access. Verify: `shadow-arc.vercel.app/api/float-tools?action=verify&hash=0x81f48871477fdb4efb1d77362dd42312c7d0caef27a260a071ede5b8ef627d22`
+
+---
+
+*Built for the Lepton Hackathon (Jun 15–29 2026) · x402 + Circle Gateway + Claude Haiku + Arc Testnet · [citepay-markets.vercel.app](https://citepay-markets.vercel.app)*
