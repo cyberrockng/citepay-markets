@@ -144,6 +144,47 @@ function migrate(db: Database.Database) {
     );
   `);
 
+  // ── Research Sessions ────────────────────────────────────────────────────────
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS sessions (
+      id TEXT PRIMARY KEY,
+      title TEXT NOT NULL DEFAULT 'Research Session',
+      policy TEXT NOT NULL DEFAULT 'balanced',
+      total_paid_micro INTEGER NOT NULL DEFAULT 0,
+      total_citations INTEGER NOT NULL DEFAULT 0,
+      context_summary TEXT DEFAULT NULL,
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      last_active TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+    CREATE TABLE IF NOT EXISTS session_turns (
+      id TEXT PRIMARY KEY,
+      session_id TEXT NOT NULL,
+      query TEXT NOT NULL,
+      answer TEXT NOT NULL,
+      query_id TEXT,
+      citations_paid INTEGER NOT NULL DEFAULT 0,
+      amount_paid_micro INTEGER NOT NULL DEFAULT 0,
+      receipt_ids TEXT NOT NULL DEFAULT '[]',
+      turn_index INTEGER NOT NULL DEFAULT 0,
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      FOREIGN KEY (session_id) REFERENCES sessions(id)
+    );
+  `);
+
+  // ── Agent Lessons ─────────────────────────────────────────────────────────────
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS agent_lessons (
+      id TEXT PRIMARY KEY,
+      orchestration_query TEXT NOT NULL,
+      lesson TEXT NOT NULL,
+      gap_identified TEXT DEFAULT NULL,
+      top_sources TEXT DEFAULT NULL,
+      weak_sources TEXT DEFAULT NULL,
+      score_adjustments TEXT DEFAULT NULL,
+      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+  `);
+
   // Additive migrations for existing DBs (safe to run repeatedly)
   for (const sql of [
     "ALTER TABLE sources  ADD COLUMN on_chain_id         INTEGER DEFAULT NULL",
@@ -160,6 +201,8 @@ function migrate(db: Database.Database) {
     "ALTER TABLE sources  ADD COLUMN source_type           TEXT    DEFAULT 'human'",
     "ALTER TABLE sources  ADD COLUMN synthesized_from      TEXT    DEFAULT NULL",
     "ALTER TABLE sources  ADD COLUMN full_content          TEXT    DEFAULT NULL",
+    "ALTER TABLE bounties ADD COLUMN auto_posted           INTEGER DEFAULT 0",
+    "ALTER TABLE bounties ADD COLUMN gap_category          TEXT    DEFAULT NULL",
   ]) {
     try { db.exec(sql); } catch { /* column already exists */ }
   }
@@ -844,6 +887,132 @@ export function getBountySubmissions(bountyId: string): BountySubmission[] {
     evaluationReason: (r.evaluation_reason as string | null) ?? null,
     createdAt: r.created_at as string,
   }));
+}
+
+// ─── Research Sessions (Build 2) ─────────────────────────────────────────────
+
+export interface Session {
+  id: string; title: string; policy: string;
+  totalPaidMicro: number; totalCitations: number;
+  contextSummary: string | null; createdAt: string; lastActive: string;
+  turns?: SessionTurn[];
+}
+export interface SessionTurn {
+  id: string; sessionId: string; query: string; answer: string;
+  queryId: string | null; citationsPaid: number; amountPaidMicro: number;
+  receiptIds: string[]; turnIndex: number; createdAt: string;
+}
+
+export function createSession(opts: { title?: string; policy?: string }): Session {
+  const id = uuidv4();
+  getDb().prepare(`INSERT INTO sessions (id, title, policy) VALUES (?, ?, ?)`).run(id, opts.title ?? "Research Session", opts.policy ?? "balanced");
+  return getSessionById(id)!;
+}
+
+export function getSessionById(id: string): Session | null {
+  const row = getDb().prepare("SELECT * FROM sessions WHERE id = ?").get(id) as Record<string, unknown> | undefined;
+  if (!row) return null;
+  return {
+    id: row.id as string, title: row.title as string, policy: row.policy as string,
+    totalPaidMicro: row.total_paid_micro as number, totalCitations: row.total_citations as number,
+    contextSummary: (row.context_summary as string | null) ?? null,
+    createdAt: row.created_at as string, lastActive: row.last_active as string,
+  };
+}
+
+export function getRecentSessions(limit = 20): Session[] {
+  return (getDb().prepare("SELECT * FROM sessions ORDER BY last_active DESC LIMIT ?").all(limit) as Record<string, unknown>[]).map((row) => ({
+    id: row.id as string, title: row.title as string, policy: row.policy as string,
+    totalPaidMicro: row.total_paid_micro as number, totalCitations: row.total_citations as number,
+    contextSummary: (row.context_summary as string | null) ?? null,
+    createdAt: row.created_at as string, lastActive: row.last_active as string,
+  }));
+}
+
+export function addSessionTurn(opts: {
+  sessionId: string; query: string; answer: string; queryId: string | null;
+  citationsPaid: number; amountPaidMicro: number; receiptIds: string[]; turnIndex: number;
+}): SessionTurn {
+  const id = uuidv4();
+  const db = getDb();
+  db.prepare(`INSERT INTO session_turns (id, session_id, query, answer, query_id, citations_paid, amount_paid_micro, receipt_ids, turn_index) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
+  ).run(id, opts.sessionId, opts.query, opts.answer, opts.queryId, opts.citationsPaid, opts.amountPaidMicro, JSON.stringify(opts.receiptIds), opts.turnIndex);
+  db.prepare(`UPDATE sessions SET total_paid_micro = total_paid_micro + ?, total_citations = total_citations + ?, last_active = datetime('now') WHERE id = ?`
+  ).run(opts.amountPaidMicro, opts.citationsPaid, opts.sessionId);
+  return getSessionTurns(opts.sessionId).find((t) => t.id === id)!;
+}
+
+export function getSessionTurns(sessionId: string): SessionTurn[] {
+  return (getDb().prepare("SELECT * FROM session_turns WHERE session_id = ? ORDER BY turn_index ASC").all(sessionId) as Record<string, unknown>[]).map((r) => ({
+    id: r.id as string, sessionId: r.session_id as string, query: r.query as string,
+    answer: r.answer as string, queryId: (r.query_id as string | null) ?? null,
+    citationsPaid: r.citations_paid as number, amountPaidMicro: r.amount_paid_micro as number,
+    receiptIds: JSON.parse(r.receipt_ids as string), turnIndex: r.turn_index as number,
+    createdAt: r.created_at as string,
+  }));
+}
+
+export function updateSessionContext(id: string, summary: string): void {
+  getDb().prepare("UPDATE sessions SET context_summary = ? WHERE id = ?").run(summary, id);
+}
+
+// ─── Agent Lessons (Build 5) ──────────────────────────────────────────────────
+
+export interface AgentLesson {
+  id: string; orchestrationQuery: string; lesson: string;
+  gapIdentified: string | null; topSources: string | null;
+  weakSources: string | null; scoreAdjustments: string | null; createdAt: string;
+}
+
+export function insertAgentLesson(opts: {
+  orchestrationQuery: string; lesson: string; gapIdentified?: string;
+  topSources?: string; weakSources?: string; scoreAdjustments?: string;
+}): string {
+  const id = uuidv4();
+  getDb().prepare(`INSERT INTO agent_lessons (id, orchestration_query, lesson, gap_identified, top_sources, weak_sources, score_adjustments) VALUES (?, ?, ?, ?, ?, ?, ?)`
+  ).run(id, opts.orchestrationQuery, opts.lesson, opts.gapIdentified ?? null, opts.topSources ?? null, opts.weakSources ?? null, opts.scoreAdjustments ?? null);
+  return id;
+}
+
+export function getRecentLessons(limit = 20): AgentLesson[] {
+  return (getDb().prepare("SELECT * FROM agent_lessons ORDER BY created_at DESC LIMIT ?").all(limit) as Record<string, unknown>[]).map((r) => ({
+    id: r.id as string, orchestrationQuery: r.orchestration_query as string,
+    lesson: r.lesson as string, gapIdentified: (r.gap_identified as string | null) ?? null,
+    topSources: (r.top_sources as string | null) ?? null, weakSources: (r.weak_sources as string | null) ?? null,
+    scoreAdjustments: (r.score_adjustments as string | null) ?? null, createdAt: r.created_at as string,
+  }));
+}
+
+export function getIntelligenceStats() {
+  const db = getDb();
+  const categoryRows = db.prepare(`
+    SELECT s.category, COUNT(r.id) as cite_count,
+           SUM(CASE WHEN r.decision='PAY' THEN 1 ELSE 0 END) as paid,
+           SUM(CASE WHEN r.decision='REFUSE' THEN 1 ELSE 0 END) as refused
+    FROM receipts r JOIN sources s ON s.id = r.source_id
+    GROUP BY s.category ORDER BY cite_count DESC
+  `).all() as { category: string; cite_count: number; paid: number; refused: number }[];
+
+  const hourlyFlow = db.prepare(`
+    SELECT strftime('%H', created_at) as hour, SUM(amount_paid) as total_paid, COUNT(*) as count
+    FROM receipts WHERE decision='PAY' AND created_at >= datetime('now', '-24 hours')
+    GROUP BY hour ORDER BY hour
+  `).all() as { hour: string; total_paid: number; count: number }[];
+
+  const compoundingScore = (db.prepare(
+    "SELECT SUM(paid_count) as s FROM sources WHERE source_type='ai_synthesized'"
+  ).get() as { s: number | null }).s ?? 0;
+
+  const autoBounties = (db.prepare(
+    "SELECT COUNT(*) as c FROM bounties WHERE auto_posted=1"
+  ).get() as { c: number }).c;
+
+  const lessonCount = (db.prepare("SELECT COUNT(*) as c FROM agent_lessons").get() as { c: number }).c;
+
+  const sessionCount = (db.prepare("SELECT COUNT(*) as c FROM sessions").get() as { c: number }).c;
+  const sessionPaid = (db.prepare("SELECT SUM(total_paid_micro) as s FROM sessions").get() as { s: number | null }).s ?? 0;
+
+  return { categoryRows, hourlyFlow, compoundingScore, autoBounties, lessonCount, sessionCount, sessionPaid };
 }
 
 export function closeBounty(opts: {

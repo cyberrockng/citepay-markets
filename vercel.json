@@ -1,6 +1,7 @@
 {
   "crons": [
     { "path": "/api/cron/auto-query",     "schedule": "0 12 * * *" },
-    { "path": "/api/cron/discord-update", "schedule": "0 11 * * *" }
+    { "path": "/api/cron/discord-update", "schedule": "0 11 * * *" },
+    { "path": "/api/cron/gap-agent",      "schedule": "0 */4 * * *" }
   ]
 }

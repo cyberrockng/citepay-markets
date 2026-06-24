@@ -291,10 +291,60 @@ export async function POST(req: NextRequest) {
       const totalGatewayMicro = subResults.reduce((s, r) => s + Number(r.gatewayAmountMicro), 0);
       const totalCreatorMicro = subResults.reduce((s, r) => s + r.totalPaid, 0);
 
+      // ── Agent Self-Assessment (Build 5) ────────────────────────────────────
+      let lessonId: string | null = null;
+      let lessonText: string | null = null;
+      try {
+        const paidDecisions = allDecisions.filter((d) => d.decision === "PAY");
+        const refusedDecisions = allDecisions.filter((d) => d.decision === "REFUSE");
+        const topSources = paidDecisions.slice(0, 3).map((d) => d.source).join(", ");
+        const weakSources = refusedDecisions.slice(0, 3).map((d) => d.source).join(", ");
+
+        const lessonMsg = await anthropic.messages.create({
+          model: "claude-haiku-4-5-20251001",
+          max_tokens: 250,
+          messages: [{
+            role: "user",
+            content: `You are an AI agent reflecting on your research performance. Write a brief self-assessment.
+
+Query: "${query}"
+Citations paid (good sources): ${paidDecisions.length} — ${topSources || "none"}
+Refused (weak sources): ${refusedDecisions.length} — ${weakSources || "none"}
+Total USDC paid: $${(totalCreatorMicro / 1e6).toFixed(4)}
+
+Write a 2-3 sentence self-assessment as JSON:
+{
+  "lesson": "what you learned / what worked / what was missing",
+  "gap": "specific knowledge gap identified, or null",
+  "adjustment": "one thing to do differently next time, or null"
+}`,
+          }],
+        });
+
+        const lt = (lessonMsg.content[0] as { text: string }).text;
+        const lm = lt.match(/\{[\s\S]*\}/);
+        if (lm) {
+          const lp = JSON.parse(lm[0]) as { lesson?: string; gap?: string; adjustment?: string };
+          lessonText = lp.lesson ?? null;
+          const { insertAgentLesson } = await import("@/lib/db");
+          lessonId = insertAgentLesson({
+            orchestrationQuery: query,
+            lesson: lp.lesson ?? "",
+            gapIdentified: lp.gap ?? undefined,
+            topSources: topSources || undefined,
+            weakSources: weakSources || undefined,
+            scoreAdjustments: lp.adjustment ?? undefined,
+          });
+          send({ type: "lesson", lessonId, lesson: lp.lesson, gap: lp.gap, adjustment: lp.adjustment });
+        }
+      } catch { /* non-fatal */ }
+
       send({
         type: "final",
         finalAnswer,
         knowledgeSourceId,
+        lessonId,
+        lessonText,
         subQueries: subResults,
         agentToAgentPayments: subAgentRewards,
         pilotPlan,

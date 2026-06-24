@@ -62,6 +62,7 @@ export default function OrchestratePage() {
   const [pilotPlan, setPilotPlan] = useState<PilotPlan | null>(null);
   const [agentRewards, setAgentRewards] = useState<AgentReward[]>([]);
   const [knowledgeSourceId, setKnowledgeSourceId] = useState<string | null>(null);
+  const [lesson, setLesson] = useState<{ lesson?: string; gap?: string; adjustment?: string } | null>(null);
   const [error, setError] = useState("");
   const [activeTab, setActiveTab] = useState<number>(0);
   const [pendingCount, setPendingCount] = useState<number | null>(null);
@@ -77,6 +78,7 @@ export default function OrchestratePage() {
     setPilotPlan(null);
     setAgentRewards([]);
     setKnowledgeSourceId(null);
+    setLesson(null);
     setError("");
     setPendingCount(null);
     setActiveTab(0);
@@ -135,6 +137,9 @@ export default function OrchestratePage() {
                 setPendingCount((c) => (c !== null ? Math.max(0, c - 1) : null));
                 return next;
               });
+            } else if (chunk.type === "lesson") {
+              const lc = chunk as Record<string, unknown>;
+              setLesson({ lesson: lc.lesson as string, gap: lc.gap as string, adjustment: lc.adjustment as string });
             } else if (chunk.type === "knowledge_registered" && chunk.knowledgeSourceId) {
               setKnowledgeSourceId(chunk.knowledgeSourceId);
             } else if (chunk.type === "final") {
@@ -359,6 +364,20 @@ export default function OrchestratePage() {
                   className="shrink-0 px-4 py-2 rounded-lg border border-violet-500/30 text-violet-300 text-sm hover:border-violet-500/60 hover:text-violet-200 transition-colors whitespace-nowrap">
                   View source →
                 </a>
+              </div>
+            )}
+
+            {/* Agent self-assessment */}
+            {lesson?.lesson && (
+              <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="w-6 h-6 rounded bg-emerald-600/30 flex items-center justify-center text-emerald-300 text-xs font-bold">✦</div>
+                  <span className="text-sm font-semibold text-emerald-300">Agent Self-Assessment</span>
+                  <a href="/intelligence" className="ml-auto text-xs text-emerald-400/60 hover:text-emerald-400">View all lessons →</a>
+                </div>
+                <p className="text-sm text-white/70 leading-relaxed">{lesson.lesson}</p>
+                {lesson.gap && <p className="text-xs text-amber-400/70 mt-2">Gap identified: {lesson.gap}</p>}
+                {lesson.adjustment && <p className="text-xs text-violet-400/70 mt-1">Next time: {lesson.adjustment}</p>}
               </div>
             )}
 

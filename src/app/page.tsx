@@ -137,6 +137,16 @@ export default function LandingPage() {
             <Link href="/bounties" className="border border-orange-500/30 hover:border-orange-500/60 text-orange-400/80 hover:text-orange-300 font-semibold px-6 py-2.5 rounded-xl transition-colors text-sm">
               Bounties
             </Link>
+            <Link href="/session" className="border border-teal-500/30 hover:border-teal-500/60 text-teal-400/80 hover:text-teal-300 font-semibold px-6 py-2.5 rounded-xl transition-colors text-sm">
+              Research Sessions
+            </Link>
+            <Link href="/policy" className="border border-violet-500/30 hover:border-violet-500/60 text-violet-400/80 hover:text-violet-300 font-semibold px-6 py-2.5 rounded-xl transition-colors text-sm">
+              AI Policy Builder
+            </Link>
+            <Link href="/intelligence" className="border border-emerald-500/30 hover:border-emerald-500/60 text-emerald-400/80 hover:text-emerald-300 font-semibold px-6 py-2.5 rounded-xl transition-colors text-sm flex items-center gap-1.5">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+              Intelligence
+            </Link>
             <Link href="/live" className="border border-[#00ff88]/20 hover:border-[#00ff88]/50 text-[#00ff88]/70 hover:text-[#00ff88] font-semibold px-6 py-2.5 rounded-xl transition-colors flex items-center gap-2 text-sm">
               <span className="w-1.5 h-1.5 rounded-full bg-[#00ff88] inline-block animate-pulse" />
               Live Feed
