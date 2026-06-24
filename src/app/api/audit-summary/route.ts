@@ -32,7 +32,7 @@ export async function GET(req: NextRequest) {
     summary: {
       totalReceipts: receipts.length,
       uniqueCreatorsPaid: uniqueCreators,
-      totalUSDCPaid: (totalMicro / 1e6).toFixed(6),
+      totalUSDCPaid: totalMicro.toFixed(6),
       byPurpose,
     },
     receipts: receipts.map((r) => ({

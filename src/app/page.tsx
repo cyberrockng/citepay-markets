@@ -22,7 +22,7 @@ const FLOW_STEPS = [
   { n: "07", title: "Content stays honest",    desc: "Hash at payment locks what was cited. If creator modifies content after payment, challenge triggers reputation slash." },
 ];
 
-function useCountUp(target: number, active: boolean, duration = 1200): number {
+function useCountUp(target: number, active: boolean, duration = 1200, decimals = 0): number {
   const [count, setCount] = useState(0);
   useEffect(() => {
     if (!active || !target) return;
@@ -30,11 +30,12 @@ function useCountUp(target: number, active: boolean, duration = 1200): number {
     const timer = setInterval(() => {
       const p = Math.min((Date.now() - start) / duration, 1);
       const eased = 1 - Math.pow(1 - p, 3);
-      setCount(Math.round(target * eased));
+      const raw = target * eased;
+      setCount(decimals > 0 ? parseFloat(raw.toFixed(decimals)) : Math.round(raw));
       if (p >= 1) clearInterval(timer);
     }, 16);
     return () => clearInterval(timer);
-  }, [target, active, duration]);
+  }, [target, active, duration, decimals]);
   return count;
 }
 
@@ -67,7 +68,7 @@ export default function LandingPage() {
     return () => clearInterval(id);
   }, []);
 
-  const usdcRouted       = useCountUp(stats?.totalUSDCRouted ?? 0, statsVisible);
+  const usdcRouted       = useCountUp(stats?.totalUSDCRouted ?? 0, statsVisible, 1200, 4);
   const totalDecisions   = useCountUp(stats?.totalDecisions  ?? 0, statsVisible);
   const onchainCitations = useCountUp(onchainStats?.citationPaidEvents ?? 0, statsVisible);
   const paidCitations    = useCountUp(stats?.paidCitations ?? 0, statsVisible);
@@ -112,7 +113,7 @@ export default function LandingPage() {
               <span className="text-[#00ff88] font-bold">
                 {stats ? `$${stats.totalUSDCRouted.toFixed(4)}` : "—"}
               </span>
-              <span className="text-[#4a4a5e]"> USDC to creators · Arc Testnet</span>
+              <span className="text-[#8b8b9e]"> USDC to creators · <span className="text-[#00ff88]">Arc Testnet</span></span>
             </span>
           </div>
 
@@ -174,7 +175,7 @@ export default function LandingPage() {
                 </span>
                 <span className="text-[#8b8b9e] flex-1 truncate">{e.sourceTitle}</span>
                 {e.decision === "PAY" && e.amountPaid > 0 && (
-                  <span className="text-[#00ff88]">${(e.amountPaid / 1e6).toFixed(4)}</span>
+                  <span className="text-[#00ff88]">${e.amountPaid.toFixed(4)}</span>
                 )}
                 <span className="text-[#2e2e3e]">{new Date(e.timestamp).toLocaleTimeString()}</span>
               </div>

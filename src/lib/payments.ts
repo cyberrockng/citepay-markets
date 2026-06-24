@@ -127,8 +127,8 @@ export async function payCreator(opts: {
         await publicClient.waitForTransactionReceipt({ hash });
         return { txHash: hash, amountMicroUsdc, recipient: creatorWallet, status: "confirmed", memoId };
       }
-    } catch {
-      // RPC error or insufficient balance — fall through
+    } catch (err) {
+      console.error("[payCreator] on-chain transfer failed, falling back to simulated:", err);
     }
   }
 

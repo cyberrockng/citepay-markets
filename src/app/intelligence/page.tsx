@@ -142,7 +142,7 @@ export default function IntelligencePage() {
                   return (
                     <div key={i} className="flex-1 flex flex-col items-center gap-1 group cursor-default relative">
                       <div className="absolute bottom-full mb-1 hidden group-hover:block bg-black/80 text-xs text-white px-2 py-1 rounded whitespace-nowrap z-10">
-                        {hour}:00 — {bar ? `$${(bar.total_paid / 1e6).toFixed(4)}` : "0"}
+                        {hour}:00 — {bar ? `$${bar.total_paid.toFixed(4)}` : "0"}
                       </div>
                       <div
                         className={`w-full rounded-sm transition-all ${bar ? "bg-emerald-500/60" : "bg-white/5"}`}

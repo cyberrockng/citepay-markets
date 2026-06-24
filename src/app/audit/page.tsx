@@ -43,7 +43,7 @@ function AuditSummaryPanel() {
           <div key={code} className="flex items-center gap-3 text-xs font-mono px-2 py-1 rounded bg-[#0a0a0f] border border-[#1e1e2e]">
             <span className="text-[#6366f1] w-20 flex-shrink-0">{code}</span>
             <span className="text-[#8b8b9e] flex-1">{stats.count} events</span>
-            <span className="text-[#00ff88]">${(stats.totalMicro / 1e6).toFixed(6)}</span>
+            <span className="text-[#00ff88]">${stats.totalMicro.toFixed(6)}</span>
           </div>
         ))}
       </div>
@@ -99,7 +99,7 @@ function CitationMemoPanel() {
             jsonrpc: "2.0", id: 2, method: "eth_getLogs",
             params: [{
               address: MEMO_ADDR,
-              topics: [MEMO_TOPIC, AGENT_TOPIC],
+              topics: [MEMO_TOPIC],
               fromBlock: "0x" + fromBlock.toString(16),
               toBlock: "latest",
             }],
