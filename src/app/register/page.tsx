@@ -34,6 +34,18 @@ export default function RegisterPage() {
   const [registered, setRegistered] = useState<RegisteredSource | null>(null);
   const [copied,     setCopied]     = useState(false);
 
+  function fillExample() {
+    const suffix = Date.now().toString(36);
+    setCreatorName("Abiola Adewale");
+    setCreatorHandle("@cyberrockng");
+    setUrl(`https://citepay-markets.vercel.app?ref=${suffix}`);
+    setTitle("CitePay Markets — AI Agent Citation Marketplace on Arc");
+    setDescription("AI agents pay creators in USDC nanopayments on Arc Testnet via Circle Gateway. Every citation has an on-chain receipt with SHA-256 evidence hash and content integrity proof.");
+    setPayoutWallet("0x5389688243328c26a92b301faEEAb5fbf9AFf105");
+    setPrice(1500);
+    setError("");
+  }
+
   useEffect(() => {
     fetch("/api/traction")
       .then((r) => r.json())
@@ -187,7 +199,17 @@ export default function RegisterPage() {
 
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-[#f0f0f5] mb-3">Register Your Content</h1>
+          <div className="flex items-start justify-between gap-4 mb-3">
+            <h1 className="text-3xl font-bold text-[#f0f0f5]">Register Your Content</h1>
+            <button
+              type="button"
+              onClick={fillExample}
+              aria-label="Fill form with an example registration"
+              className="flex-shrink-0 text-xs font-mono px-3 py-1.5 rounded-lg border border-[#6366f1]/40 hover:border-[#6366f1] text-[#6366f1] hover:text-indigo-300 bg-[#6366f1]/5 hover:bg-[#6366f1]/10 transition-all whitespace-nowrap"
+            >
+              Fill example →
+            </button>
+          </div>
           <p className="text-[#8b8b9e] text-sm leading-relaxed mb-4">
             Get paid in USDC every time an AI agent cites your work.
             No approval. No middleman. Register once — earn on every citation.
