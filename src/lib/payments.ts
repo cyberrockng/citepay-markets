@@ -4,11 +4,29 @@
  * Falls back to deterministic simulated hash when balance is zero.
  */
 
-import { createWalletClient, createPublicClient, http, erc20Abi, parseUnits } from "viem";
+import {
+  createWalletClient, createPublicClient, http, erc20Abi,
+  encodeFunctionData, keccak256, toHex,
+} from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import { ARC_USDC, ARC_RPC } from "./x402";
 
 const USDC_ADDRESS = (process.env.ARC_USDC_ADDRESS || ARC_USDC) as `0x${string}`;
+
+// Arc Transaction Memo precompile — attaches structured context to any contract call
+const MEMO_ADDRESS = "0x5294E9927c3306DcBaDb03fe70b92e01cCede505" as `0x${string}`;
+const MEMO_ABI = [
+  {
+    type: "function", name: "memo", stateMutability: "nonpayable",
+    inputs: [
+      { name: "target",   type: "address" },
+      { name: "data",     type: "bytes"   },
+      { name: "memoId",   type: "bytes32" },
+      { name: "memoData", type: "bytes"   },
+    ],
+    outputs: [],
+  },
+] as const;
 
 // Minimal arc testnet chain def (viem/chains arcTestnet works too, this avoids the import)
 const arcTestnet = {
@@ -23,6 +41,7 @@ export interface PaymentResult {
   amountMicroUsdc: number;
   recipient: string;
   status: "confirmed" | "simulated";
+  memoId?: string;
 }
 
 export async function payCreator(opts: {
@@ -30,8 +49,11 @@ export async function payCreator(opts: {
   amountMicroUsdc: number;
   sourceId: string;
   receiptId: string;
+  queryId?: string;
+  relevanceScore?: number;
+  policy?: string;
 }): Promise<PaymentResult> {
-  const { creatorWallet, amountMicroUsdc, sourceId, receiptId } = opts;
+  const { creatorWallet, amountMicroUsdc, sourceId, receiptId, queryId, relevanceScore, policy } = opts;
 
   // Preferred path: Circle Developer-Controlled Wallet (MPC-secured, Circle-managed)
   const { isDCWEnabled, payCreatorViaDCW } = await import("./circle-dcw");
@@ -74,14 +96,36 @@ export async function payCreator(opts: {
       });
 
       if (balance >= BigInt(amountMicroUsdc)) {
-        const hash = await walletClient.writeContract({
-          address: USDC_ADDRESS,
+        // Encode the USDC transfer calldata
+        const transferData = encodeFunctionData({
           abi: erc20Abi,
           functionName: "transfer",
           args: [creatorWallet as `0x${string}`, BigInt(amountMicroUsdc)],
         });
+
+        // Build structured citation memo — permanently on-chain, self-describing
+        const memoPayload = JSON.stringify({
+          app: "citepay-markets",
+          v: 1,
+          rid: receiptId,
+          sid: sourceId,
+          amt: amountMicroUsdc,
+          ...(queryId        && { qid: queryId }),
+          ...(relevanceScore && { rel: relevanceScore }),
+          ...(policy         && { pol: policy }),
+        });
+        const memoId   = keccak256(toHex(receiptId));   // unique per citation, indexed
+        const memoData = toHex(memoPayload);             // arbitrary JSON bytes
+
+        // Submit via Arc Memo precompile — wraps the USDC transfer with structured context
+        const hash = await walletClient.writeContract({
+          address: MEMO_ADDRESS,
+          abi: MEMO_ABI,
+          functionName: "memo",
+          args: [USDC_ADDRESS, transferData, memoId, memoData],
+        });
         await publicClient.waitForTransactionReceipt({ hash });
-        return { txHash: hash, amountMicroUsdc, recipient: creatorWallet, status: "confirmed" };
+        return { txHash: hash, amountMicroUsdc, recipient: creatorWallet, status: "confirmed", memoId };
       }
     } catch {
       // RPC error or insufficient balance — fall through

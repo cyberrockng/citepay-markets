@@ -51,10 +51,145 @@ function AuditSummaryPanel() {
   );
 }
 
-const ARC_RPC    = "https://rpc.testnet.arc.network";
-const DCW_WALLET = "0xa539a18b55e5e3b98892c724f8f75914c0b69942";
-const USDC       = "0x3600000000000000000000000000000000000000";
-const ARCSCAN    = "https://testnet.arcscan.app";
+const ARC_RPC      = "https://rpc.testnet.arc.network";
+const DCW_WALLET   = "0xa539a18b55e5e3b98892c724f8f75914c0b69942";
+const AGENT_WALLET = "0x5389688243328c26a92b301faEEAb5fbf9AFf105";
+const USDC         = "0x3600000000000000000000000000000000000000";
+const MEMO_ADDR    = "0x5294E9927c3306DcBaDb03fe70b92e01cCede505";
+const ARCSCAN      = "https://testnet.arcscan.app";
+
+// keccak256("Memo(address,address,bytes32,bytes32,bytes,uint256)")
+const MEMO_TOPIC   = "0xeb15ee720798341c37739df41be53acfbbf70ae6802dade35457beec6e47a5e4";
+// Pad agent wallet to 32-byte topic
+const AGENT_TOPIC  = "0x000000000000000000000000" + AGENT_WALLET.slice(2).toLowerCase();
+
+interface MemoEvent {
+  txHash: string;
+  blockNumber: number;
+  memoId: string;
+  data: Record<string, unknown>;
+}
+
+function hexToUtf8(hex: string): string {
+  try {
+    const bytes = hex.replace(/^0x/, "").match(/.{2}/g)?.map(b => parseInt(b, 16)) ?? [];
+    return new TextDecoder().decode(new Uint8Array(bytes));
+  } catch { return hex; }
+}
+
+function CitationMemoPanel() {
+  const [memos, setMemos] = useState<MemoEvent[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function load() {
+      try {
+        // Get current block to set a reasonable fromBlock
+        const blockRes = await fetch(ARC_RPC, {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "eth_blockNumber", params: [] }),
+        });
+        const blockJson = await blockRes.json() as { result: string };
+        const latestBlock = parseInt(blockJson.result, 16);
+        const fromBlock = Math.max(0, latestBlock - 200000); // ~last 200k blocks
+
+        const logsRes = await fetch(ARC_RPC, {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            jsonrpc: "2.0", id: 2, method: "eth_getLogs",
+            params: [{
+              address: MEMO_ADDR,
+              topics: [MEMO_TOPIC, AGENT_TOPIC],
+              fromBlock: "0x" + fromBlock.toString(16),
+              toBlock: "latest",
+            }],
+          }),
+        });
+        const logsJson = await logsRes.json() as { result: Array<{ transactionHash: string; blockNumber: string; topics: string[]; data: string }> };
+        const logs = logsJson.result ?? [];
+
+        // Parse memo events — data ABI-encoded as (bytes32 callDataHash, bytes memo, uint256 memoIndex)
+        const parsed: MemoEvent[] = [];
+        for (const log of logs.slice(-20).reverse()) {
+          try {
+            // data layout: 32B callDataHash + 32B memo offset + 32B memoIndex + 32B memo length + memo bytes
+            const raw = log.data.slice(2); // strip 0x
+            const memoOffset = parseInt(raw.slice(64, 128), 16) * 2; // in hex chars
+            const memoLen = parseInt(raw.slice(memoOffset, memoOffset + 64), 16) * 2;
+            const memoHex = "0x" + raw.slice(memoOffset + 64, memoOffset + 64 + memoLen);
+            const memoStr = hexToUtf8(memoHex);
+            let memoData: Record<string, unknown> = {};
+            try { memoData = JSON.parse(memoStr); } catch { memoData = { raw: memoStr }; }
+            parsed.push({
+              txHash: log.transactionHash,
+              blockNumber: parseInt(log.blockNumber, 16),
+              memoId: log.topics[3] ?? "",
+              data: memoData,
+            });
+          } catch { /* skip malformed */ }
+        }
+        setMemos(parsed);
+      } catch { /* fail open */ }
+      setLoading(false);
+    }
+    load();
+  }, []);
+
+  return (
+    <div className="bg-[#111118] rounded-xl border border-[#00ff88]/20 p-6">
+      <div className="flex items-center justify-between mb-4">
+        <div>
+          <div className="text-[10px] font-mono text-[#4a4a5e] tracking-widest mb-1">ARC TRANSACTION MEMOS</div>
+          <div className="text-xs text-[#8b8b9e]">
+            Structured citation context attached to every USDC transfer — permanently on-chain via{" "}
+            <a href={`${ARCSCAN}/address/${MEMO_ADDR}`} target="_blank" rel="noopener noreferrer"
+               className="text-[#6366f1] hover:text-indigo-300">MemoDispatcher</a>
+          </div>
+        </div>
+        <span className="text-[10px] font-mono px-2 py-1 rounded bg-[#00ff88]/10 text-[#00ff88] border border-[#00ff88]/20">
+          {loading ? "…" : `${memos.length} memos`}
+        </span>
+      </div>
+
+      {loading ? (
+        <div className="text-[#4a4a5e] text-xs font-mono animate-pulse">Reading Memo events from Arc RPC…</div>
+      ) : memos.length === 0 ? (
+        <div className="text-[#4a4a5e] text-xs font-mono">
+          No memo events yet — memos attach to new payments after this deployment.
+          <br/>
+          <a href={`${ARCSCAN}/address/${MEMO_ADDR}`} target="_blank" rel="noopener noreferrer"
+             className="text-[#6366f1] hover:text-indigo-300 mt-1 inline-block">
+            View Memo contract on ArcScan ↗
+          </a>
+        </div>
+      ) : (
+        <div className="space-y-2 font-mono text-xs">
+          {memos.map((m) => (
+            <div key={m.txHash} className="rounded-lg border border-[#1e1e2e] bg-[#0a0a0f] p-3 space-y-1.5">
+              <div className="flex items-center justify-between">
+                <a href={`${ARCSCAN}/tx/${m.txHash}`} target="_blank" rel="noopener noreferrer"
+                   className="text-[#6366f1] hover:text-indigo-300">
+                  {m.txHash.slice(0, 14)}…{m.txHash.slice(-6)} ↗
+                </a>
+                <span className="text-[#4a4a5e]">block {m.blockNumber.toLocaleString()}</span>
+              </div>
+              <div className="flex flex-wrap gap-3 text-[10px]">
+                {m.data.sid != null && <span><span className="text-[#4a4a5e]">source:</span> <span className="text-[#f0f0f5]">{String(m.data.sid)}</span></span>}
+                {m.data.amt != null && <span><span className="text-[#4a4a5e]">paid:</span> <span className="text-[#00ff88]">{(Number(m.data.amt)/1e6).toFixed(4)} USDC</span></span>}
+                {m.data.rel != null && <span><span className="text-[#4a4a5e]">relevance:</span> <span className="text-[#f0f0f5]">{String(m.data.rel)}</span></span>}
+                {m.data.pol != null && <span><span className="text-[#4a4a5e]">policy:</span> <span className="text-[#f0f0f5]">{String(m.data.pol)}</span></span>}
+                {m.data.rid != null && <span><span className="text-[#4a4a5e]">receiptId:</span> <span className="text-[#8b8b9e]">{String(m.data.rid).slice(0,8)}…</span></span>}
+              </div>
+            </div>
+          ))}
+          <div className="text-[#4a4a5e] text-[10px] pt-1">
+            Sender filter: {AGENT_WALLET} · Contract: {MEMO_ADDR}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function AuditPage() {
   const [balance,  setBalance]  = useState<string | null>(null);
@@ -169,6 +304,7 @@ export default function AuditPage() {
                   { label: "CitePayMarket.sol",  addr: "0x396cf1646EbAeF85ee8428C2d9239C46Ae956085" },
                   { label: "CreatorBond.sol",     addr: "0x7DBa1C67Fd9BA976aE09E744D8cbcC71F805D6C0" },
                   { label: "CitationMandate.sol", addr: "0xBad090764dd720B5EdcD8B49e054D5d8Ce13C695" },
+                  { label: "MemoDispatcher",      addr: "0x5294E9927c3306DcBaDb03fe70b92e01cCede505" },
                 ].map(({ label, addr }) => (
                   <div key={addr} className="flex items-start justify-between gap-4">
                     <span className="text-[#8b8b9e] w-44 flex-shrink-0">{label}</span>
@@ -198,6 +334,9 @@ export default function AuditPage() {
                 <span className="text-[#8b8b9e]">BLOCKED_BY_POLICY decisions anchored on CitationMandate.sol</span>
               </div>
             </div>
+
+            {/* Arc Transaction Memos */}
+            <CitationMemoPanel />
 
             {/* Citation Auditor */}
             <div className="bg-[#111118] rounded-xl border border-[#6366f1]/20 p-6">
