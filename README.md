@@ -24,7 +24,7 @@
 | `/demo` | Auto-runs 4 proofs: tamper → x402 pay → query → challenge |
 | `/ask` | Agent workbench with configurable spend policy + proof console |
 | `/receipt/:id` | Receipt with evidence preimage viewer + hash recomputation |
-| `/traction` | Live on-chain stats: 110+ CitationPaid events from CitePayMarket.sol |
+| `/traction` | Live on-chain stats: 700+ agent decisions, 194+ paid citations from CitePayMarket.sol |
 | `/mcp` | MCP server install for Claude Code / Cursor integration |
 
 **Contracts:** Arc Testnet (chainId 5042002)  
@@ -51,7 +51,7 @@ A query run against all three agents simultaneously — FactAgent (conservative)
 
 One query. Five source agents. Five different outcomes. All decisions signed by the veracity agent and anchored on Arc Testnet via `CitePayMarket.sol`.
 
-**Tx:** [0xc02c70ab…](https://testnet.arcscan.app/tx/0xc02c70abadf076c326e4fe393edc6bf0634816b82cf1402127cb96e6116269b0) · **Block:** 48070337 · **110+ total `CitationPaid` events** on-chain
+**Tx:** [0xc02c70ab…](https://testnet.arcscan.app/tx/0xc02c70abadf076c326e4fe393edc6bf0634816b82cf1402127cb96e6116269b0) · **Block:** 48070337 · **194+ total `CitationPaid` events** on-chain
 
 ---
 
@@ -71,9 +71,10 @@ CitePay Markets is a live agentic citation economy where:
 - **Public creator registration** — `/register` lets anyone register their content in 60 seconds, no approval, no API key required.
 
 ### Live Traction (Arc Testnet)
-- **110+ `CitationPaid` events** on CitePayMarket.sol (verifiable: [0x396c…6085](https://testnet.arcscan.app/address/0x396cf1646EbAeF85ee8428C2d9239C46Ae956085))
-- **333+ agent decisions** — PAY / REFUSE / SKIP / BLOCKED_BY_POLICY — all with public receipts
-- **150+ paid citations** with on-chain USDC settlement
+- **194+ `CitationPaid` events** on CitePayMarket.sol (verifiable: [0x396c…6085](https://testnet.arcscan.app/address/0x396cf1646EbAeF85ee8428C2d9239C46Ae956085))
+- **700+ agent decisions** — PAY / REFUSE / SKIP / BLOCKED_BY_POLICY — all with public receipts
+- **194+ paid citations** with on-chain USDC settlement across 90+ unique queries
+- **9 of 10 creators paid** — real USDC routed to creator wallets
 - **10 sources** registered onchain across 3 source agents
 - **3 source agent identities** with distinct wallets, specialties, and reputation scores
 - **1 Pilot Agent** attesting allocation decisions onchain before paying
@@ -123,7 +124,7 @@ CitePay Markets solves all three:
 | Configurable Agent Spend Policies (conservative/balanced/aggressive) | ✓ | ✗ |
 | SHA-256 evidence hash per decision | ✓ | ✗ |
 | Objective content-integrity challenge | ✓ | ✗ |
-| 110+ CitationPaid events verifiable on Arc Testnet | ✓ | ✗ |
+| 194+ CitationPaid events verifiable on Arc Testnet | ✓ | ✗ |
 | Purpose taxonomy: CITE / QUERY_FEE / AGENT_REWARD / BOND_SLASH | ✓ | ✗ |
 | Citation memory: reputation persists across cold starts (Edge Config) | ✓ | ✗ |
 | Public creator registration — no API key, no approval | ✓ | ✗ |
