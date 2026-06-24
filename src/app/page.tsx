@@ -109,11 +109,11 @@ export default function LandingPage() {
             <span className="w-2 h-2 rounded-full bg-[#00ff88] animate-pulse flex-shrink-0" />
             <span className="font-mono text-sm">
               <span className="text-[#00ff88] font-bold">{stats?.paidCitations ?? "—"}</span>
-              <span className="text-[#4a4a5e]"> citations paid · </span>
+              <span className="text-[#8b8b9e]"> citations paid · </span>
               <span className="text-[#00ff88] font-bold">
                 {stats ? `$${stats.totalUSDCRouted.toFixed(4)}` : "—"}
               </span>
-              <span className="text-[#8b8b9e]"> USDC to creators · <span className="text-[#00ff88]">Arc Testnet</span></span>
+              <span className="text-[#8b8b9e]"> USDC to creators · Arc Testnet</span>
             </span>
           </div>
 
