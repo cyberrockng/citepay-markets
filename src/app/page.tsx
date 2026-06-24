@@ -110,7 +110,7 @@ export default function LandingPage() {
               <span className="text-[#00ff88] font-bold">{stats?.paidCitations ?? "—"}</span>
               <span className="text-[#4a4a5e]"> citations paid · </span>
               <span className="text-[#00ff88] font-bold">
-                {stats ? `$${(stats.totalUSDCRouted / 1e6).toFixed(4)}` : "—"}
+                {stats ? `$${stats.totalUSDCRouted.toFixed(4)}` : "—"}
               </span>
               <span className="text-[#4a4a5e]"> USDC to creators · Arc Testnet</span>
             </span>
@@ -200,7 +200,7 @@ export default function LandingPage() {
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
           {[
             { label: "CitationPaid Events", value: onchainCitations, accent: "text-[#00ff88]", prefix: "", onchain: true },
-            { label: "USDC Routed",         value: usdcRouted,       accent: "text-[#00ff88]", prefix: "$", divisor: 1_000_000, decimals: 4 },
+            { label: "USDC Routed",         value: usdcRouted,       accent: "text-[#00ff88]", prefix: "$", divisor: 1, decimals: 4 },
             { label: "Agent Decisions",     value: totalDecisions,   accent: "text-[#6366f1]", prefix: "" },
             { label: "Citations Paid",      value: paidCitations,    accent: "text-[#6366f1]", prefix: "" },
           ].map(({ label, value, accent, prefix, divisor, decimals, onchain }) => {
@@ -220,7 +220,7 @@ export default function LandingPage() {
 
         {/* Proof of Economics */}
         {(() => {
-          const actualUSDC = (stats?.totalUSDCRouted ?? 0) / 1e6;
+          const actualUSDC = stats?.totalUSDCRouted ?? 0;
           const citations  = stats?.paidCitations ?? 0;
           const ethL1Cost  = citations * 2.50;
           const multiplier = actualUSDC > 0.0001 ? Math.round(ethL1Cost / actualUSDC) : 0;

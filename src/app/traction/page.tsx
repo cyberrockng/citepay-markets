@@ -125,13 +125,13 @@ export default function TractionPage() {
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
               <StatCard
                 label="Total USDC Routed"
-                value={`$${(stats.totalUSDCRouted / 1_000_000).toFixed(4)}`}
+                value={`$${stats.totalUSDCRouted.toFixed(4)}`}
                 accent="text-[#00ff88]"
                 sub="to creator wallets"
               />
               <StatCard
                 label="Avg / Citation"
-                value={`$${(stats.avgPaymentPerCitation / 1_000_000).toFixed(4)}`}
+                value={`$${stats.avgPaymentPerCitation.toFixed(4)}`}
                 accent="text-[#6366f1]"
               />
               <StatCard label="Paid Citations" value={stats.paidCitations} accent="text-[#00ff88]" />

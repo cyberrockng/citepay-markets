@@ -541,7 +541,7 @@ export function getFullTractionStats() {
     refusals,
     skips,
     totalUSDCRouted,
-    avgPaymentPerCitation: paidCitations > 0 ? Math.round(totalUSDCRouted / paidCitations) : 0,
+    avgPaymentPerCitation: paidCitations > 0 ? totalUSDCRouted / paidCitations : 0,
     shareCardsGenerated,
     shareCardsOpened,
     challengeCount,

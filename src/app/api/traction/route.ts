@@ -13,7 +13,7 @@ const FLOOR = {
   paidCitations:       194,
   refusals:            304,
   skips:               205,
-  totalUSDCRouted:     96500,  // micro-USDC
+  totalUSDCRouted:     0.447,  // USDC (same unit as DB: SUM of amount_paid, which is USDC not micro-USDC)
   shareCardsGenerated: 3,
   shareCardsOpened:    1,
   challengeCount:      0,
@@ -37,7 +37,7 @@ export async function GET() {
         paidCitations:       Math.max(sqlite.paidCitations,        redis.paidCitations),
         refusals:            Math.max(sqlite.refusals,             redis.refusals),
         skips:               Math.max(sqlite.skips,                redis.skips),
-        totalUSDCRouted:     Math.max(sqlite.totalUSDCRouted,      redis.totalUSDCMicro),
+        totalUSDCRouted:     Math.max(sqlite.totalUSDCRouted,      redis.totalUSDCMicro / 1e6),
         shareCardsGenerated: Math.max(sqlite.shareCardsGenerated,  redis.shareCardsGenerated),
         shareCardsOpened:    Math.max(sqlite.shareCardsOpened,     redis.shareCardsOpened),
         challengeCount:      Math.max(sqlite.challengeCount,       redis.challengeCount),
@@ -58,7 +58,7 @@ export async function GET() {
     creatorsPaid:        Math.max(fromRedis.creatorsPaid ?? 0,    FLOOR.creatorsPaid),
     avgPaymentPerCitation: fromRedis.paidCitations > 0
       ? fromRedis.avgPaymentPerCitation
-      : Math.round(FLOOR.totalUSDCRouted / FLOOR.paidCitations) / 1e6,
+      : FLOOR.totalUSDCRouted / FLOOR.paidCitations,
   };
 
   return NextResponse.json({ stats, generatedAt: new Date().toISOString() });
