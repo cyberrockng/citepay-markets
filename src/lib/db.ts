@@ -1,6 +1,7 @@
 import Database from "better-sqlite3";
 import path from "path";
 import fs from "fs";
+import { createHash } from "crypto";
 import { v4 as uuidv4 } from "uuid";
 import type { Source, Receipt, QueryRecord } from "@/types";
 import { redisIncrSourcePaid, redisIncrSourceRefused } from "@/lib/redis-stats";
@@ -109,6 +110,40 @@ function migrate(db: Database.Database) {
       ('active_agents', 0);
   `);
 
+  // ── Bounties ────────────────────────────────────────────────────────────────
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS bounties (
+      id TEXT PRIMARY KEY,
+      title TEXT NOT NULL,
+      query TEXT NOT NULL,
+      description TEXT NOT NULL DEFAULT '',
+      budget_micro INTEGER NOT NULL,
+      deadline TEXT NOT NULL,
+      status TEXT NOT NULL DEFAULT 'open',
+      agent_address TEXT NOT NULL,
+      winning_submission_id TEXT DEFAULT NULL,
+      winner_wallet TEXT DEFAULT NULL,
+      winner_paid_micro INTEGER DEFAULT 0,
+      winner_tx_hash TEXT DEFAULT NULL,
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      closed_at TEXT DEFAULT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS bounty_submissions (
+      id TEXT PRIMARY KEY,
+      bounty_id TEXT NOT NULL,
+      creator_name TEXT NOT NULL,
+      creator_handle TEXT NOT NULL,
+      creator_wallet TEXT NOT NULL,
+      content TEXT NOT NULL,
+      content_url TEXT DEFAULT NULL,
+      evaluation_score INTEGER DEFAULT NULL,
+      evaluation_reason TEXT DEFAULT NULL,
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      FOREIGN KEY (bounty_id) REFERENCES bounties(id)
+    );
+  `);
+
   // Additive migrations for existing DBs (safe to run repeatedly)
   for (const sql of [
     "ALTER TABLE sources  ADD COLUMN on_chain_id         INTEGER DEFAULT NULL",
@@ -122,6 +157,9 @@ function migrate(db: Database.Database) {
     "ALTER TABLE receipts ADD COLUMN agent_signature       TEXT    DEFAULT NULL",
     "ALTER TABLE sources  ADD COLUMN category              TEXT    DEFAULT 'General'",
     "ALTER TABLE receipts ADD COLUMN purpose_code          TEXT    DEFAULT NULL",
+    "ALTER TABLE sources  ADD COLUMN source_type           TEXT    DEFAULT 'human'",
+    "ALTER TABLE sources  ADD COLUMN synthesized_from      TEXT    DEFAULT NULL",
+    "ALTER TABLE sources  ADD COLUMN full_content          TEXT    DEFAULT NULL",
   ]) {
     try { db.exec(sql); } catch { /* column already exists */ }
   }
@@ -524,5 +562,305 @@ export function openShareCard(shareId: string): void {
   if (row) {
     getDb().prepare("UPDATE share_cards SET opened = 1 WHERE id = ?").run(shareId);
     incrementTraction("share_cards_opened");
+  }
+}
+
+// ─── Synthesized Knowledge (Option 3) ────────────────────────────────────────
+
+export interface KnowledgeSource {
+  id: string;
+  title: string;
+  description: string;
+  fullContent: string;
+  url: string;
+  contentHash: string;
+  price: number;
+  synthesizedFrom: string;
+  agentAddress: string;
+  createdAt: string;
+  paidCount: number;
+  category: string;
+}
+
+export function autoRegisterKnowledge(opts: {
+  answer: string;
+  query: string;
+  queryId: string;
+  agentWallet: string;
+  host: string;
+}): string {
+  const db = getDb();
+  const id = uuidv4();
+  const contentHash = createHash("sha256").update(opts.answer).digest("hex");
+  const shortTitle = opts.query.length > 80
+    ? opts.query.slice(0, 77) + "…"
+    : opts.query;
+  const title = `[AI Synthesis] ${shortTitle}`;
+  const proto = opts.host.startsWith("localhost") ? "http" : "https";
+  const url = `${proto}://${opts.host}/knowledge/${id}`;
+  const description = opts.answer.slice(0, 400);
+
+  db.prepare(`
+    INSERT INTO sources (id, title, url, creator_name, creator_handle, payout_wallet,
+      content_hash, description, price, bond, bonded, reputation, paid_count, refused_count,
+      skip_count, active, category, source_type, synthesized_from, full_content, created_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
+  `).run(
+    id, title, url,
+    "CitePay Orchestrator", "@citepay_agent",
+    opts.agentWallet,
+    contentHash, description,
+    1500, 0, 0, 0, 0, 0, 0, 1,
+    "AI/Agents", "ai_synthesized",
+    opts.queryId, opts.answer
+  );
+
+  return id;
+}
+
+export function getKnowledgeById(id: string): KnowledgeSource | null {
+  const row = getDb().prepare(
+    "SELECT * FROM sources WHERE id = ? AND source_type = 'ai_synthesized'"
+  ).get(id) as Record<string, unknown> | undefined;
+  if (!row) return null;
+  return {
+    id: row.id as string,
+    title: row.title as string,
+    description: (row.description as string) || "",
+    fullContent: (row.full_content as string) || (row.description as string) || "",
+    url: row.url as string,
+    contentHash: row.content_hash as string,
+    price: row.price as number,
+    synthesizedFrom: (row.synthesized_from as string) || "",
+    agentAddress: (row.payout_wallet as string) || "",
+    createdAt: row.created_at as string,
+    paidCount: (row.paid_count as number) || 0,
+    category: (row.category as string) || "AI/Agents",
+  };
+}
+
+export function getRecentKnowledge(limit = 10): KnowledgeSource[] {
+  const rows = getDb().prepare(
+    "SELECT * FROM sources WHERE source_type = 'ai_synthesized' ORDER BY created_at DESC LIMIT ?"
+  ).all(limit) as Record<string, unknown>[];
+  return rows.map((row) => ({
+    id: row.id as string,
+    title: row.title as string,
+    description: (row.description as string) || "",
+    fullContent: (row.full_content as string) || (row.description as string) || "",
+    url: row.url as string,
+    contentHash: row.content_hash as string,
+    price: row.price as number,
+    synthesizedFrom: (row.synthesized_from as string) || "",
+    agentAddress: (row.payout_wallet as string) || "",
+    createdAt: row.created_at as string,
+    paidCount: (row.paid_count as number) || 0,
+    category: (row.category as string) || "AI/Agents",
+  }));
+}
+
+// ─── Reputation (Option 4) ────────────────────────────────────────────────────
+
+export function getReputationForUrl(url: string) {
+  const db = getDb();
+  const source = db.prepare("SELECT * FROM sources WHERE url = ? LIMIT 1").get(url) as Record<string, unknown> | undefined;
+  if (!source) {
+    const anyReceipts = db.prepare("SELECT COUNT(*) as c FROM receipts WHERE source_url = ?").get(url) as { c: number };
+    if (anyReceipts.c === 0) return null;
+    const paid = (db.prepare("SELECT COUNT(*) as c FROM receipts WHERE source_url = ? AND decision = 'PAY'").get(url) as { c: number }).c;
+    const refused = (db.prepare("SELECT COUNT(*) as c FROM receipts WHERE source_url = ? AND decision = 'REFUSE'").get(url) as { c: number }).c;
+    const lastRow = db.prepare("SELECT created_at FROM receipts WHERE source_url = ? ORDER BY created_at DESC LIMIT 1").get(url) as { created_at: string } | undefined;
+    const total = paid + refused;
+    return {
+      url, found: false, sourceId: null, title: null, trustScore: total > 0 ? Math.round((paid / total) * 100) : 0,
+      citationCount: anyReceipts.c, paidCount: paid, refusedCount: refused, averageScore: null,
+      lastCitedAt: lastRow?.created_at ?? null, pricePerCitation: null, creatorHandle: null,
+    };
+  }
+
+  const sourceId = source.id as string;
+  const paidCount = (source.paid_count as number) || 0;
+  const refusedCount = (source.refused_count as number) || 0;
+  const skipCount = (source.skip_count as number) || 0;
+  const total = paidCount + refusedCount + skipCount;
+  const baseScore = total > 0 ? (paidCount / total) * 100 : 50;
+  const repBonus = Math.min(20, ((source.reputation as number) || 0) * 2);
+  const trustScore = Math.min(100, Math.round(baseScore + repBonus));
+
+  const scoreRows = db.prepare(
+    "SELECT scores FROM receipts WHERE source_id = ? AND decision = 'PAY' ORDER BY created_at DESC LIMIT 20"
+  ).all(sourceId) as { scores: string }[];
+  const avgScore = scoreRows.length > 0
+    ? Math.round(scoreRows.reduce((s, r) => {
+        try { return s + (JSON.parse(r.scores) as { total: number }).total; } catch { return s; }
+      }, 0) / scoreRows.length)
+    : null;
+
+  const lastRow = db.prepare(
+    "SELECT created_at FROM receipts WHERE source_id = ? ORDER BY created_at DESC LIMIT 1"
+  ).get(sourceId) as { created_at: string } | undefined;
+
+  return {
+    url, found: true, sourceId,
+    title: source.title as string,
+    trustScore,
+    citationCount: paidCount + refusedCount + skipCount,
+    paidCount,
+    refusedCount,
+    averageScore: avgScore,
+    lastCitedAt: lastRow?.created_at ?? null,
+    pricePerCitation: source.price as number,
+    creatorHandle: source.creator_handle as string,
+    category: source.category as string,
+    bonded: Boolean(source.bonded),
+  };
+}
+
+// ─── Bounties (Option 1) ──────────────────────────────────────────────────────
+
+export interface Bounty {
+  id: string;
+  title: string;
+  query: string;
+  description: string;
+  budgetMicro: number;
+  deadline: string;
+  status: "open" | "evaluating" | "closed";
+  agentAddress: string;
+  winningSubmissionId: string | null;
+  winnerWallet: string | null;
+  winnerPaidMicro: number;
+  winnerTxHash: string | null;
+  createdAt: string;
+  closedAt: string | null;
+  submissionCount?: number;
+}
+
+export interface BountySubmission {
+  id: string;
+  bountyId: string;
+  creatorName: string;
+  creatorHandle: string;
+  creatorWallet: string;
+  content: string;
+  contentUrl: string | null;
+  evaluationScore: number | null;
+  evaluationReason: string | null;
+  createdAt: string;
+}
+
+function rowToBounty(r: Record<string, unknown>): Bounty {
+  return {
+    id: r.id as string,
+    title: r.title as string,
+    query: r.query as string,
+    description: (r.description as string) || "",
+    budgetMicro: r.budget_micro as number,
+    deadline: r.deadline as string,
+    status: r.status as Bounty["status"],
+    agentAddress: r.agent_address as string,
+    winningSubmissionId: (r.winning_submission_id as string | null) ?? null,
+    winnerWallet: (r.winner_wallet as string | null) ?? null,
+    winnerPaidMicro: (r.winner_paid_micro as number) || 0,
+    winnerTxHash: (r.winner_tx_hash as string | null) ?? null,
+    createdAt: r.created_at as string,
+    closedAt: (r.closed_at as string | null) ?? null,
+    submissionCount: (r.submission_count as number | undefined) ?? undefined,
+  };
+}
+
+export function createBounty(opts: {
+  title: string;
+  query: string;
+  description: string;
+  budgetMicro: number;
+  deadline: string;
+  agentAddress: string;
+}): Bounty {
+  const id = uuidv4();
+  const db = getDb();
+  db.prepare(`
+    INSERT INTO bounties (id, title, query, description, budget_micro, deadline, status, agent_address)
+    VALUES (?, ?, ?, ?, ?, ?, 'open', ?)
+  `).run(id, opts.title, opts.query, opts.description, opts.budgetMicro, opts.deadline, opts.agentAddress);
+  return getBountyById(id)!;
+}
+
+export function getBounties(status?: string, limit = 50): Bounty[] {
+  const db = getDb();
+  const rows = status
+    ? db.prepare(`
+        SELECT b.*, COUNT(bs.id) as submission_count
+        FROM bounties b LEFT JOIN bounty_submissions bs ON bs.bounty_id = b.id
+        WHERE b.status = ? GROUP BY b.id ORDER BY b.created_at DESC LIMIT ?
+      `).all(status, limit)
+    : db.prepare(`
+        SELECT b.*, COUNT(bs.id) as submission_count
+        FROM bounties b LEFT JOIN bounty_submissions bs ON bs.bounty_id = b.id
+        GROUP BY b.id ORDER BY b.created_at DESC LIMIT ?
+      `).all(limit);
+  return rows.map((r) => rowToBounty(r as Record<string, unknown>));
+}
+
+export function getBountyById(id: string): Bounty | null {
+  const row = getDb().prepare(`
+    SELECT b.*, COUNT(bs.id) as submission_count
+    FROM bounties b LEFT JOIN bounty_submissions bs ON bs.bounty_id = b.id
+    WHERE b.id = ? GROUP BY b.id
+  `).get(id) as Record<string, unknown> | undefined;
+  return row ? rowToBounty(row) : null;
+}
+
+export function submitToBounty(opts: {
+  bountyId: string;
+  creatorName: string;
+  creatorHandle: string;
+  creatorWallet: string;
+  content: string;
+  contentUrl?: string;
+}): BountySubmission {
+  const id = uuidv4();
+  const db = getDb();
+  db.prepare(`
+    INSERT INTO bounty_submissions (id, bounty_id, creator_name, creator_handle, creator_wallet, content, content_url)
+    VALUES (?, ?, ?, ?, ?, ?, ?)
+  `).run(id, opts.bountyId, opts.creatorName, opts.creatorHandle, opts.creatorWallet, opts.content, opts.contentUrl ?? null);
+  return getBountySubmissions(opts.bountyId).find((s) => s.id === id)!;
+}
+
+export function getBountySubmissions(bountyId: string): BountySubmission[] {
+  const rows = getDb().prepare(
+    "SELECT * FROM bounty_submissions WHERE bounty_id = ? ORDER BY created_at ASC"
+  ).all(bountyId) as Record<string, unknown>[];
+  return rows.map((r) => ({
+    id: r.id as string,
+    bountyId: r.bounty_id as string,
+    creatorName: r.creator_name as string,
+    creatorHandle: r.creator_handle as string,
+    creatorWallet: r.creator_wallet as string,
+    content: r.content as string,
+    contentUrl: (r.content_url as string | null) ?? null,
+    evaluationScore: (r.evaluation_score as number | null) ?? null,
+    evaluationReason: (r.evaluation_reason as string | null) ?? null,
+    createdAt: r.created_at as string,
+  }));
+}
+
+export function closeBounty(opts: {
+  id: string;
+  winnerSubmissionId: string;
+  winnerWallet: string;
+  winnerPaidMicro: number;
+  winnerTxHash: string | null;
+  scores: Record<string, { score: number; reason: string }>;
+}): void {
+  const db = getDb();
+  db.prepare(`
+    UPDATE bounties SET status = 'closed', winning_submission_id = ?, winner_wallet = ?,
+    winner_paid_micro = ?, winner_tx_hash = ?, closed_at = datetime('now') WHERE id = ?
+  `).run(opts.winnerSubmissionId, opts.winnerWallet, opts.winnerPaidMicro, opts.winnerTxHash, opts.id);
+  for (const [subId, ev] of Object.entries(opts.scores)) {
+    db.prepare("UPDATE bounty_submissions SET evaluation_score = ?, evaluation_reason = ? WHERE id = ?")
+      .run(ev.score, ev.reason, subId);
   }
 }

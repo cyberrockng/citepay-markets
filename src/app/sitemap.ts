@@ -12,6 +12,8 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { url: `${BASE}/audit`,         lastModified: new Date(), changeFrequency: "daily",   priority: 0.7 },
     { url: `${BASE}/market`,        lastModified: new Date(), changeFrequency: "daily",   priority: 0.7 },
     { url: `${BASE}/leaderboard`,   lastModified: new Date(), changeFrequency: "daily",   priority: 0.6 },
+    { url: `${BASE}/bounties`,       lastModified: new Date(), changeFrequency: "daily",   priority: 0.8 },
+    { url: `${BASE}/auction`,        lastModified: new Date(), changeFrequency: "weekly",  priority: 0.7 },
     { url: `${BASE}/live`,          lastModified: new Date(), changeFrequency: "always",  priority: 0.6 },
     { url: `${BASE}/traction`,      lastModified: new Date(), changeFrequency: "daily",   priority: 0.5 },
   ];

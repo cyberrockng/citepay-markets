@@ -61,6 +61,7 @@ export default function OrchestratePage() {
   const [stats, setStats] = useState<Stats | null>(null);
   const [pilotPlan, setPilotPlan] = useState<PilotPlan | null>(null);
   const [agentRewards, setAgentRewards] = useState<AgentReward[]>([]);
+  const [knowledgeSourceId, setKnowledgeSourceId] = useState<string | null>(null);
   const [error, setError] = useState("");
   const [activeTab, setActiveTab] = useState<number>(0);
   const [pendingCount, setPendingCount] = useState<number | null>(null);
@@ -75,6 +76,7 @@ export default function OrchestratePage() {
     setStats(null);
     setPilotPlan(null);
     setAgentRewards([]);
+    setKnowledgeSourceId(null);
     setError("");
     setPendingCount(null);
     setActiveTab(0);
@@ -111,6 +113,7 @@ export default function OrchestratePage() {
               index?: number;
               subQuery?: SubQuery;
               finalAnswer?: string;
+              knowledgeSourceId?: string;
               subQueries?: SubQuery[];
               stats?: Stats;
               plan?: PilotPlan;
@@ -132,8 +135,11 @@ export default function OrchestratePage() {
                 setPendingCount((c) => (c !== null ? Math.max(0, c - 1) : null));
                 return next;
               });
+            } else if (chunk.type === "knowledge_registered" && chunk.knowledgeSourceId) {
+              setKnowledgeSourceId(chunk.knowledgeSourceId);
             } else if (chunk.type === "final") {
               if (chunk.finalAnswer) setFinalAnswer(chunk.finalAnswer);
+              if (chunk.knowledgeSourceId) setKnowledgeSourceId(chunk.knowledgeSourceId);
               if (chunk.stats) setStats(chunk.stats);
               if (chunk.subQueries) setSubQueries(chunk.subQueries);
               if (chunk.pilotPlan) setPilotPlan(chunk.pilotPlan);
@@ -336,6 +342,23 @@ export default function OrchestratePage() {
                   <span className="text-xs text-indigo-400 bg-indigo-900/20 px-2 py-0.5 rounded-full">from {subQueries.length} agents</span>
                 </div>
                 <p className="text-[#f0f0f5] leading-relaxed whitespace-pre-wrap">{finalAnswer}</p>
+              </div>
+            )}
+
+            {/* Knowledge auto-registration banner */}
+            {knowledgeSourceId && (
+              <div className="rounded-xl border border-violet-500/30 bg-violet-500/5 p-4 flex items-center justify-between gap-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-lg bg-violet-500/20 flex items-center justify-center text-violet-300 text-sm">⬡</div>
+                  <div>
+                    <p className="text-sm font-semibold text-violet-300">Synthesized answer registered as citable source</p>
+                    <p className="text-xs text-white/40">Future AI agents can cite this knowledge and pay the originating agent in USDC</p>
+                  </div>
+                </div>
+                <a href={`/knowledge/${knowledgeSourceId}`}
+                  className="shrink-0 px-4 py-2 rounded-lg border border-violet-500/30 text-violet-300 text-sm hover:border-violet-500/60 hover:text-violet-200 transition-colors whitespace-nowrap">
+                  View source →
+                </a>
               </div>
             )}
 

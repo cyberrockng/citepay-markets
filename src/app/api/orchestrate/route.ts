@@ -220,6 +220,23 @@ export async function POST(req: NextRequest) {
       const finalAnswer = await synthesize(query, subResults);
       send({ type: "trace", line: `[Orchestrator] Synthesis complete.` });
 
+      // ── Auto-register synthesized answer as citable knowledge source ──────────
+      let knowledgeSourceId: string | null = null;
+      try {
+        const { autoRegisterKnowledge } = await import("@/lib/db");
+        knowledgeSourceId = autoRegisterKnowledge({
+          answer: finalAnswer,
+          query,
+          queryId: subResults[0]?.queryId || `orch-${Date.now()}`,
+          agentWallet: "0x5389688243328c26a92b301faEEAb5fbf9AFf105",
+          host,
+        });
+        send({ type: "trace", line: `[Orchestrator] Synthesized answer auto-registered → /knowledge/${knowledgeSourceId}` });
+        send({ type: "knowledge_registered", knowledgeSourceId, knowledgeUrl: `${proto}://${host}/knowledge/${knowledgeSourceId}` });
+      } catch (e) {
+        send({ type: "trace", line: `[Orchestrator] Knowledge auto-registration skipped: ${String(e).slice(0, 60)}` });
+      }
+
       // ── Agent-to-agent coordination rewards ────────────────────────────────
       // Orchestrator evaluates each sub-agent's contribution and releases USDC rewards
       type AgentReward = { agentIndex: number; subQuery: string; agentAddress: string; rewardMicro: number; txHash: string | null; contributionScore: number };
@@ -277,6 +294,7 @@ export async function POST(req: NextRequest) {
       send({
         type: "final",
         finalAnswer,
+        knowledgeSourceId,
         subQueries: subResults,
         agentToAgentPayments: subAgentRewards,
         pilotPlan,

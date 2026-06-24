@@ -127,9 +127,15 @@ export default function LandingPage() {
           </div>
 
           {/* Secondary CTAs */}
-          <div className="flex flex-col sm:flex-row gap-2 justify-center">
+          <div className="flex flex-col sm:flex-row gap-2 justify-center flex-wrap">
             <Link href="/orchestrate" className="border border-[#6366f1]/40 hover:border-[#6366f1] text-[#6366f1] hover:text-indigo-300 font-semibold px-6 py-2.5 rounded-xl transition-colors text-sm">
               Multi-Agent Demo
+            </Link>
+            <Link href="/auction" className="border border-amber-500/30 hover:border-amber-500/60 text-amber-400/80 hover:text-amber-300 font-semibold px-6 py-2.5 rounded-xl transition-colors text-sm">
+              Live Auction
+            </Link>
+            <Link href="/bounties" className="border border-orange-500/30 hover:border-orange-500/60 text-orange-400/80 hover:text-orange-300 font-semibold px-6 py-2.5 rounded-xl transition-colors text-sm">
+              Bounties
             </Link>
             <Link href="/live" className="border border-[#00ff88]/20 hover:border-[#00ff88]/50 text-[#00ff88]/70 hover:text-[#00ff88] font-semibold px-6 py-2.5 rounded-xl transition-colors flex items-center gap-2 text-sm">
               <span className="w-1.5 h-1.5 rounded-full bg-[#00ff88] inline-block animate-pulse" />
