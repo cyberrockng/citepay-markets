@@ -91,9 +91,11 @@ export async function verifyGatewayPayment(req: NextRequest): Promise<{
   const paymentSignature = req.headers.get("payment-signature");
   const legacyPayment    = req.headers.get("X-PAYMENT") || req.headers.get("x-payment");
 
-  // Dev fallback: X-PAYMENT for web UI / curl demos
+  // Dev fallback: X-PAYMENT for web UI / curl demos.
+  // Explicitly blocked in production even if X402_DEV_MODE is set — prevents accidental bypass.
   const devMode =
-    process.env.NODE_ENV === "development" || process.env.X402_DEV_MODE === "true";
+    (process.env.NODE_ENV === "development" || process.env.X402_DEV_MODE === "true") &&
+    process.env.VERCEL_ENV !== "production";
   if (devMode && legacyPayment && !paymentSignature) {
     const fakeTx = `0x${sha256(legacyPayment + Date.now()).substring(0, 64)}`;
     return { valid: true, txHash: fakeTx };

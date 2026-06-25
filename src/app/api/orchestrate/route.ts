@@ -252,11 +252,13 @@ export async function POST(req: NextRequest) {
       type AgentReward = { agentIndex: number; subQuery: string; agentAddress: string; rewardMicro: number; txHash: string | null; contributionScore: number };
       const subAgentRewards: AgentReward[] = [];
 
-      const SUB_AGENT_ADDRESSES = [
-        "0xa539a18b55e5e3b98892c724f8f75914c0b69942",
-        "0x5389688243328c26a92b301faEEAb5fbf9AFf105",
-        "0x1234000000000000000000000000000000000001",
-      ];
+      // Use registered agent wallets for coordination rewards — not project-owned wallets.
+      const { getAgentRegistry } = await import("@/lib/db");
+      const registeredAgents = getAgentRegistry("active");
+      const SUB_AGENT_ADDRESSES = registeredAgents
+        .filter(a => a.wallet && a.wallet !== "0x0000000000000000000000000000000000000001")
+        .map(a => a.wallet)
+        .slice(0, 3);
 
       if (AGENT_KEY) {
         const totalCitations = subResults.reduce((s, r) => s + r.decisions.filter((d) => d.decision === "PAY").length, 0);

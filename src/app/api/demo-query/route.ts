@@ -3,6 +3,23 @@ import { GatewayClient } from "@circle-fin/x402-batching/client";
 
 export const dynamic = "force-dynamic";
 
+// Simple in-memory rate limit: 1 request per 8s per IP, max 20 per IP per instance lifetime
+const _ipTimestamps = new Map<string, number>();
+const _ipCounts     = new Map<string, number>();
+const RATE_WINDOW_MS = 8_000;
+const MAX_LIFETIME   = 20;
+
+function checkRateLimit(ip: string): { blocked: boolean; reason?: string } {
+  const now  = Date.now();
+  const last = _ipTimestamps.get(ip) ?? 0;
+  const count = _ipCounts.get(ip) ?? 0;
+  if (now - last < RATE_WINDOW_MS) return { blocked: true, reason: `Rate limit: wait ${Math.ceil((RATE_WINDOW_MS - (now - last)) / 1000)}s` };
+  if (count >= MAX_LIFETIME) return { blocked: true, reason: "Demo limit reached for this session" };
+  _ipTimestamps.set(ip, now);
+  _ipCounts.set(ip, count + 1);
+  return { blocked: false };
+}
+
 // Deterministic demo buyer wallet (testnet only, funded via agent depositFor)
 const DEMO_BUYER_KEY: `0x${string}` =
   (process.env.DEMO_BUYER_KEY as `0x${string}`) ??
@@ -20,6 +37,12 @@ const REFILL_AMOUNT     = "0.05";   // amount to deposit when low
  * No client-side wallet needed.
  */
 export async function POST(req: NextRequest) {
+  const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
+  const rl = checkRateLimit(ip);
+  if (rl.blocked) {
+    return NextResponse.json({ error: rl.reason }, { status: 429 });
+  }
+
   let body: { query?: string; budget?: number; policy?: string } = {};
   try {
     body = await req.json();

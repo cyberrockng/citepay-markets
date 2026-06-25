@@ -55,6 +55,11 @@ export async function payCreator(opts: {
 }): Promise<PaymentResult> {
   const { creatorWallet, amountMicroUsdc, sourceId, receiptId, queryId, relevanceScore, policy } = opts;
 
+  // Guard: skip real transfer for zero-amount calls
+  if (amountMicroUsdc === 0) {
+    return { txHash: `simulated-zero-${receiptId}`, amountMicroUsdc: 0, recipient: creatorWallet, status: "simulated" };
+  }
+
   // Preferred path: Circle Developer-Controlled Wallet (MPC-secured, Circle-managed)
   // Only commit to this path if the transfer actually confirms — otherwise fall through
   // to the agent wallet path (which has $17+ USDC and produces real on-chain anchors).
@@ -125,7 +130,7 @@ export async function payCreator(opts: {
           functionName: "memo",
           args: [USDC_ADDRESS, transferData, memoId, memoData],
         });
-        await publicClient.waitForTransactionReceipt({ hash });
+        await publicClient.waitForTransactionReceipt({ hash, timeout: 30_000 });
         return { txHash: hash, amountMicroUsdc, recipient: creatorWallet, status: "confirmed", memoId };
       }
     } catch (err) {
