@@ -42,6 +42,7 @@ export interface PaymentResult {
   recipient: string;
   status: "confirmed" | "simulated";
   memoId?: string;
+  failureReason?: string;
 }
 
 export async function payCreator(opts: {
@@ -138,8 +139,8 @@ export async function payCreator(opts: {
     }
   }
 
-  // Fallback: deterministic simulated hash (dev / zero-balance)
+  // Fallback: deterministic simulated hash (dev / zero-balance / rpc failure)
   const { sha256 } = await import("./evidence");
   const txHash = `0x${sha256(`${creatorWallet}:${amountMicroUsdc}:${receiptId}:${sourceId}`)}`;
-  return { txHash, amountMicroUsdc, recipient: creatorWallet, status: "simulated" };
+  return { txHash, amountMicroUsdc, recipient: creatorWallet, status: "simulated", failureReason: "insufficient_balance_or_rpc_error" };
 }

@@ -7,9 +7,11 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test": "npm run test:unit",
+    "test": "npm run test:unit && npm run test:payment && npm run test:ratelimit",
     "test:unit": "vitest run tests/agent.test.ts --root .",
     "test:api": "vitest run tests/api.test.ts --root .",
+    "test:payment": "vitest run tests/payment-flow.test.ts --root .",
+    "test:ratelimit": "vitest run tests/rate-limit.test.ts --root .",
     "seed": "npx tsx scripts/seed-sources.ts"
   },
   "overrides": {

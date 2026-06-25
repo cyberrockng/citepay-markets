@@ -7,11 +7,15 @@
  *   { type: "final", finalAnswer: string, stats: Stats }
  *   { type: "error", error: string }
  */
-import { NextRequest } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
 import { GatewayClient } from "@circle-fin/x402-batching/client";
+import { createRateLimiter } from "@/lib/rate-limit";
 
 export const dynamic = "force-dynamic";
+
+// 1 orchestration per 15s per IP, max 10 per instance lifetime
+const _checkRateLimit = createRateLimiter({ windowMs: 15_000, lifetimeCap: 10 });
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
@@ -97,6 +101,12 @@ Write a concise, well-structured answer that synthesizes all the above. Referenc
 }
 
 export async function POST(req: NextRequest) {
+  const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
+  const rl = _checkRateLimit(ip);
+  if (!rl.allowed) {
+    return NextResponse.json({ error: rl.reason }, { status: 429 });
+  }
+
   let body: { query?: string; policy?: string } = {};
   try { body = await req.json(); } catch {
     return new Response(JSON.stringify({ type: "error", error: "Invalid JSON body" }) + "\n", { status: 400 });

@@ -140,5 +140,7 @@ export async function GET(req: NextRequest) {
       generatedAt: new Date().toISOString(),
     },
     receipts,
+  }, {
+    headers: { "Cache-Control": "public, s-maxage=30, stale-while-revalidate=60" },
   });
 }

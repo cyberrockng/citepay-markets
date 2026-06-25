@@ -67,7 +67,7 @@ export async function GET() {
     shareCardsGenerated: Math.max(fromRedis.shareCardsGenerated,  FLOOR.shareCardsGenerated),
     shareCardsOpened:    Math.max(fromRedis.shareCardsOpened,     FLOOR.shareCardsOpened),
     challengeCount:      Math.max(fromRedis.challengeCount,       FLOOR.challengeCount),
-    creatorsPaid:        Math.max(fromRedis.creatorsPaid ?? 0,    FLOOR.creatorsPaid),
+    creatorsPaid:        Math.max(fromRedis.creatorsPaid ?? 0, arcStats.uniqueCreators, FLOOR.creatorsPaid),
     avgPaymentPerCitation: (fromRedis.avgPaymentPerCitation && fromRedis.avgPaymentPerCitation > 0)
       ? fromRedis.avgPaymentPerCitation
       : FLOOR.totalUSDCRouted / FLOOR.paidCitations,
@@ -75,5 +75,7 @@ export async function GET() {
     confirmedPaidCitations,
   };
 
-  return NextResponse.json({ stats, generatedAt: new Date().toISOString() });
+  return NextResponse.json({ stats, generatedAt: new Date().toISOString() }, {
+    headers: { "Cache-Control": "public, s-maxage=30, stale-while-revalidate=60" },
+  });
 }

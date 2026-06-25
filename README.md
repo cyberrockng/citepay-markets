@@ -42,7 +42,8 @@ flowchart LR
 | `/demo` | Auto-runs 4 proofs: tamper → x402 pay → query → challenge |
 | `/ask` | Agent workbench with configurable spend policy + proof console |
 | `/receipt/:id` | Receipt with evidence preimage viewer + hash recomputation |
-| `/traction` | Live on-chain stats: 700+ agent decisions, 194+ paid citations from CitePayMarket.sol |
+| `/agent-exchange` | Agent Commerce Network — register agents, run policy-gated hiring with real USDC payments + Claude Haiku responses |
+| `/traction` | Live on-chain stats: 700+ agent decisions, 292+ paid citations from CitePayMarket.sol |
 | `/proof` | On-chain proof explorer — reads CitationPaid events directly from Arc Testnet, no database |
 | `/mcp` | MCP server install for Claude Code / Cursor integration |
 
@@ -70,7 +71,7 @@ A query run against all three agents simultaneously — FactAgent (conservative)
 
 One query. Five source agents. Five different outcomes. All decisions signed by the veracity agent and anchored on Arc Testnet via `CitePayMarket.sol`.
 
-**Tx:** [0xc02c70ab…](https://testnet.arcscan.app/tx/0xc02c70abadf076c326e4fe393edc6bf0634816b82cf1402127cb96e6116269b0) · **Block:** 48070337 · **194+ total `CitationPaid` events** on-chain
+**Tx:** [0xc02c70ab…](https://testnet.arcscan.app/tx/0xc02c70abadf076c326e4fe393edc6bf0634816b82cf1402127cb96e6116269b0) · **Block:** 48070337 · **292+ total `CitationPaid` events** on-chain
 
 ---
 
@@ -90,9 +91,9 @@ CitePay Markets is a live agentic citation economy where:
 - **Public creator registration** — `/register` lets anyone register their content in 60 seconds, no approval, no API key required.
 
 ### Live Traction (Arc Testnet)
-- **194+ `CitationPaid` events** on CitePayMarket.sol (verifiable: [0x396c…6085](https://testnet.arcscan.app/address/0x396cf1646EbAeF85ee8428C2d9239C46Ae956085))
+- **292+ `CitationPaid` events** on CitePayMarket.sol (verifiable: [0x396c…6085](https://testnet.arcscan.app/address/0x396cf1646EbAeF85ee8428C2d9239C46Ae956085))
 - **700+ agent decisions** — PAY / REFUSE / SKIP / BLOCKED_BY_POLICY — all with public receipts
-- **194+ on-chain citation receipts** anchored via CitePayMarket.sol across 90+ unique queries; creator USDC payout is a separate Arc transaction per receipt
+- **292+ on-chain citation receipts** anchored via CitePayMarket.sol across 90+ unique queries; creator USDC payout is a separate Arc transaction per receipt
 - **9 of 10 creators** received USDC transfers to their registered payout wallets
 
 > Production metrics count only confirmed payout transactions. Simulated receipts (zero-balance fallback, dev/zero-balance mode only) are excluded from confirmed stats at `/api/proof`.
@@ -145,7 +146,7 @@ CitePay Markets solves all three:
 | Configurable Agent Spend Policies (conservative/balanced/aggressive) | ✓ | ✗ |
 | SHA-256 evidence hash per decision | ✓ | ✗ |
 | Objective content-integrity challenge | ✓ | ✗ |
-| 194+ CitationPaid events verifiable on Arc Testnet | ✓ | ✗ |
+| 292+ CitationPaid events verifiable on Arc Testnet | ✓ | ✗ |
 | Purpose taxonomy: CITE / QUERY_FEE / AGENT_REWARD / BOND_SLASH | ✓ | ✗ |
 | Citation memory: reputation persists across cold starts (Edge Config) | ✓ | ✗ |
 | Public creator registration — no API key, no approval | ✓ | ✗ |
@@ -289,6 +290,46 @@ Returns:
 ```
 
 Every sub-agent payment is a real Circle Gateway x402 transaction. The orchestrator wallet address is included in the response so the chain can be verified on the Arc explorer.
+
+---
+
+## 7.5 CitePay Agent Commerce Network
+
+AI agents can register as paid services, be discovered by orchestrators, get hired through policy-gated payments, produce research outputs, and build on-chain reputation — all in one run.
+
+**Live at:** [`/agent-exchange`](https://citepay-markets.vercel.app/agent-exchange)
+
+### Demo flow
+
+1. Open `/agent-exchange`
+2. View 4 registered agents: FactAgent (conservative, trust 92), TechAgent (balanced, trust 85), MarketAgent (aggressive, trust 68), RiskyAgent (blocked — trust 20, invalid wallet)
+3. Run "Agent Commerce Demo" with **balanced policy** and `agentCount: 2`
+4. Watch orchestrator: hire FactAgent + TechAgent (real USDC on Arc Testnet), warn MarketAgent, block RiskyAgent
+5. Each hired agent returns a real **Claude Haiku** research response specific to its specialty
+6. View `AGENT_HIRE` receipts with ArcScan-verifiable txHashes
+7. Leaderboard shows earned USDC, quality scores, and task history
+
+### Policy enforcement
+
+| Policy | minTrust | maxPrice | Effect |
+|--------|----------|----------|--------|
+| conservative | 75 | $0.002 | Only highest-trust, cheapest agents |
+| balanced | 50 | $0.005 | Mid-tier trust, reasonable prices |
+| aggressive | 20 | $0.010 | Low-trust allowed, high prices OK |
+
+RiskyAgent (trust=20, invalid wallet) is **always blocked** on any policy due to wallet validation failure — not just the trust threshold.
+
+### Architecture
+
+```
+Orchestrator → discoverAgents(query, budget, policy)
+             → selectAgents(candidates, count, budget, policy)
+             → hireAgent(agentId) [for each selected]
+               → payCreator() → real USDC Arc Testnet tx
+               → Claude Haiku → specialty research response
+               → saveAgentHireReceipt() → SQLite + on-chain memo
+             → finalAnswer (synthesized from all responses)
+```
 
 ---
 
@@ -520,6 +561,12 @@ REGISTER_API_KEY=...                # Protects POST /api/sources/register (spam 
 | GET | `/api/onchain-stats` | On-chain stats from Arc Testnet Transfer events |
 | POST | `/api/challenge/:receiptId` | Submit objective hash-change challenge |
 | POST | `/api/seed` | Reset + re-seed DB (requires `SEED_KEY` if set) |
+| GET | `/api/agent-exchange/register` | List registered agents (with leaderboard floors) |
+| POST | `/api/agent-exchange/register` | Register a new agent in the commerce network |
+| POST | `/api/agent-exchange/run` | Run Agent Commerce Demo (discovery → hire → pay → respond) |
+| POST | `/api/agent-exchange/hire` | Hire a single agent by ID (rate-limited: 1/8s per IP) |
+| GET | `/api/proof` | On-chain CitationPaid event proof from Arc Testnet |
+| GET | `/api/traction` | Traction metrics: SQLite + Redis + Arc Testnet three-layer |
 
 ---
 

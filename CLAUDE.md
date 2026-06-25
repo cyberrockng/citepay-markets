@@ -56,8 +56,32 @@ Browser → POST /api/demo-query
 - `src/lib/payments.ts` — on-chain USDC transfers to creators via viem
 - `src/lib/anchor.ts` — writes PAY decisions to CitePayMarket.sol; creates CitationMandate per session; checks CreatorBond status
 - `src/lib/policy.ts` — conservative/balanced/aggressive agent spend policies
+- `src/lib/arc-reader.ts` — cached Arc Testnet CitationPaid + SourceRegistered reader (60s TTL, 9k block chunks)
+- `src/lib/rate-limit.ts` — shared `createRateLimiter()` used on all payment-triggering routes
+- `src/lib/constants.ts` — CLAUDE_HAIKU_MODEL, contract addresses, CITEPAY_DEPLOY_BLOCK
 - `src/app/api/ask/route.ts` — main x402-gated query endpoint
 - `src/app/api/demo-query/route.ts` — server-side Circle Gateway buyer
-- `src/app/api/orchestrate/route.ts` — multi-agent orchestrator
+- `src/app/api/orchestrate/route.ts` — multi-agent orchestrator (rate-limited: 1 req/15s per IP)
 - `src/app/api/mcp/route.ts` — MCP server (JSON-RPC 2.0)
 - `src/app/api/seed/route.ts` — demo reset endpoint
+
+## Agent Commerce Network
+
+- **Route**: `/agent-exchange`
+- **Registry**: `agent_registry` table in SQLite (4 demo agents seeded on cold start)
+- **Hire receipts**: `agent_hire_receipts` table
+- **Policy**: conservative (trust≥75, price≤2000µ) / balanced (trust≥50, price≤5000µ) / aggressive (trust≥20, price≤9999µ)
+- **Payments**: `payCreator()` → real USDC on Arc Testnet for approved agents; simulated with `failureReason` on failure
+- **Responses**: Claude Haiku per agent specialty (CLAUDE_HAIKU_MODEL constant from `src/lib/constants.ts`)
+- **Leaderboard floors**: applied in GET `/api/agent-exchange/register` response (display only, not persisted)
+- **policyStatus**: `APPROVED` for selected, `WARNING` for selected-but-warned, `BLOCKED` for rejected
+- **Rate limiting**: hire 1/8s per IP (max 20/instance), run 1/10s per IP (max 15/instance)
+
+## Traction three-layer
+
+`/api/traction` merges three sources, always taking the max:
+1. **SQLite** (ephemeral) — `amount_paid` is INTEGER micro-USDC, divided by 1e6 for USDC display
+2. **Redis/Edge Config** (cross-instance) — persists across cold starts
+3. **Arc Testnet** (permanent) — `getArcCitationStats()` returns `citationCount`, `totalAmountMicro`, `uniqueAgents`, `uniqueCreators`
+
+`creatorsPaid` uses live `arcStats.uniqueCreators` (from SourceRegistered events cross-referenced with CitationPaid sourceIds).

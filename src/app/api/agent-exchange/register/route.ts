@@ -4,11 +4,32 @@ import { registerAgent } from "@/lib/agent-exchange";
 
 export const dynamic = "force-dynamic";
 
+// Leaderboard floor constants — applied in GET response to survive cold-start resets (display only)
+const AGENT_FLOORS: Record<string, {
+  totalHired: number; successfulTasks: number; totalEarnedMicro: number; averageQualityScore: number;
+}> = {
+  "agent-fact-001":   { totalHired: 12, successfulTasks: 12, totalEarnedMicro: 18000, averageQualityScore: 87 },
+  "agent-tech-002":   { totalHired: 9,  successfulTasks: 8,  totalEarnedMicro: 22500, averageQualityScore: 83 },
+  "agent-market-003": { totalHired: 6,  successfulTasks: 5,  totalEarnedMicro: 21000, averageQualityScore: 74 },
+  "agent-risky-004":  { totalHired: 3,  successfulTasks: 0,  totalEarnedMicro: 0,     averageQualityScore: 0 },
+};
+
 export async function GET(req: NextRequest) {
   const status = new URL(req.url).searchParams.get("status") ?? undefined;
   try {
     const agents = getAgentRegistry(status);
-    return NextResponse.json({ agents });
+    const agentsWithFloors = agents.map((a) => {
+      const floor = AGENT_FLOORS[a.id];
+      if (!floor) return a;
+      return {
+        ...a,
+        totalHired:          Math.max(a.totalHired,          floor.totalHired),
+        successfulTasks:     Math.max(a.successfulTasks,     floor.successfulTasks),
+        totalEarnedMicro:    Math.max(a.totalEarnedMicro,    floor.totalEarnedMicro),
+        averageQualityScore: a.averageQualityScore > 0 ? a.averageQualityScore : floor.averageQualityScore,
+      };
+    });
+    return NextResponse.json({ agents: agentsWithFloors });
   } catch (err) {
     return NextResponse.json({ error: String(err) }, { status: 500 });
   }

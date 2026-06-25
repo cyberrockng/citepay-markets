@@ -20,6 +20,7 @@ import {
   type AgentHireReceipt,
 } from "@/lib/db";
 import { payCreator } from "@/lib/payments";
+import { CLAUDE_HAIKU_MODEL } from "@/lib/constants";
 
 export type { AgentRegistryRow, AgentHireReceipt };
 
@@ -77,7 +78,7 @@ async function getAgentResponse(agent: AgentRegistryRow, query: string): Promise
       const system = AGENT_SYSTEM_PROMPTS[agent.specialty] ??
         `You are ${agent.name}, an AI research agent specializing in ${agent.specialty} within the CitePay Agent Commerce Network. Answer the query in 3-4 sentences.`;
       const msg = await anthropic.messages.create({
-        model: "claude-haiku-4-5-20251001",
+        model: CLAUDE_HAIKU_MODEL,
         max_tokens: 280,
         system,
         messages: [{ role: "user", content: query }],
@@ -359,6 +360,15 @@ export async function runAgentCommerceDemo(
   const hireResults = await Promise.all(
     selected.map((a) => hireAgent(a.id, query, queryId, budgetPerAgent)),
   );
+
+  // Back-apply WARNING policyStatus for agents that passed but were warned
+  const warnedIds = new Set(warned.map((w) => w.id));
+  for (const result of hireResults) {
+    if (warnedIds.has(result.receipt.agentId) && result.receipt.policyStatus === "APPROVED") {
+      result.receipt.policyStatus = "WARNING";
+      saveAgentHireReceipt(result.receipt);
+    }
+  }
 
   // Synthesize using each agent's real response
   const contributions = hireResults
