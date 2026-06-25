@@ -136,6 +136,43 @@ export default function BountiesPage() {
           </p>
         </div>
 
+        {/* Featured Bounty Banner */}
+        <div className="mb-10 relative" style={{ isolation: "isolate" }}>
+          <div className="absolute inset-[-1px] rounded-2xl z-[-1]" style={{ background: "linear-gradient(135deg, #6366f1 0%, #00ff88 100%)" }} />
+          <div className="relative bg-[#0d0d15] rounded-2xl p-6 sm:p-8">
+            <div className="flex items-center gap-2 mb-3">
+              <span className="text-[10px] font-mono px-2 py-0.5 rounded-full border border-[#00ff88]/40 text-[#00ff88] bg-[#00ff88]/10">FEATURED CHALLENGE</span>
+              <span className="text-[10px] font-mono text-[#4a4a5e]">Deadline: Jun 29, 2026</span>
+            </div>
+            <h2 className="text-xl sm:text-2xl font-bold text-white mb-2">Best x402 Citation Agent Challenge</h2>
+            <p className="text-sm text-white/60 mb-4 max-w-xl">
+              Build an AI agent that integrates CitePay via the REST API or Circle Gateway. The agent that routes the most USDC to creators wins on-chain reputation + prize.
+            </p>
+            <div className="flex items-center gap-6 mb-5 flex-wrap">
+              <div>
+                <div className="text-2xl font-bold font-mono text-[#00ff88]">0.05 USDC</div>
+                <div className="text-xs text-white/40">Prize reward</div>
+              </div>
+              <div>
+                <div className="text-2xl font-bold font-mono text-[#6366f1]">+Rep</div>
+                <div className="text-xs text-white/40">On-chain reputation</div>
+              </div>
+              <div>
+                <div className="text-2xl font-bold font-mono text-amber-300">Open</div>
+                <div className="text-xs text-white/40">Status</div>
+              </div>
+            </div>
+            <div className="flex gap-3 flex-wrap items-center">
+              <a href="/ask" className="px-5 py-2.5 rounded-lg bg-[#00ff88] text-black text-sm font-bold hover:bg-emerald-400 transition-colors">
+                Submit your agent →
+              </a>
+              <a href="https://testnet.arcscan.app/address/0x396cf1646EbAeF85ee8428C2d9239C46Ae956085" target="_blank" rel="noopener noreferrer" className="text-xs text-[#6366f1] hover:text-indigo-300 transition-colors font-mono">
+                ArcScan ↗
+              </a>
+            </div>
+          </div>
+        </div>
+
         {/* Stats bar */}
         <div className="grid grid-cols-3 gap-4 mb-10">
           {[

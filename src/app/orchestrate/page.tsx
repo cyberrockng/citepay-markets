@@ -52,6 +52,76 @@ interface PilotPlan {
   attestationBlock: number | null;
 }
 
+function AgentNodeGrid({ subQueries, pendingCount, loading }: {
+  subQueries: SubQuery[];
+  pendingCount: number | null;
+  loading: boolean;
+}) {
+  const doneCount = subQueries.length;
+  const pendingN = pendingCount ?? 0;
+  const totalAgents = Math.max(doneCount + pendingN, 3);
+  const agents = Array.from({ length: totalAgents }, (_, i) => ({
+    index: i,
+    done: i < doneCount,
+    running: i === doneCount && loading && pendingN > 0,
+    result: subQueries[i] as SubQuery | undefined,
+  }));
+  const totalPaidMicro = subQueries.reduce((s, sq) => s + sq.totalPaid, 0);
+
+  return (
+    <div className="bg-[#111118] rounded-xl border border-indigo-900/30 p-4 mb-6">
+      <div className="text-[10px] font-mono text-[#4a4a5e] mb-3 flex items-center gap-2">
+        <span className={`w-1.5 h-1.5 rounded-full inline-block ${loading ? "bg-indigo-400 animate-pulse" : "bg-[#00ff88]"}`} />
+        LIVE AGENT NETWORK {loading ? "— RUNNING" : doneCount > 0 ? "— COMPLETE" : ""}
+      </div>
+      <div className="flex items-start gap-3 flex-wrap">
+        {/* Orchestrator node */}
+        <div className="flex flex-col items-center gap-1">
+          <div className={`w-10 h-10 rounded-xl border-2 flex items-center justify-center text-xs font-bold transition-all ${loading ? "border-violet-400 bg-violet-900/30 text-violet-300 animate-pulse" : doneCount > 0 ? "border-violet-400 bg-violet-900/30 text-violet-300" : "border-[#2e2e4e] bg-[#111118] text-[#4a4a5e]"}`}>O</div>
+          <div className="text-[9px] font-mono text-violet-400">Orch.</div>
+        </div>
+        <div className="text-[#4a4a5e] text-sm mt-3">→</div>
+        {/* Researcher agent nodes */}
+        <div className="flex items-start gap-2 flex-wrap">
+          {agents.map((a) => (
+            <div key={a.index} className="flex flex-col items-center gap-1">
+              <div className={`w-9 h-9 rounded-lg border-2 flex items-center justify-center text-xs font-bold transition-all ${
+                a.done
+                  ? "border-[#00ff88] bg-[#00ff88]/10 text-[#00ff88]"
+                  : a.running
+                  ? "border-indigo-400 bg-indigo-900/20 text-indigo-300"
+                  : "border-[#1e1e2e] bg-[#0a0a0f] text-[#4a4a5e]"
+              }`}>
+                {a.done ? "✓" : a.running ? (
+                  <span className="inline-block w-3 h-3 border border-indigo-400 border-t-transparent rounded-full animate-spin" />
+                ) : a.index + 1}
+              </div>
+              <div className={`text-[9px] font-mono ${a.done ? "text-[#00ff88]" : a.running ? "text-indigo-400 animate-pulse" : "text-[#4a4a5e]"}`}>
+                R{a.index + 1}
+              </div>
+              {a.done && a.result && (
+                <div className="text-[9px] font-mono text-[#00ff88]">
+                  ${(a.result.totalPaid / 1e6).toFixed(3)}
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+        {doneCount > 0 && (
+          <>
+            <div className="text-[#4a4a5e] text-sm mt-3">→</div>
+            <div className="flex flex-col items-center gap-1">
+              <div className="w-9 h-9 rounded-lg border-2 border-amber-500/50 bg-amber-900/10 flex items-center justify-center text-amber-300 text-xs font-bold">C</div>
+              <div className="text-[9px] font-mono text-amber-400">Creators</div>
+              <div className="text-[9px] font-mono text-[#00ff88]">${(totalPaidMicro / 1e6).toFixed(4)}</div>
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export default function OrchestratePage() {
   const [query, setQuery] = useState("");
   const [loading, setLoading] = useState(false);
@@ -199,6 +269,11 @@ export default function OrchestratePage() {
             <span>Orchestrator also releases USDC coordination rewards to sub-agents based on contribution score</span>
           </div>
         </div>
+
+        {/* Live Agent Grid — visible during and after run */}
+        {(loading || subQueries.length > 0) && (
+          <AgentNodeGrid subQueries={subQueries} pendingCount={pendingCount} loading={loading} />
+        )}
 
         {/* Query Form */}
         <form onSubmit={handleSubmit} className="bg-[#111118] rounded-xl border border-[#1e1e2e] p-6 mb-6">

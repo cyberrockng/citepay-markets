@@ -137,8 +137,9 @@ export default function LandingPage() {
             <Link href="/auction" className="border border-amber-500/30 hover:border-amber-500/60 text-amber-400/80 hover:text-amber-300 font-semibold px-6 py-2.5 rounded-xl transition-colors text-sm">
               Live Auction
             </Link>
-            <Link href="/bounties" className="border border-orange-500/30 hover:border-orange-500/60 text-orange-400/80 hover:text-orange-300 font-semibold px-6 py-2.5 rounded-xl transition-colors text-sm">
+            <Link href="/bounties" className="border border-orange-500/50 hover:border-orange-500/80 text-orange-400 hover:text-orange-300 font-semibold px-6 py-2.5 rounded-xl transition-colors text-sm flex items-center gap-2">
               Bounties
+              <span className="text-[9px] px-1.5 py-0.5 rounded bg-orange-500/20 border border-orange-500/40 font-mono">NEW</span>
             </Link>
             <Link href="/session" className="border border-teal-500/30 hover:border-teal-500/60 text-teal-400/80 hover:text-teal-300 font-semibold px-6 py-2.5 rounded-xl transition-colors text-sm">
               Research Sessions
@@ -479,6 +480,40 @@ const { data } = await client.pay("https://citepay-markets.vercel.app/api/ask", 
               Single Agent
             </Link>
           </div>
+        </div>
+      </section>
+
+      {/* ── 7b. Citation Economy in Numbers ── */}
+      <section className="max-w-4xl mx-auto px-6 py-10 border-t border-[#1e1e2e]">
+        <div className="text-[10px] font-mono text-[#4a4a5e] tracking-widest mb-4">CITATION ECONOMY — HOW THE MARKET WORKS</div>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          {[
+            {
+              step: "01", color: "border-[#6366f1]/30 bg-[#6366f1]/5",
+              title: "AI Agent Pays to Query",
+              body: "Any AI agent POSTs to /api/ask. The x402 gate requires real USDC — no payment, no answer. Circle Gateway settles in milliseconds on Arc Testnet.",
+              stat: "$0.001 per query", statColor: "text-[#6366f1]",
+            },
+            {
+              step: "02", color: "border-[#00ff88]/20 bg-[#00ff88]/5",
+              title: "CitePay Scores & Pays",
+              body: "CitePay evaluates 10 creator sources on relevance, price, bond, and reputation. PAY decisions send USDC to creators instantly — on-chain, no intermediary.",
+              stat: "$0.002 avg per citation", statColor: "text-[#00ff88]",
+            },
+            {
+              step: "03", color: "border-amber-500/20 bg-amber-500/5",
+              title: "Public Proof, Always",
+              body: "Every decision creates a SHA-256 evidence receipt anchored on CitePayMarket.sol. Creators can challenge stale content. Policy rules are on-chain — not a config file.",
+              stat: "268+ on-chain receipts", statColor: "text-amber-400",
+            },
+          ].map(({ step, color, title, body, stat, statColor }) => (
+            <div key={step} className={`rounded-xl border p-5 ${color}`}>
+              <div className={`text-[10px] font-mono mb-2 ${statColor}`}>{step}</div>
+              <h3 className="font-semibold text-[#f0f0f5] mb-2 text-sm">{title}</h3>
+              <p className="text-xs text-[#8b8b9e] leading-relaxed mb-3">{body}</p>
+              <div className={`text-xs font-mono font-bold ${statColor}`}>{stat}</div>
+            </div>
+          ))}
         </div>
       </section>
 

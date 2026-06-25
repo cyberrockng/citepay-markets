@@ -75,12 +75,31 @@ export default function CreatorPage({ params }: { params: Promise<{ wallet: stri
   const [data, setData] = useState<{ sources: Source[]; receipts: Receipt[]; totalEarned: number } | null>(null);
   const [loading, setLoading] = useState(true);
   const [showShare, setShowShare] = useState(false);
+  const [onChainStats, setOnChainStats] = useState<{
+    citations: number;
+    totalUSDC: number;
+    events: Array<{ receiptId: number; amountPaid: number; txHash: string; arcScanUrl: string }>;
+  } | null>(null);
 
   useEffect(() => {
     fetch(`/api/creator/${wallet}`)
       .then((r) => r.json())
       .then((d) => { setData(d); setLoading(false); })
       .catch(() => setLoading(false));
+  }, [wallet]);
+
+  useEffect(() => {
+    fetch("/api/onchain-proof")
+      .then((r) => r.json())
+      .then((d: { events: Array<{ receiptId: number; amountPaid: number; txHash: string; arcScanUrl: string; creator: string }> }) => {
+        const mine = (d.events ?? []).filter(e => e.creator?.toLowerCase() === wallet.toLowerCase());
+        setOnChainStats({
+          citations: mine.length,
+          totalUSDC: mine.reduce((s, e) => s + e.amountPaid, 0),
+          events: mine.slice(0, 5),
+        });
+      })
+      .catch(() => {});
   }, [wallet]);
 
   if (loading) {
@@ -249,6 +268,48 @@ export default function CreatorPage({ params }: { params: Promise<{ wallet: stri
             ))}
           </div>
         )}
+
+        {/* On-Chain Earnings (Arc Testnet direct) */}
+        <div className="bg-[#111118] rounded-xl border border-[#00ff88]/20 overflow-hidden mb-6">
+          <div className="px-6 py-4 border-b border-[#1e1e2e] flex items-center justify-between">
+            <div>
+              <h2 className="font-semibold text-[#f0f0f5]">On-Chain Earnings</h2>
+              <p className="text-[10px] font-mono text-[#4a4a5e] mt-0.5">Read directly from CitePayMarket.sol — persistent across cold starts</p>
+            </div>
+            <a href={`https://testnet.arcscan.app/address/0x396cf1646EbAeF85ee8428C2d9239C46Ae956085`} target="_blank" rel="noopener noreferrer" className="text-xs text-[#6366f1] hover:text-indigo-300">ArcScan ↗</a>
+          </div>
+          {onChainStats === null ? (
+            <div className="px-6 py-4 text-xs font-mono text-[#4a4a5e] animate-pulse">Reading Arc Testnet…</div>
+          ) : onChainStats.citations === 0 ? (
+            <div className="px-6 py-4 text-xs font-mono text-[#4a4a5e]">No on-chain CitationPaid events found for this wallet in the last 10,000 blocks.</div>
+          ) : (
+            <div>
+              <div className="grid grid-cols-2 gap-4 px-6 py-4 border-b border-[#1e1e2e]">
+                <div>
+                  <div className="text-2xl font-bold font-mono text-[#00ff88]">${onChainStats.totalUSDC.toFixed(4)}</div>
+                  <div className="text-xs text-[#8b8b9e] mt-1">USDC earned on-chain</div>
+                </div>
+                <div>
+                  <div className="text-2xl font-bold font-mono text-[#00ff88]">{onChainStats.citations}</div>
+                  <div className="text-xs text-[#8b8b9e] mt-1">CitationPaid events</div>
+                </div>
+              </div>
+              <div className="px-6 py-3 space-y-1.5">
+                {onChainStats.events.map((e) => (
+                  <div key={e.receiptId} className="flex items-center justify-between text-xs font-mono py-1">
+                    <span className="text-[#4a4a5e]">Receipt #{e.receiptId}</span>
+                    <span className="text-[#00ff88]">${e.amountPaid.toFixed(4)}</span>
+                    {e.txHash && (
+                      <a href={e.arcScanUrl} target="_blank" rel="noopener noreferrer" className="text-[#6366f1] hover:text-indigo-300">
+                        {e.txHash.slice(0, 10)}… ↗
+                      </a>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
 
         {!data?.receipts.length && !data?.sources.length && (
           <div className="text-[#8b8b9e] text-center py-16 bg-[#111118] rounded-xl border border-[#1e1e2e]">

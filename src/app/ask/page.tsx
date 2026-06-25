@@ -84,6 +84,71 @@ const POLICY_OPTIONS = [
   { key: "aggressive",   label: "Aggressive",   desc: "Higher spend · max $0.01 · relevance ≥ 20 · stops at 5 citations", color: "border-[#00ff88]/30 text-[#00ff88]", active: "border-[#00ff88] bg-[#00ff88]/10" },
 ] as const;
 
+function PaymentFlowVisualizer({ step, traces, sourceGrid }: {
+  step: Step;
+  traces: TraceEntry[];
+  sourceGrid: SourceStatus[];
+}) {
+  const traceText = traces.map(t => (t.text + " " + (t.sub ?? "")).toLowerCase()).join(" ");
+  const stages = [
+    {
+      id: 1, label: "x402 Gate", sub: "402 → verify",
+      done: step === "running" || step === "done",
+      active: step === "waiting_payment",
+    },
+    {
+      id: 2, label: "Pay Query", sub: "Circle Gateway",
+      done: step === "running" || step === "done",
+      active: traceText.includes("gateway") || traceText.includes("payment") || traceText.includes("signing"),
+    },
+    {
+      id: 3, label: "Score Sources", sub: "AI evaluates",
+      done: step === "done" || (step === "running" && sourceGrid.some(s => s.state === "settled")),
+      active: step === "running" && sourceGrid.some(s => s.state === "scoring"),
+    },
+    {
+      id: 4, label: "Pay Creators", sub: "USDC on-chain",
+      done: step === "done" && sourceGrid.some(s => s.decision === "PAY"),
+      active: step === "running" && (traceText.includes("pay") || sourceGrid.some(s => s.decision === "PAY")),
+    },
+    {
+      id: 5, label: "Anchor", sub: "CitePayMarket.sol",
+      done: step === "done",
+      active: traceText.includes("anchor") || traceText.includes("on-chain"),
+    },
+  ];
+  return (
+    <div className="bg-[#0a0a10] rounded-xl border border-[#1e1e2e] p-4 mb-4">
+      <div className="text-[10px] font-mono text-[#4a4a5e] mb-3">PAYMENT FLOW — LIVE</div>
+      <div className="flex items-start gap-0">
+        {stages.map((s, i) => {
+          const cls = s.done
+            ? "border-[#00ff88] text-[#00ff88] bg-[#00ff88]/10"
+            : s.active
+            ? "border-[#6366f1] text-[#6366f1] bg-[#6366f1]/10 animate-pulse"
+            : "border-[#1e1e2e] text-[#4a4a5e] bg-[#0a0a0f]";
+          return (
+            <div key={s.id} className="flex items-center flex-1 min-w-0">
+              <div className="flex flex-col items-center min-w-0 flex-shrink-0">
+                <div className={`w-7 h-7 rounded-full border-2 flex items-center justify-center text-[10px] font-mono font-bold ${cls}`}>
+                  {s.done ? "✓" : s.id}
+                </div>
+                <div className="text-[9px] font-mono text-center mt-1 leading-tight px-0.5">
+                  <div className={s.done ? "text-[#00ff88]" : s.active ? "text-[#6366f1]" : "text-[#4a4a5e]"}>{s.label}</div>
+                  <div className="text-[#2e2e3e]">{s.sub}</div>
+                </div>
+              </div>
+              {i < stages.length - 1 && (
+                <div className={`h-0.5 flex-1 mx-1 rounded transition-colors duration-700 ${s.done ? "bg-[#00ff88]" : "bg-[#1e1e2e]"}`} style={{ marginTop: "-14px" }} />
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 function formatPolicyRule(rule: string): string {
   const map: Record<string, string> = {
     "min_relevance_not_met": "low relevance",
@@ -722,6 +787,11 @@ export default function AskPage() {
             ))}
           </div>
         </div>
+
+        {/* Payment Flow Visualizer */}
+        {step !== "idle" && (
+          <PaymentFlowVisualizer step={step} traces={traces} sourceGrid={sourceGrid} />
+        )}
 
         {/* Decision Matrix — animated status glyphs */}
         {(step === "running" || step === "done") && sourceGrid.length > 0 && (
