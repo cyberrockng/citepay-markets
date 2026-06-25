@@ -1124,7 +1124,7 @@ export interface AgentHireReceipt {
   agentWallet: string;
   subtask: string;
   amountMicro: number;
-  paymentMode: "live" | "testnet" | "simulated";
+  paymentMode: "confirmed" | "live" | "testnet" | "simulated";
   txHash: string | null;
   responseHash: string | null;
   qualityScore: number;
