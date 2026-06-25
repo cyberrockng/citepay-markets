@@ -54,10 +54,19 @@ export async function GET(req: NextRequest) {
     const provider  = new ethers.JsonRpcProvider(RPC);
     const contract  = new ethers.Contract(CONTRACT, CITATION_ABI, provider);
     const latest    = await provider.getBlockNumber();
-    const fromBlock = Math.max(0, latest - 500);
-
+    // Scan from contract deploy block to catch all historical events, not just last 500 blocks
+    const DEPLOY_BLOCK = 48_040_000;
+    const CHUNK = 9_000;
     const filter = contract.filters.CitationPaid();
-    const events = await contract.queryFilter(filter, fromBlock, "latest") as ethers.EventLog[];
+
+    // Fetch in chunks to avoid RPC range limits
+    const allEvents: ethers.EventLog[] = [];
+    for (let from = DEPLOY_BLOCK; from <= latest; from += CHUNK + 1) {
+      const to = Math.min(from + CHUNK, latest);
+      const chunk = await contract.queryFilter(filter, from, to) as ethers.EventLog[];
+      allEvents.push(...chunk);
+    }
+    const events = allEvents;
 
     onChainSource = true;
     receipts = events
