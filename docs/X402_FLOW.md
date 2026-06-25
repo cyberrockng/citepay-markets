@@ -23,14 +23,14 @@ POST /api/ask { query, budget }
       "x402": true,
       "maxAmountRequired": "0.001",
       "asset": "USDC",
-      "network": "eip155:84532",
+      "network": "eip155:5042002",
       "memo": "CitePay query fee"
     }
 
 Client constructs payment proof:
   {
     "scheme": "exact",
-    "network": "eip155:84532",
+    "network": "eip155:5042002",
     "payload": {
       "signature": "0x...",
       "transaction": { "hash": "0x..." }
@@ -68,7 +68,7 @@ Content-Type: application/json
   "x402": true,
   "maxAmountRequired": "0.001",
   "asset": "USDC",
-  "network": "eip155:84532",
+  "network": "eip155:5042002",
   "memo": "CitePay query fee — run AI buyer agent",
   "payTo": "0xCITEPAY_PAYOUT_WALLET",
   "receiptUrl": "https://citepay.markets/api/query/{queryId}"
@@ -84,7 +84,7 @@ The `X-PAYMENT` header must contain a JSON-encoded payment proof:
 ```json
 {
   "scheme": "exact",
-  "network": "eip155:84532",
+  "network": "eip155:5042002",
   "payload": {
     "signature": "0x<EIP-712 signature>",
     "transaction": {
@@ -119,13 +119,13 @@ POST https://api.circle.com/v1/w3s/payments/verify
 Authorization: Bearer <CIRCLE_API_KEY>
 {
   "paymentProof": <X-PAYMENT header value>,
-  "network": "eip155:84532"
+  "network": "eip155:5042002"
 }
 ```
 
 The Circle API validates:
 - Signature validity (EIP-712)
-- Transaction inclusion on Base Sepolia
+- Transaction inclusion on Arc Testnet
 - Amount matches the required fee
 - Recipient matches `CITEPAY_PAYOUT_WALLET`
 

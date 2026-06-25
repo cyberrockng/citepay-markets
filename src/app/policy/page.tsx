@@ -119,7 +119,7 @@ export default function PolicyPage() {
                 {EXAMPLES.map((ex) => (
                   <button key={ex} onClick={() => setDescription(ex)}
                     className="w-full text-left px-4 py-2.5 rounded-lg bg-white/[0.02] border border-white/10 text-sm text-white/50 hover:text-white/80 hover:border-white/20 hover:bg-white/[0.04] transition-all">
-                    "{ex}"
+                    &quot;{ex}&quot;
                   </button>
                 ))}
               </div>

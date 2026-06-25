@@ -1,11 +1,10 @@
 import { NextResponse } from "next/server";
-import { getFullTractionStats } from "@/lib/db";
+import { getFullTractionStats, getConfirmedPaidCount } from "@/lib/db";
 import { getRedisTotals } from "@/lib/redis-stats";
 
 export const dynamic = "force-dynamic";
 
-// Verified on-chain minimums — these numbers are anchored permanently on Arc Testnet
-// (CitePayMarket.sol: 0x396cf1646EbAeF85ee8428C2d9239C46Ae956085).
+// Cold-start minimums to avoid showing 0 on fresh deploy.
 // Math.max against live counts so judges never see regression after a cold start.
 const FLOOR = {
   totalQueries:        93,
@@ -61,5 +60,7 @@ export async function GET() {
       : FLOOR.totalUSDCRouted / FLOOR.paidCitations,
   };
 
-  return NextResponse.json({ stats, generatedAt: new Date().toISOString() });
+  const confirmedPaidCitations = Math.max(getConfirmedPaidCount(), 0);
+
+  return NextResponse.json({ stats: { ...stats, confirmedPaidCitations }, generatedAt: new Date().toISOString() });
 }

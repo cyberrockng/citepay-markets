@@ -17,12 +17,11 @@ interface Bounty {
   winnerPaidMicro?: number;
 }
 
-function BountyCard({ b }: { b: Bounty }) {
+function BountyCard({ b, nowMs }: { b: Bounty; nowMs: number }) {
   const budget = (b.budgetMicro / 1_000_000).toFixed(2);
   const deadline = new Date(b.deadline);
-  const now = Date.now();
-  const hoursLeft = Math.max(0, Math.round((deadline.getTime() - now) / 3600000));
-  const expired = deadline.getTime() < now;
+  const hoursLeft = Math.max(0, Math.round((deadline.getTime() - nowMs) / 3600000));
+  const expired = deadline.getTime() < nowMs;
 
   const statusColor = b.status === "open"
     ? "text-emerald-400 bg-emerald-400/10 border-emerald-400/30"
@@ -61,6 +60,7 @@ export default function BountiesPage() {
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<"all" | "open" | "closed">("all");
   const [showCreate, setShowCreate] = useState(false);
+  const [nowMs] = useState(Date.now);
 
   // Create form state
   const [title, setTitle] = useState("");
@@ -73,7 +73,6 @@ export default function BountiesPage() {
 
   useEffect(() => {
     const url = filter === "all" ? "/api/bounties" : `/api/bounties?status=${filter}`;
-    setLoading(true);
     fetch(url)
       .then((r) => r.json())
       .then((d: { bounties: Bounty[] }) => { setBounties(d.bounties ?? []); setLoading(false); })
@@ -243,7 +242,7 @@ export default function BountiesPage() {
           </div>
         ) : (
           <div className="grid sm:grid-cols-2 gap-4">
-            {bounties.map((b) => <BountyCard key={b.id} b={b} />)}
+            {bounties.map((b) => <BountyCard key={b.id} b={b} nowMs={nowMs} />)}
           </div>
         )}
 

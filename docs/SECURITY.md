@@ -36,7 +36,7 @@ A client-side bundle scan should show no API keys.
 In production, every `X-PAYMENT` header is verified via the Circle API before the agent runs. The verification checks:
 
 - EIP-712 signature validity
-- Transaction inclusion on Base Sepolia
+- Transaction inclusion on Arc Testnet
 - Amount ≥ required fee
 - Recipient matches `CITEPAY_PAYOUT_WALLET`
 

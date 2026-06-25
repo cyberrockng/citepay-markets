@@ -136,6 +136,7 @@ export async function POST(req: NextRequest) {
 
     // Pay creator if decision is PAY (not BLOCKED_BY_POLICY).
     // Use weighted amount: same total USDC out, redistributed by relevance contribution.
+    let isConfirmedPay = false;
     if (d.decision === "PAY") {
       const amountToPayMicro = d.weightedAmount ?? d.source.price;
       const payment = await payCreator({
@@ -146,12 +147,16 @@ export async function POST(req: NextRequest) {
       });
       txHash = payment.txHash;
       paymentStatus = payment.status;
-      totalPaid += amountToPayMicro;
+      isConfirmedPay = payment.status === "confirmed";
+      if (isConfirmedPay) {
+        totalPaid += amountToPayMicro;
+      }
       budgetRemaining -= amountToPayMicro;
     }
 
     // Persist receipt FIRST — anchor update must come after insert
-    const purposeCode = d.decision === "PAY" ? "CITE"
+    const purposeCode = d.decision === "PAY"
+      ? (isConfirmedPay ? "CITE" : "CITE_SIMULATED")
       : d.decision === "REFUSE" ? "REFUSE"
       : d.decision === "BLOCKED_BY_POLICY" ? "BLOCKED"
       : "SKIP";
@@ -209,8 +214,8 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    // Anchor PAY decision on-chain after receipt row exists
-    if (d.decision === "PAY" && d.source.onChainId) {
+    // Anchor PAY decision on-chain after receipt row exists — only for confirmed payments
+    if (d.decision === "PAY" && isConfirmedPay && d.source.onChainId) {
       const anchor = await anchorPAY({
         onChainSourceId: d.source.onChainId,
         queryHash,

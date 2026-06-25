@@ -73,8 +73,10 @@ CitePay Markets is a live agentic citation economy where:
 ### Live Traction (Arc Testnet)
 - **194+ `CitationPaid` events** on CitePayMarket.sol (verifiable: [0x396c…6085](https://testnet.arcscan.app/address/0x396cf1646EbAeF85ee8428C2d9239C46Ae956085))
 - **700+ agent decisions** — PAY / REFUSE / SKIP / BLOCKED_BY_POLICY — all with public receipts
-- **194+ paid citations** with on-chain USDC settlement across 90+ unique queries
-- **9 of 10 creators paid** — real USDC routed to creator wallets
+- **194+ on-chain citation receipts** anchored via CitePayMarket.sol across 90+ unique queries; creator USDC payout is a separate Arc transaction per receipt
+- **9 of 10 creators** received USDC transfers to their registered payout wallets
+
+> Production metrics count only confirmed payout transactions. Simulated receipts (zero-balance fallback, dev/zero-balance mode only) are excluded from confirmed stats at `/api/proof`.
 - **10 sources** registered onchain across 3 source agents
 - **3 source agent identities** with distinct wallets, specialties, and reputation scores
 - **1 Pilot Agent** attesting allocation decisions onchain before paying

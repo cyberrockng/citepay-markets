@@ -6,7 +6,7 @@ CitePay Markets is a Next.js 16 application (App Router) that implements an agen
 
 1. **Frontend** — React pages for users, creators, and agents
 2. **Backend API** — Next.js route handlers implementing the x402 pay-to-query flow
-3. **Data layer** — SQLite (better-sqlite3) as a receipt mirror; optional smart contract on Base Sepolia
+3. **Data layer** — SQLite (better-sqlite3) as a receipt mirror; smart contract on Arc Testnet
 
 ---
 
@@ -177,7 +177,7 @@ CREATE TABLE share_cards (
 |---|---|---|
 | Anthropic Claude Haiku | Relevance scoring + answer generation | Yes |
 | Circle API | x402 payment verification (alternative payout path) | Optional |
-| Base Sepolia | Testnet blockchain for contract + USDC | Yes (demo) |
+| Arc Testnet | Testnet blockchain for contract + USDC | Yes (demo) |
 
 Payment priority: (1) direct on-chain ERC-20 transfer via `AGENT_PRIVATE_KEY`, (2) Circle API if `CIRCLE_API_KEY` is set, (3) deterministic SHA-256 txHash fallback for local dev when no wallet is configured.
 

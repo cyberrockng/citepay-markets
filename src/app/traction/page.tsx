@@ -6,7 +6,7 @@ import { PageShell, StatCard } from "@/components/ui";
 import { BackButton } from "@/components/back-button";
 
 interface OnChainStats {
-  paidCitations: number;
+  citationPaidEvents: number;
   totalUSDCMicro: number;
   uniqueCreators: number;
   agentWallet: string;
@@ -70,7 +70,7 @@ export default function TractionPage() {
           <div className="grid grid-cols-3 gap-4">
             <StatCard
               label="Citations Paid (All Time)"
-              value={onChain.paidCitations}
+              value={onChain.citationPaidEvents}
               accent="text-[#00ff88]"
               sub="USDC transfers on Arc"
             />

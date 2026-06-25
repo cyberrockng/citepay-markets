@@ -15,7 +15,35 @@ import { signSessionPayment, isCircleSessionEnabled } from "@/lib/circle-session
 
 export const dynamic = "force-dynamic";
 
+const ipWindows = new Map<string, { count: number; resetAt: number }>();
+const RATE_LIMIT = 10;
+const WINDOW_MS = 60 * 1000;
+
+function checkRateLimit(ip: string): boolean {
+  const now = Date.now();
+  const entry = ipWindows.get(ip);
+  if (!entry || now > entry.resetAt) {
+    ipWindows.set(ip, { count: 1, resetAt: now + WINDOW_MS });
+    return true;
+  }
+  if (entry.count >= RATE_LIMIT) return false;
+  entry.count++;
+  return true;
+}
+
+function getIP(req: NextRequest): string {
+  return (
+    req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
+    req.headers.get("x-real-ip") ||
+    "unknown"
+  );
+}
+
 export async function POST(req: NextRequest) {
+  const ip = getIP(req);
+  if (!checkRateLimit(ip)) {
+    return NextResponse.json({ error: "Rate limit: max 10 requests per minute per IP" }, { status: 429 });
+  }
   if (!isCircleSessionEnabled()) {
     return NextResponse.json({ error: "Circle session wallets not configured" }, { status: 503 });
   }

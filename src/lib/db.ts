@@ -412,6 +412,20 @@ export function markReceiptChallenged(id: string): void {
   getDb().prepare("UPDATE receipts SET challenged = 1 WHERE id = ?").run(id);
 }
 
+export function getConfirmedPaidCount(): number {
+  const row = getDb().prepare(
+    "SELECT COUNT(*) as c FROM receipts WHERE decision='PAY' AND payment_status='confirmed'"
+  ).get() as { c: number };
+  return row.c;
+}
+
+export function getTotalConfirmedUSDC(): number {
+  const row = getDb().prepare(
+    "SELECT SUM(amount_paid) as s FROM receipts WHERE decision='PAY' AND payment_status='confirmed'"
+  ).get() as { s: number | null };
+  return row.s ?? 0;
+}
+
 function rowToReceipt(r: Record<string, unknown>): Receipt {
   return {
     id: r.id as string,

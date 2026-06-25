@@ -235,7 +235,7 @@ export default function IntelligencePage() {
               {lessons.slice(0, 8).map((lesson) => (
                 <div key={lesson.id} className="rounded-xl border border-white/10 bg-white/[0.02] p-4">
                   <div className="flex items-start justify-between gap-3 mb-2">
-                    <p className="text-xs text-white/40 italic truncate flex-1">"{lesson.orchestrationQuery}"</p>
+                    <p className="text-xs text-white/40 italic truncate flex-1">&quot;{lesson.orchestrationQuery}&quot;</p>
                     <span className="text-xs text-white/25 shrink-0">{new Date(lesson.createdAt).toLocaleTimeString()}</span>
                   </div>
                   <p className="text-sm text-white/70 leading-relaxed">{lesson.lesson}</p>

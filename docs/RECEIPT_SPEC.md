@@ -124,7 +124,7 @@ Public receipt accessible at /receipt/:id
 
 ## On-Chain Anchoring
 
-`CitePayMarket.sol` is deployed at [`0x396cf1646EbAeF85ee8428C2d9239C46Ae956085`](https://sepolia.basescan.org/address/0x396cf1646EbAeF85ee8428C2d9239C46Ae956085) on Base Sepolia.
+`CitePayMarket.sol` is deployed at [`0x396cf1646EbAeF85ee8428C2d9239C46Ae956085`](https://testnet.arcscan.app/address/0x396cf1646EbAeF85ee8428C2d9239C46Ae956085) on Arc Testnet.
 
 The contract exposes `payCitation(sourceId, queryHash, evidenceHash)` and `recordDecision(sourceId, decision, queryHash, evidenceHash, reasonCode)` — matching the same `evidenceHash` stored in each SQLite receipt. `/api/ask` writes PAY decisions directly to the contract via `payCitation()` after each USDC transfer; receipts store the resulting `onChainReceiptId` and `onChainTxHash`.
 

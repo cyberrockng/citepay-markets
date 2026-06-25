@@ -63,7 +63,7 @@ export async function POST(req: NextRequest) {
 
       try {
         push({ type: "init", policy: policy.name, budget: budgetMicro, sourceCount: sources.length });
-        push({ type: "payment_accepted", demo: true, amountMicro: QUERY_FEE_MICRO, formatted: formatUSDC(QUERY_FEE_MICRO) });
+        push({ type: "payment_accepted", demo: true, amountMicro: QUERY_FEE_MICRO, formatted: formatUSDC(QUERY_FEE_MICRO), note: "Demo query processed (x402 gate active on /api/ask)" });
         push({ type: "scoring_start", total: sources.length, policy: policy.name });
 
         // Run buyer agent — emits per-decision events via onEvent callback

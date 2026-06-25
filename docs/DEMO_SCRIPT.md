@@ -95,13 +95,13 @@ Update the hash. Navigate back to the receipt.
 
 Navigate to `/traction`.
 
-> "Here's the live traction dashboard. Every metric comes from real agent decisions — PAY, REFUSE, SKIP — each backed by a SHA-256 evidence hash stored in our receipt DB. The x402 protocol drives the payment gate; dev mode simulates payment proof, and the deployed Base Sepolia contract at 0x396c... is the on-chain deployment anchor. SQLite mirrors all receipts for fast reads. This is the citation economy running end-to-end."
+> "Here's the live traction dashboard. Every metric comes from real agent decisions — PAY, REFUSE, SKIP — each backed by a SHA-256 evidence hash stored in our receipt DB. The x402 protocol drives the payment gate; the deployed Arc Testnet contract at 0x396c... is the on-chain anchor. SQLite mirrors all receipts for fast reads. This is the citation economy running end-to-end."
 
 ---
 
 ### [2:50 – 3:00] Closing
 
-> "CitePay Markets: pay-to-query, AI scoring, tamper-evident receipts, and creator share cards. Built on Base Sepolia with x402, Claude Haiku, and a deployed Solidity contract. Receipts are SQLite-mirrored with SHA-256 evidence hashes — independently verifiable without trusting the server."
+> "CitePay Markets: pay-to-query, AI scoring, tamper-evident receipts, and creator share cards. Built on Arc Testnet with x402, Claude Haiku, and a deployed Solidity contract. Receipts are SQLite-mirrored with SHA-256 evidence hashes — independently verifiable without trusting the server."
 
 End recording.
 

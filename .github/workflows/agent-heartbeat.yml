@@ -2,54 +2,40 @@ name: Agent Heartbeat
 
 on:
   schedule:
-    # Every 6 hours — keeps Arc receipts accumulating, proves live system
-    - cron: "0 */6 * * *"
+    # Daily at 09:00 UTC — checks liveness and x402 gating, does not generate receipts
+    - cron: "0 9 * * *"
   workflow_dispatch:
-    inputs:
-      query:
-        description: "Query to run (default: What is x402?)"
-        required: false
-        default: "What is x402 and why do AI agents need it?"
 
 jobs:
   heartbeat:
-    name: Run citation query + verify receipts
+    name: Check liveness + x402 gate
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
-      - name: Run citation query via /api/ask
-        id: query
+      - name: Verify x402 gate returns 402 (no payment sent)
         run: |
-          QUERY="${{ github.event.inputs.query || 'What is x402 and why do AI agents need it?' }}"
-          echo "Running query: $QUERY"
+          echo "Checking x402 gate — expect HTTP 402..."
 
-          RESPONSE=$(curl -s -w "\n%{http_code}" \
+          HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" \
             -X POST "${{ secrets.CITEPAY_URL }}/api/ask" \
             -H "Content-Type: application/json" \
-            -H "X-PAYMENT: heartbeat-${{ github.run_id }}" \
-            -d "{\"query\":\"$QUERY\",\"budget\":0.05,\"policy\":\"balanced\"}" \
-            --max-time 60)
-
-          HTTP_CODE=$(echo "$RESPONSE" | tail -1)
-          BODY=$(echo "$RESPONSE" | head -n -1)
+            -d '{"query":"What is x402?"}' \
+            --max-time 30)
 
           echo "HTTP status: $HTTP_CODE"
-          echo "body<<EOF" >> "$GITHUB_OUTPUT"
-          echo "$BODY" | jq '{queryId,totalPaid,paidCitations:.decisions|map(select(.decision=="PAY"))|length,stoppedEarly}' 2>/dev/null || echo "$BODY"
-          echo "EOF" >> "$GITHUB_OUTPUT"
 
-          # Accept 200 (real payment) or 402 (no payment header, expected in CI)
-          if [ "$HTTP_CODE" != "200" ] && [ "$HTTP_CODE" != "402" ]; then
-            echo "Unexpected HTTP $HTTP_CODE"
+          if [ "$HTTP_CODE" != "402" ]; then
+            echo "Expected 402 Payment Required but got $HTTP_CODE"
             exit 1
           fi
+          echo "x402 gate confirmed — returns 402 without payment header"
 
       - name: Check traction endpoint
         run: |
           TRACTION=$(curl -s "${{ secrets.CITEPAY_URL }}/api/traction" --max-time 15)
-          PAID=$(echo "$TRACTION" | jq '.paidCitations // 0')
-          TOTAL=$(echo "$TRACTION" | jq '.totalQueries // 0')
+          PAID=$(echo "$TRACTION" | jq '.stats.paidCitations // 0')
+          TOTAL=$(echo "$TRACTION" | jq '.stats.totalQueries // 0')
           echo "Traction: $PAID paid citations across $TOTAL queries"
 
       - name: Verify MCP server responds
@@ -69,7 +55,7 @@ jobs:
         run: |
           echo "### Agent Heartbeat — $(date -u '+%Y-%m-%d %H:%M UTC')" >> "$GITHUB_STEP_SUMMARY"
           echo "" >> "$GITHUB_STEP_SUMMARY"
-          echo "- Query endpoint: healthy" >> "$GITHUB_STEP_SUMMARY"
+          echo "- x402 gate: active (returns 402 without payment)" >> "$GITHUB_STEP_SUMMARY"
           echo "- Traction endpoint: healthy" >> "$GITHUB_STEP_SUMMARY"
           echo "- MCP server: healthy (3+ tools)" >> "$GITHUB_STEP_SUMMARY"
           echo "" >> "$GITHUB_STEP_SUMMARY"

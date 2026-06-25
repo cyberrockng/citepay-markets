@@ -21,6 +21,7 @@ export default function BountyDetailPage({ params }: { params: Promise<{ id: str
   const [bounty, setBounty] = useState<Bounty | null>(null);
   const [submissions, setSubmissions] = useState<Submission[]>([]);
   const [loading, setLoading] = useState(true);
+  const [nowMs] = useState(Date.now);
   const [evaluating, setEvaluating] = useState(false);
   const [evalResult, setEvalResult] = useState<{ winner: { creatorName: string; paidMicro: number; txHash: string | null }; knowledgeSourceId: string | null } | null>(null);
 
@@ -93,9 +94,8 @@ export default function BountyDetailPage({ params }: { params: Promise<{ id: str
 
   const budget = (bounty.budgetMicro / 1_000_000).toFixed(4);
   const deadline = new Date(bounty.deadline);
-  const now = Date.now();
-  const hoursLeft = Math.max(0, Math.round((deadline.getTime() - now) / 3600000));
-  const isOpen = bounty.status === "open" && deadline.getTime() > now;
+  const hoursLeft = Math.max(0, Math.round((deadline.getTime() - nowMs) / 3600000));
+  const isOpen = bounty.status === "open" && deadline.getTime() > nowMs;
   const isClosed = bounty.status === "closed";
   const AGENT_ADDRESS = "0x5389688243328c26a92b301faEEAb5fbf9AFf105";
 

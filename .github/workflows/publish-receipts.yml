@@ -1,14 +1,14 @@
-name: Publish Receipt Digest
+name: Publish Audit Digest
 
 on:
   schedule:
-    # Daily at 00:00 UTC — publish a digest of yesterday's receipts to prove traction
+    # Daily at 00:00 UTC — publish a digest of on-chain citation stats
     - cron: "0 0 * * *"
   workflow_dispatch:
 
 jobs:
   digest:
-    name: Fetch + summarise citation receipts
+    name: Fetch + summarise citation audit
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -21,37 +21,38 @@ jobs:
           echo "$TRACTION" >> "$GITHUB_OUTPUT"
           echo "EOF" >> "$GITHUB_OUTPUT"
 
-          PAID=$(echo "$TRACTION" | jq '.paidCitations // 0')
-          ROUTED=$(echo "$TRACTION" | jq '.totalUSDCRouted // 0')
-          QUERIES=$(echo "$TRACTION" | jq '.totalQueries // 0')
-          CREATORS=$(echo "$TRACTION" | jq '.creatorsPaid // 0')
+          PAID=$(echo "$TRACTION" | jq '.stats.paidCitations // 0')
+          ROUTED=$(echo "$TRACTION" | jq '.stats.totalUSDCRouted // 0')
+          QUERIES=$(echo "$TRACTION" | jq '.stats.totalQueries // 0')
+          CREATORS=$(echo "$TRACTION" | jq '.stats.creatorsPaid // 0')
+          CONFIRMED=$(echo "$TRACTION" | jq '.stats.confirmedPaidCitations // 0')
 
           echo "paid=$PAID" >> "$GITHUB_OUTPUT"
           echo "routed=$ROUTED" >> "$GITHUB_OUTPUT"
           echo "queries=$QUERIES" >> "$GITHUB_OUTPUT"
           echo "creators=$CREATORS" >> "$GITHUB_OUTPUT"
+          echo "confirmed=$CONFIRMED" >> "$GITHUB_OUTPUT"
 
-      - name: Verify on-chain anchoring is current
+      - name: Fetch audit summary
+        id: audit
         run: |
-          # Check that ArcScan shows recent CitationPaid events for our contract
-          echo "Contract: 0x396cf1646EbAeF85ee8428C2d9239C46Ae956085"
-          echo "Explorer: https://testnet.arcscan.app/address/0x396cf1646EbAeF85ee8428C2d9239C46Ae956085"
-          echo "Verifying /api/receipts returns valid data..."
-
-          RECEIPTS=$(curl -s "${{ secrets.CITEPAY_URL }}/api/receipts?limit=5" --max-time 15)
-          COUNT=$(echo "$RECEIPTS" | jq 'if type=="array" then length elif .receipts then .receipts|length else 0 end')
-          echo "Recent receipts available: $COUNT"
+          AUDIT=$(curl -s "${{ secrets.CITEPAY_URL }}/api/audit-summary" --max-time 15)
+          TOTAL_PAID=$(echo "$AUDIT" | jq '.totalUSDCPaid // "0"')
+          RECEIPT_COUNT=$(echo "$AUDIT" | jq '.receiptCount // 0')
+          echo "Audit summary: $RECEIPT_COUNT receipts, $TOTAL_PAID USDC paid"
 
       - name: Write job summary
         run: |
-          echo "## CitePay Receipt Digest — $(date -u '+%Y-%m-%d')" >> "$GITHUB_STEP_SUMMARY"
+          echo "## CitePay Audit Digest — $(date -u '+%Y-%m-%d')" >> "$GITHUB_STEP_SUMMARY"
           echo "" >> "$GITHUB_STEP_SUMMARY"
           echo "| Metric | Value |" >> "$GITHUB_STEP_SUMMARY"
           echo "|---|---|" >> "$GITHUB_STEP_SUMMARY"
           echo "| Paid citations | ${{ steps.traction.outputs.paid }} |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Confirmed paid | ${{ steps.traction.outputs.confirmed }} |" >> "$GITHUB_STEP_SUMMARY"
           echo "| Total queries | ${{ steps.traction.outputs.queries }} |" >> "$GITHUB_STEP_SUMMARY"
           echo "| Creators paid | ${{ steps.traction.outputs.creators }} |" >> "$GITHUB_STEP_SUMMARY"
-          echo "| USDC routed (micro) | ${{ steps.traction.outputs.routed }} |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| USDC routed | ${{ steps.traction.outputs.routed }} USDC |" >> "$GITHUB_STEP_SUMMARY"
           echo "" >> "$GITHUB_STEP_SUMMARY"
           echo "On-chain: [ArcScan](https://testnet.arcscan.app/address/0x396cf1646EbAeF85ee8428C2d9239C46Ae956085)" >> "$GITHUB_STEP_SUMMARY"
+          echo "Proof endpoint: ${{ secrets.CITEPAY_URL }}/api/proof" >> "$GITHUB_STEP_SUMMARY"
           echo "Live app: ${{ secrets.CITEPAY_URL }}" >> "$GITHUB_STEP_SUMMARY"

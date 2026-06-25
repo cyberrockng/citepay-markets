@@ -272,7 +272,7 @@ export default function AuctionPage() {
         {auctionQuery && (
           <div className="mb-6 flex items-center gap-3">
             <span className="text-xs text-white/30 uppercase tracking-wider">Query</span>
-            <span className="text-sm text-white/60 italic">"{auctionQuery}"</span>
+            <span className="text-sm text-white/60 italic">&quot;{auctionQuery}&quot;</span>
           </div>
         )}
 

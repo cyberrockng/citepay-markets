@@ -191,7 +191,7 @@ export default function ReceiptPage({ params }: { params: Promise<{ id: string }
               <ProofPanel
                 label="Anchor Transaction"
                 baseScanTx={receipt.onChainTxHash}
-                baseScanTxLabel="View on BaseScan ↗"
+                baseScanTxLabel="View on ArcScan ↗"
               />
             </div>
           ) : (
