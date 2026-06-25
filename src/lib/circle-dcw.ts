@@ -92,6 +92,9 @@ export async function payCreatorViaDCW(opts: {
   }
 
   console.log(`[dcw] done state=${state} txHash=${txHash}`);
+  if (state === "FAILED" || state === "CANCELLED") {
+    throw new Error(`DCW transaction ${state.toLowerCase()} — insufficient balance or rejected`);
+  }
   return {
     txHash,
     status: (state === "CONFIRMED" || state === "COMPLETE") ? "confirmed" : "pending",

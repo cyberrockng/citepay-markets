@@ -56,16 +56,17 @@ export async function payCreator(opts: {
   const { creatorWallet, amountMicroUsdc, sourceId, receiptId, queryId, relevanceScore, policy } = opts;
 
   // Preferred path: Circle Developer-Controlled Wallet (MPC-secured, Circle-managed)
+  // Only commit to this path if the transfer actually confirms — otherwise fall through
+  // to the agent wallet path (which has $17+ USDC and produces real on-chain anchors).
   const { isDCWEnabled, payCreatorViaDCW } = await import("./circle-dcw");
   if (isDCWEnabled()) {
     try {
       const result = await payCreatorViaDCW({ creatorWallet, amountMicroUsdc, receiptId });
-      return {
-        txHash: result.txHash,
-        amountMicroUsdc,
-        recipient: creatorWallet,
-        status: result.status === "confirmed" ? "confirmed" : "simulated",
-      };
+      if (result.status === "confirmed") {
+        return { txHash: result.txHash, amountMicroUsdc, recipient: creatorWallet, status: "confirmed" };
+      }
+      // "pending" / "simulated" means DCW had insufficient balance or tx failed — fall through
+      console.log(`[payCreator] DCW returned ${result.status}, falling through to agent wallet`);
     } catch {
       // Fall through to viem path
     }
