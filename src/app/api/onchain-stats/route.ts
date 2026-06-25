@@ -48,31 +48,45 @@ export async function GET() {
     const latestBlock = await client.getBlockNumber();
 
     const agents = new Set<string>();
-    const creators = new Set<string>();
+    // Map sourceId → payoutWallet from SourceRegistered events
+    const sourcePayoutWallets = new Map<string, string>();
+    const citedPayoutWallets = new Set<string>();
     let citationCount = 0;
     let sourceCount = 0;
 
+    // First pass: collect all SourceRegistered events to build sourceId→payoutWallet map
     for (let from = DEPLOY_BLOCK; from <= latestBlock; from += CHUNK + 1n) {
       const to = from + CHUNK <= latestBlock ? from + CHUNK : latestBlock;
+      const sources = await client.getLogs({ address: CONTRACT, event: SOURCE_REGISTERED_EVENT, fromBlock: from, toBlock: to });
+      for (const log of sources) {
+        sourceCount++;
+        if (log.args.sourceId != null && log.args.payoutWallet) {
+          sourcePayoutWallets.set(String(log.args.sourceId), log.args.payoutWallet.toLowerCase());
+        }
+      }
+    }
 
-      const [citations, sources] = await Promise.all([
-        client.getLogs({ address: CONTRACT, event: CITATION_PAID_EVENT, fromBlock: from, toBlock: to }),
-        client.getLogs({ address: CONTRACT, event: SOURCE_REGISTERED_EVENT, fromBlock: from, toBlock: to }),
-      ]);
+    // Second pass: collect CitationPaid events, resolve creator via payoutWallet
+    for (let from = DEPLOY_BLOCK; from <= latestBlock; from += CHUNK + 1n) {
+      const to = from + CHUNK <= latestBlock ? from + CHUNK : latestBlock;
+      const citations = await client.getLogs({ address: CONTRACT, event: CITATION_PAID_EVENT, fromBlock: from, toBlock: to });
 
       for (const log of citations) {
         citationCount++;
         if (log.args.agent) agents.add(log.args.agent.toLowerCase());
-        if (log.args.creator) creators.add(log.args.creator.toLowerCase());
+        // Resolve creator as the payoutWallet of the cited source (not the agent address)
+        if (log.args.sourceId != null) {
+          const payoutWallet = sourcePayoutWallets.get(String(log.args.sourceId));
+          if (payoutWallet) citedPayoutWallets.add(payoutWallet);
+        }
       }
-      sourceCount += sources.length;
     }
 
     const data: OnChainStats = {
       citationPaidEvents: citationCount,
       sourceRegisteredEvents: sourceCount,
       uniqueAgents: agents.size,
-      uniqueCreators: creators.size,
+      uniqueCreators: citedPayoutWallets.size,
       contractAddress: CONTRACT,
       explorerUrl: `${EXPLORER}/address/${CONTRACT}`,
       lastUpdated: new Date().toISOString(),
