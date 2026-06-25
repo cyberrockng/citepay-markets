@@ -55,7 +55,7 @@ export async function GET() {
     shareCardsOpened:    Math.max(fromRedis.shareCardsOpened,     FLOOR.shareCardsOpened),
     challengeCount:      Math.max(fromRedis.challengeCount,       FLOOR.challengeCount),
     creatorsPaid:        Math.max(fromRedis.creatorsPaid ?? 0,    FLOOR.creatorsPaid),
-    avgPaymentPerCitation: fromRedis.paidCitations > 0
+    avgPaymentPerCitation: (fromRedis.avgPaymentPerCitation && fromRedis.avgPaymentPerCitation > 0)
       ? fromRedis.avgPaymentPerCitation
       : FLOOR.totalUSDCRouted / FLOOR.paidCitations,
   };

@@ -45,10 +45,12 @@ export default function LandingPage() {
   const statsRef = useRef<HTMLDivElement>(null);
   const [statsVisible, setStatsVisible] = useState(false);
   const [liveEvents, setLiveEvents] = useState<Array<{id?:string;decision:string;sourceTitle:string;amountPaid:number;timestamp:string;reason?:string;score?:number;creatorHandle?:string;creatorName?:string}>>([]);
+  const [proofReceipts, setProofReceipts] = useState<Array<{receiptId: number; creatorWallet: string; amountPaid: number; txHash: string; arcScanUrl: string; sourceTitle?: string;}>>([]);
 
   useEffect(() => {
     fetch("/api/traction").then((r) => r.json()).then((d) => setStats(d.stats)).catch(() => {});
     fetch("/api/onchain-stats").then((r) => r.json()).then((d) => setOnchainStats(d)).catch(() => {});
+    fetch("/api/proof?limit=5").then((r) => r.json()).then((d) => setProofReceipts(d.receipts ?? [])).catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -152,6 +154,9 @@ export default function LandingPage() {
               <span className="w-1.5 h-1.5 rounded-full bg-[#00ff88] inline-block animate-pulse" />
               Live Feed
             </Link>
+            <Link href="/proof" className="border border-[#00ff88]/20 hover:border-[#00ff88]/50 text-[#00ff88]/70 hover:text-[#00ff88] font-semibold px-6 py-2.5 rounded-xl transition-colors flex items-center gap-2 text-sm">
+              On-Chain Proof
+            </Link>
             <Link href="/mcp" className="border border-[#1e1e2e] hover:border-[#8b8b9e] text-[#8b8b9e] hover:text-[#f0f0f5] font-semibold px-6 py-2.5 rounded-xl transition-colors text-sm">
               Add to Claude (MCP)
             </Link>
@@ -186,6 +191,37 @@ export default function LandingPage() {
             <span className="w-1.5 h-1.5 rounded-full bg-[#4a4a5e] inline-block" />
             Waiting for next transaction ·{" "}
             <Link href="/ask" className="text-[#6366f1] hover:text-indigo-300">trigger one →</Link>
+          </div>
+        )}
+      </section>
+
+      {/* ── 2b. Verified Proof Strip ── */}
+      <section className="max-w-4xl mx-auto px-6 py-6 border-t border-[#1e1e2e]">
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-[#00ff88] inline-block" />
+            <span className="text-xs font-mono text-[#4a4a5e]">VERIFIED ON-CHAIN PAYMENTS</span>
+          </div>
+          <Link href="/proof" className="text-xs text-[#6366f1] hover:text-indigo-300 transition-colors">
+            Full proof explorer →
+          </Link>
+        </div>
+        {proofReceipts.length > 0 ? (
+          <div className="space-y-1.5">
+            {proofReceipts.map((r, i) => (
+              <div key={i} className="flex items-center gap-3 px-3 py-2 rounded-lg bg-[#0a0a10] border border-[#00ff88]/10 text-xs font-mono">
+                <span className="text-[#00ff88]">✓</span>
+                <span className="text-[#4a4a5e]">#{r.receiptId}</span>
+                <span className="text-[#8b8b9e] flex-1 truncate">{r.sourceTitle ?? `${r.creatorWallet.slice(0,6)}…${r.creatorWallet.slice(-4)}`}</span>
+                <span className="text-[#00ff88] font-bold">${r.amountPaid.toFixed(4)}</span>
+                <a href={r.arcScanUrl} target="_blank" rel="noopener noreferrer" className="text-[#6366f1] hover:text-indigo-300 transition-colors">ArcScan ↗</a>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="text-xs font-mono text-[#4a4a5e] py-2 flex items-center gap-2">
+            <span className="w-1.5 h-1.5 rounded-full bg-[#4a4a5e] inline-block animate-pulse" />
+            Reading Arc Testnet…
           </div>
         )}
       </section>
@@ -326,7 +362,7 @@ export default function LandingPage() {
                   <div className="text-xs font-mono text-[#4a4a5e]">
                     Paid:{" "}
                     <span className={e.decision === "PAY" ? "text-[#00ff88]" : "text-[#4a4a5e]"}>
-                      ${(e.amountPaid / 1e6).toFixed(4)} USDC
+                      ${e.amountPaid.toFixed(4)} USDC
                     </span>
                   </div>
                 </div>
@@ -406,15 +442,31 @@ export default function LandingPage() {
           <p className="text-[#8b8b9e] text-sm mb-6 leading-relaxed">
             Any AI agent pays via <strong className="text-[#f0f0f5]">Circle Gateway</strong> using <code className="text-[#f0f0f5] bg-[#0a0a0f] px-1.5 py-0.5 rounded">GatewayClient.pay()</code>, or use the MCP server to call CitePay directly from Claude Code — no wallet setup needed.
           </p>
-          <div className="bg-[#0a0a0f] rounded-lg p-4 font-mono text-xs text-[#00ff88] overflow-x-auto border border-[#1e1e2e] mb-6">
-{`// Option A: Circle Gateway (x402 real payment)
+          <div className="bg-[#0a0a0f] rounded-lg p-4 font-mono text-xs text-[#00ff88] overflow-x-auto border border-[#1e1e2e] mb-4">
+{`// Option 1: Direct REST (any language)
+const res = await fetch("https://citepay-markets.vercel.app/api/ask", {
+  method: "POST",
+  headers: { "Content-Type": "application/json", "X-PAYMENT": "<circle-gateway-sig>" },
+  body: JSON.stringify({ query: "What is neural scaling?", policy: "balanced" })
+});
+const { answer, decisions, totalPaid } = await res.json();
+// → AI scored 10 sources, paid 3 creators on Arc Testnet
+
+// Option 2: Circle Gateway (x402 auto-payment)
 const client = new GatewayClient({ chain: "arcTestnet", privateKey });
 const { data } = await client.pay("https://citepay-markets.vercel.app/api/ask", {
   method: "POST", body: JSON.stringify({ query: "...", policy: "balanced" })
 });
 
-// Option B: MCP from Claude Code (no wallet needed)
-// Add to ~/.claude.json → use cite_query tool`}
+// Option 3: Claude Code MCP (no wallet needed)
+// Add to ~/.claude.json → tools: cite_query, get_receipt, check_policy`}
+          </div>
+          <div className="bg-[#0a0a0f] rounded-lg p-4 font-mono text-xs border border-[#1e1e2e] mb-6 space-y-1">
+            <div className="text-[#4a4a5e] text-[10px] tracking-widest mb-2">RESPONSE INCLUDES</div>
+            <div className="flex gap-3"><span className="text-[#6366f1] w-24 shrink-0">answer</span><span className="text-[#8b8b9e]">AI-synthesized answer from cited sources</span></div>
+            <div className="flex gap-3"><span className="text-[#6366f1] w-24 shrink-0">decisions[]</span><span className="text-[#8b8b9e]">PAY / REFUSE / SKIP per source with scores</span></div>
+            <div className="flex gap-3"><span className="text-[#6366f1] w-24 shrink-0">totalPaid</span><span className="text-[#8b8b9e]">USDC sent to creators this query</span></div>
+            <div className="flex gap-3"><span className="text-[#6366f1] w-24 shrink-0">receipts[]</span><span className="text-[#8b8b9e]">Receipt IDs for on-chain verification</span></div>
           </div>
           <div className="flex gap-4 flex-wrap">
             <Link href="/orchestrate" className="bg-[#6366f1] hover:bg-indigo-500 text-white font-semibold px-5 py-2.5 rounded-lg transition-colors text-sm">
@@ -484,6 +536,7 @@ const { data } = await client.pay("https://citepay-markets.vercel.app/api/ask", 
             <Link href="/leaderboard" className="hover:text-[#f0f0f5] transition-colors">Leaderboard</Link>
             <Link href="/traction"    className="hover:text-[#f0f0f5] transition-colors">Traction</Link>
             <Link href="/audit"       className="hover:text-[#f0f0f5] transition-colors">Audit</Link>
+            <Link href="/proof"       className="hover:text-[#f0f0f5] transition-colors">Proof</Link>
             <a href="https://github.com/cyberrockng/citepay-markets" target="_blank" rel="noopener noreferrer"
                className="hover:text-[#f0f0f5] transition-colors">GitHub</a>
           </div>

@@ -9,6 +9,24 @@
 
 ---
 
+## Architecture
+
+```mermaid
+flowchart LR
+    A[AI Agent / Browser] -->|POST /api/ask| B{x402 Gate}
+    B -->|402 Payment Required| A
+    A -->|Circle Gateway EIP-3009| C[Arc Testnet USDC]
+    C -->|x402 verified| D[CitePay Engine]
+    D -->|Claude Haiku scores| E[10 Creator Sources]
+    E -->|PAY decision| F[Creator Wallet]
+    D -->|anchorPAY| G[CitePayMarket.sol]
+    G -->|CitationPaid event| H[ArcScan Explorer]
+    D -->|receipt| I[Public Receipt API]
+    I --> J[/proof Explorer]
+```
+
+---
+
 ## Judge Quick Start
 
 **Live app:** [citepay-markets.vercel.app](https://citepay-markets.vercel.app)
@@ -25,6 +43,7 @@
 | `/ask` | Agent workbench with configurable spend policy + proof console |
 | `/receipt/:id` | Receipt with evidence preimage viewer + hash recomputation |
 | `/traction` | Live on-chain stats: 700+ agent decisions, 194+ paid citations from CitePayMarket.sol |
+| `/proof` | On-chain proof explorer — reads CitationPaid events directly from Arc Testnet, no database |
 | `/mcp` | MCP server install for Claude Code / Cursor integration |
 
 **Contracts:** Arc Testnet (chainId 5042002)  
