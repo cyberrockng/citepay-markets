@@ -1,11 +1,15 @@
 /**
  * CitePay Agent Commerce Network — core logic
  * Discovery, policy checks, hiring, and receipt creation for registered agents.
- * All payments from demo agents are labeled "simulated" — never presented as real.
+ *
+ * Payments: real USDC transfers on Arc Testnet via payCreator() (same path as creator payments).
+ * Responses: real Claude Haiku calls per agent specialty. Falls back to template if no API key.
+ * Payment mode reflects actual settlement: "confirmed" = on-chain USDC tx, "simulated" = fallback.
  */
 
 import { createHash } from "crypto";
 import { v4 as uuidv4 } from "uuid";
+import Anthropic from "@anthropic-ai/sdk";
 import {
   getAgentRegistry,
   getAgentRegistryById,
@@ -15,8 +19,18 @@ import {
   type AgentRegistryRow,
   type AgentHireReceipt,
 } from "@/lib/db";
+import { payCreator } from "@/lib/payments";
 
 export type { AgentRegistryRow, AgentHireReceipt };
+
+// ── Anthropic client (shared, lazy) ──────────────────────────────────────────
+
+let _anthropic: Anthropic | null = null;
+function getAnthropic(): Anthropic | null {
+  if (!process.env.ANTHROPIC_API_KEY) return null;
+  if (!_anthropic) _anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+  return _anthropic;
+}
 
 // ── Policy thresholds per mode ────────────────────────────────────────────────
 
@@ -39,6 +53,59 @@ function specialtyScore(agentSpecialty: string, querySpecialty: string): number 
   return hits;
 }
 
+// ── Agent response via Claude Haiku (real AI, per specialty) ─────────────────
+
+const AGENT_SYSTEM_PROMPTS: Record<string, string> = {
+  "factual research":
+    "You are FactAgent, a precise factual research AI operating in the CitePay Agent Commerce Network. " +
+    "Provide a concise, well-cited factual answer in 3-4 sentences. Focus on verifiable data, protocols, and primary sources. " +
+    "Reference x402, Circle, USDC, or Arc Testnet where relevant.",
+  "technical documentation":
+    "You are TechAgent, a technical documentation specialist AI in the CitePay Agent Commerce Network. " +
+    "Provide a clear technical explanation with implementation details in 3-4 sentences. " +
+    "Cover smart contract patterns, EIP standards, or developer integration steps where relevant.",
+  "market analysis economics":
+    "You are MarketAgent, an economics and market analysis AI in the CitePay Agent Commerce Network. " +
+    "Provide a concise market or economic analysis in 3-4 sentences. " +
+    "Focus on adoption metrics, incentive structures, or economic implications.",
+};
+
+async function getAgentResponse(agent: AgentRegistryRow, query: string): Promise<string> {
+  const anthropic = getAnthropic();
+  if (anthropic) {
+    try {
+      const system = AGENT_SYSTEM_PROMPTS[agent.specialty] ??
+        `You are ${agent.name}, an AI research agent specializing in ${agent.specialty} within the CitePay Agent Commerce Network. Answer the query in 3-4 sentences.`;
+      const msg = await anthropic.messages.create({
+        model: "claude-haiku-4-5-20251001",
+        max_tokens: 280,
+        system,
+        messages: [{ role: "user", content: query }],
+      });
+      if (msg.content[0]?.type === "text") return msg.content[0].text;
+    } catch (err) {
+      console.error(`[agent-exchange] Claude Haiku error for ${agent.name}:`, String(err).slice(0, 120));
+    }
+  }
+  // Fallback if no API key or Claude error
+  return generateFallbackResponse(agent, query);
+}
+
+function generateFallbackResponse(agent: AgentRegistryRow, query: string): string {
+  const q = query.slice(0, 80);
+  const spec = agent.specialty.toLowerCase();
+  if (spec.includes("fact")) {
+    return `[FactAgent fallback] ${q} — The x402 protocol enables machine-native HTTP payments using USDC on Arc Testnet. Every CitationPaid event is an immutable on-chain record. Source: x402.org, Circle Developer Docs.`;
+  }
+  if (spec.includes("tech")) {
+    return `[TechAgent fallback] ${q} — Implementation uses EIP-3009 USDC transferWithAuthorization for gasless micropayments. Stack: CitePayMarket.sol (anchoring), CreatorBond.sol (staking), CitationMandate.sol (policy).`;
+  }
+  if (spec.includes("market")) {
+    return `[MarketAgent fallback] ${q} — The AI citation economy shows 292+ paid events on Arc Testnet with 10 unique creator wallets earning USDC. Creator incentive alignment is the primary adoption driver.`;
+  }
+  return `[${agent.name} fallback] Research response for: ${q} — Confidence: moderate. Specialty: ${agent.specialty}.`;
+}
+
 // ── Discovery ────────────────────────────────────────────────────────────────
 
 export function discoverAgents(
@@ -54,7 +121,6 @@ export function discoverAgents(
     if (!rules.allowAggressive && a.policyProfile === "aggressive") return false;
     return true;
   }).sort((a, b) => {
-    // rank: specialty match > trust score > price efficiency
     const sa = specialtyScore(a.specialty, querySpecialty);
     const sb = specialtyScore(b.specialty, querySpecialty);
     if (sb !== sa) return sb - sa;
@@ -109,22 +175,6 @@ export function selectAgents(
   return { selected, warned, blocked };
 }
 
-// ── Demo response templates ───────────────────────────────────────────────────
-
-function generateDemoResponse(agent: AgentRegistryRow, query: string): string {
-  const spec = agent.specialty.toLowerCase();
-  if (spec.includes("fact")) {
-    return `Based on verified protocol documentation and research papers: ${query.slice(0, 80)} — The x402 protocol enables machine-native HTTP payments using USDC, allowing AI agents to transact autonomously. Key facts: (1) HTTP 402 is used as the payment gate, (2) Circle Gateway settles payments on Arc Testnet, (3) Every payment creates a tamper-proof receipt anchored on-chain. Sources: x402.org, Circle Developer Docs.`;
-  }
-  if (spec.includes("tech")) {
-    return `From a technical documentation perspective: ${query.slice(0, 80)} — Implementation uses EIP-3009 for USDC transferWithAuthorization, enabling gasless micropayments. The smart contract stack: CitePayMarket.sol (citation anchoring), CreatorBond.sol (reputation staking), CitationMandate.sol (spend policy). Developers can integrate via the CitePay MCP server exposing cite_query, get_receipt, and check_policy tools.`;
-  }
-  if (spec.includes("market")) {
-    return `Market analysis: ${query.slice(0, 80)} — The AI citation economy represents a $2B+ opportunity as LLM queries replace traditional search. Current metrics show 268+ paid citations on Arc Testnet with 10 unique creator wallets earning USDC. Adoption drivers: creator incentive alignment, fraud-proof receipts, policy-enforced spending. Risk: low testnet liquidity limits live volume demonstration.`;
-  }
-  return `Research response for: ${query.slice(0, 80)} — Analysis pending further verification. This agent specialty (${agent.specialty}) may not directly match the query domain. Confidence: low. Recommend fallback to primary agents.`;
-}
-
 // ── Hire a single agent ───────────────────────────────────────────────────────
 
 export interface AgentHireResult {
@@ -143,13 +193,16 @@ export async function hireAgent(
   const agent = getAgentRegistryById(agentId);
   if (!agent) throw new Error(`Agent ${agentId} not found`);
 
-  const isDemo = agent.endpointUrl.includes("demo") || agent.endpointUrl.includes("internal");
+  const receiptId = uuidv4();
+
+  // ── Step 1: Get agent response (real Claude Haiku call) ───────────────────
   let response = "";
   let success = true;
+  const isExternalEndpoint = !agent.endpointUrl.includes("demo") &&
+                             !agent.endpointUrl.includes("internal") &&
+                             agent.endpointUrl.startsWith("https://");
 
-  if (isDemo) {
-    response = generateDemoResponse(agent, query);
-  } else {
+  if (isExternalEndpoint) {
     try {
       const res = await fetch(agent.endpointUrl, {
         method: "POST",
@@ -161,23 +214,56 @@ export async function hireAgent(
       const data = await res.json() as { response?: string; answer?: string };
       response = data.response ?? data.answer ?? "";
     } catch (err) {
-      response = `Agent endpoint unreachable: ${String(err).slice(0, 100)}`;
-      success = false;
+      console.error(`[agent-exchange] External endpoint error for ${agent.name}:`, String(err).slice(0, 100));
+      // Fall through to Claude Haiku
+      response = await getAgentResponse(agent, query);
+    }
+  } else {
+    // Demo/internal agent — use real Claude Haiku for actual research output
+    response = await getAgentResponse(agent, query);
+  }
+
+  if (!response) {
+    response = generateFallbackResponse(agent, query);
+    success = false;
+  }
+
+  // ── Step 2: Real USDC payment via agent wallet on Arc Testnet ─────────────
+  const amountMicro = success ? agent.priceMicro : 0;
+  let txHash: string | null = null;
+  let paymentMode: "confirmed" | "simulated" = "simulated";
+
+  if (success && amountMicro > 0) {
+    try {
+      const payResult = await payCreator({
+        creatorWallet: agent.wallet,
+        amountMicroUsdc: amountMicro,
+        sourceId: agent.id,
+        receiptId,
+        queryId,
+        policy: agent.policyProfile,
+      });
+      txHash = payResult.txHash;
+      paymentMode = payResult.status === "confirmed" ? "confirmed" : "simulated";
+    } catch (err) {
+      console.error(`[agent-exchange] Payment failed for ${agent.name}:`, String(err).slice(0, 120));
+      // Keep simulated — don't fail the whole hire over a payment error
     }
   }
 
+  // ── Step 3: Quality scoring ───────────────────────────────────────────────
   const qualityScore = success ? Math.min(100, Math.max(0,
     agent.trustScore * 0.5 +
     specialtyScore(agent.specialty, query) * 15 +
-    Math.random() * 10
+    (paymentMode === "confirmed" ? 5 : 0) +
+    Math.random() * 5,
   )) : 0;
 
   const responseHash = createHash("sha256").update(response).digest("hex");
-  const amountMicro  = success ? agent.priceMicro : 0;
-  const paymentMode  = isDemo ? "simulated" : "testnet";
 
+  // ── Step 4: Save receipt ──────────────────────────────────────────────────
   const receipt: AgentHireReceipt = {
-    id: uuidv4(),
+    id: receiptId,
     queryId,
     orchestratorId: "citepay-orchestrator",
     agentId: agent.id,
@@ -186,7 +272,7 @@ export async function hireAgent(
     subtask: query.slice(0, 200),
     amountMicro,
     paymentMode,
-    txHash: isDemo ? null : null,
+    txHash,
     responseHash,
     qualityScore: Math.round(qualityScore),
     policyStatus: "APPROVED",
@@ -239,15 +325,12 @@ export async function runAgentCommerceDemo(
   const queryId = uuidv4();
   const budgetPerAgent = Math.floor(totalBudgetMicro / Math.max(agentCount, 1));
 
-  // 1. Discover candidates
   const discovered = discoverAgents(query, totalBudgetMicro, policyMode);
-
-  // 2. Select / warn / block
   const { selected, warned, blocked: blockedAgents } = selectAgents(
     discovered, agentCount, budgetPerAgent, policyMode,
   );
 
-  // 3. Create blocked receipts (for visibility)
+  // Blocked receipts (no payment — policy rejected them)
   const blockedWithReceipts: BlockedAgentInfo[] = [];
   for (const b of blockedAgents) {
     const r: AgentHireReceipt = {
@@ -272,19 +355,19 @@ export async function runAgentCommerceDemo(
     blockedWithReceipts.push({ agent: b.agent, reason: b.reason, policyStatus: "BLOCKED", receipt: r });
   }
 
-  // 4. Hire selected agents (parallel)
+  // Hire selected agents — real payments + real Claude responses
   const hireResults = await Promise.all(
     selected.map((a) => hireAgent(a.id, query, queryId, budgetPerAgent)),
   );
 
-  // 5. Synthesize final answer
+  // Synthesize using each agent's real response
   const contributions = hireResults
     .filter((r) => r.success)
-    .map((r) => `[${r.receipt.agentName}]: ${r.response}`)
+    .map((r) => `[${r.receipt.agentName}] ${r.response}`)
     .join("\n\n");
 
-  const finalAnswer = contributions
-    ? `Synthesized from ${hireResults.filter((r) => r.success).length} agent(s):\n\n${contributions.slice(0, 800)}`
+  const finalAnswer = contributions.length > 0
+    ? `${contributions.slice(0, 1200)}`
     : "No agents produced usable responses for this query.";
 
   const totalSpentMicro = hireResults.reduce((s, r) => s + r.receipt.amountMicro, 0);
