@@ -74,8 +74,8 @@ export async function POST(req: Request) {
       walletAddress: payoutWallet,
       userOpHash,
       gasSponsored: true,
-      sponsor:      "CitePay Gas Station (Circle DCW)",
-      sdks:         ["circle-modular-wallets", "circle-gas-station", "circle-developer-controlled-wallets"],
+      sponsor:      "CitePay agent wallet (backend-sponsored testnet registration)",
+      sdks:         ["circle-modular-wallets", "circle-developer-controlled-wallets"],
     });
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err);

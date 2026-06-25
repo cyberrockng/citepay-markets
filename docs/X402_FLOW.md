@@ -89,7 +89,7 @@ The `X-PAYMENT` header must contain a JSON-encoded payment proof:
     "signature": "0x<EIP-712 signature>",
     "transaction": {
       "hash": "0x<transaction hash>",
-      "chainId": 84532,
+      "chainId": 5042002,
       "from": "0x<payer address>",
       "to": "0x<payee address>",
       "value": "1000"
