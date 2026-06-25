@@ -22,6 +22,7 @@ export function getDb(): Database.Database {
   _db.pragma("foreign_keys = ON");
   migrate(_db);
   seedIfEmpty(_db);
+  seedAgentRegistryIfEmpty(_db);
   return _db;
 }
 
@@ -181,6 +182,49 @@ function migrate(db: Database.Database) {
       top_sources TEXT DEFAULT NULL,
       weak_sources TEXT DEFAULT NULL,
       score_adjustments TEXT DEFAULT NULL,
+      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+  `);
+
+  // ── Agent Commerce Network ────────────────────────────────────────────────────
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS agent_registry (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      handle TEXT UNIQUE NOT NULL,
+      specialty TEXT NOT NULL,
+      endpoint_url TEXT NOT NULL,
+      wallet TEXT NOT NULL,
+      price_micro INTEGER NOT NULL DEFAULT 2000,
+      policy_profile TEXT NOT NULL DEFAULT 'balanced',
+      status TEXT NOT NULL DEFAULT 'active',
+      total_hired INTEGER NOT NULL DEFAULT 0,
+      total_earned_micro INTEGER NOT NULL DEFAULT 0,
+      successful_tasks INTEGER NOT NULL DEFAULT 0,
+      failed_tasks INTEGER NOT NULL DEFAULT 0,
+      average_quality_score REAL NOT NULL DEFAULT 0,
+      policy_violations INTEGER NOT NULL DEFAULT 0,
+      trust_score REAL NOT NULL DEFAULT 80,
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+
+    CREATE TABLE IF NOT EXISTS agent_hire_receipts (
+      id TEXT PRIMARY KEY,
+      query_id TEXT NOT NULL,
+      orchestrator_id TEXT NOT NULL DEFAULT 'citepay-orchestrator',
+      agent_id TEXT NOT NULL,
+      agent_name TEXT NOT NULL,
+      agent_wallet TEXT NOT NULL,
+      subtask TEXT NOT NULL,
+      amount_micro INTEGER NOT NULL DEFAULT 0,
+      payment_mode TEXT NOT NULL DEFAULT 'simulated',
+      tx_hash TEXT,
+      response_hash TEXT,
+      quality_score REAL DEFAULT 0,
+      policy_status TEXT NOT NULL DEFAULT 'APPROVED',
+      policy_reason TEXT,
+      downstream_receipt_ids TEXT DEFAULT '[]',
       created_at TEXT NOT NULL DEFAULT (datetime('now'))
     );
   `);
@@ -1046,4 +1090,245 @@ export function closeBounty(opts: {
     db.prepare("UPDATE bounty_submissions SET evaluation_score = ?, evaluation_reason = ? WHERE id = ?")
       .run(ev.score, ev.reason, subId);
   }
+}
+
+// ─── Agent Commerce Network ───────────────────────────────────────────────────
+
+export interface AgentRegistryRow {
+  id: string;
+  name: string;
+  handle: string;
+  specialty: string;
+  endpointUrl: string;
+  wallet: string;
+  priceMicro: number;
+  policyProfile: string;
+  status: string;
+  totalHired: number;
+  totalEarnedMicro: number;
+  successfulTasks: number;
+  failedTasks: number;
+  averageQualityScore: number;
+  policyViolations: number;
+  trustScore: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AgentHireReceipt {
+  id: string;
+  queryId: string;
+  orchestratorId: string;
+  agentId: string;
+  agentName: string;
+  agentWallet: string;
+  subtask: string;
+  amountMicro: number;
+  paymentMode: "live" | "testnet" | "simulated";
+  txHash: string | null;
+  responseHash: string | null;
+  qualityScore: number;
+  policyStatus: "APPROVED" | "BLOCKED" | "WARNING" | "FALLBACK_USED";
+  policyReason: string | null;
+  downstreamReceiptIds: string[];
+  createdAt: string;
+}
+
+function rowToAgentRegistry(r: Record<string, unknown>): AgentRegistryRow {
+  return {
+    id: r.id as string,
+    name: r.name as string,
+    handle: r.handle as string,
+    specialty: r.specialty as string,
+    endpointUrl: r.endpoint_url as string,
+    wallet: r.wallet as string,
+    priceMicro: r.price_micro as number,
+    policyProfile: r.policy_profile as string,
+    status: r.status as string,
+    totalHired: r.total_hired as number,
+    totalEarnedMicro: r.total_earned_micro as number,
+    successfulTasks: r.successful_tasks as number,
+    failedTasks: r.failed_tasks as number,
+    averageQualityScore: r.average_quality_score as number,
+    policyViolations: r.policy_violations as number,
+    trustScore: r.trust_score as number,
+    createdAt: r.created_at as string,
+    updatedAt: r.updated_at as string,
+  };
+}
+
+function rowToAgentHireReceipt(r: Record<string, unknown>): AgentHireReceipt {
+  return {
+    id: r.id as string,
+    queryId: r.query_id as string,
+    orchestratorId: r.orchestrator_id as string,
+    agentId: r.agent_id as string,
+    agentName: r.agent_name as string,
+    agentWallet: r.agent_wallet as string,
+    subtask: r.subtask as string,
+    amountMicro: r.amount_micro as number,
+    paymentMode: (r.payment_mode as AgentHireReceipt["paymentMode"]) ?? "simulated",
+    txHash: (r.tx_hash as string | null) ?? null,
+    responseHash: (r.response_hash as string | null) ?? null,
+    qualityScore: (r.quality_score as number) ?? 0,
+    policyStatus: (r.policy_status as AgentHireReceipt["policyStatus"]) ?? "APPROVED",
+    policyReason: (r.policy_reason as string | null) ?? null,
+    downstreamReceiptIds: JSON.parse((r.downstream_receipt_ids as string) || "[]"),
+    createdAt: r.created_at as string,
+  };
+}
+
+const DEMO_AGENTS = [
+  {
+    id: "agent-fact-001",
+    name: "FactAgent",
+    handle: "@fact_commerce",
+    specialty: "factual research",
+    endpoint_url: "https://demo.internal/fact-agent",
+    wallet: "0x3a0FfFE64537148b3766dA52D983058F98A4e3ce",
+    price_micro: 1500,
+    policy_profile: "conservative",
+    trust_score: 92,
+    policy_violations: 0,
+  },
+  {
+    id: "agent-tech-002",
+    name: "TechAgent",
+    handle: "@tech_commerce",
+    specialty: "technical documentation",
+    endpoint_url: "https://demo.internal/tech-agent",
+    wallet: "0x72101E4882159f3e0B3c176951AcA7816A1710e2",
+    price_micro: 2500,
+    policy_profile: "balanced",
+    trust_score: 85,
+    policy_violations: 0,
+  },
+  {
+    id: "agent-market-003",
+    name: "MarketAgent",
+    handle: "@market_commerce",
+    specialty: "market analysis economics",
+    endpoint_url: "https://demo.internal/market-agent",
+    wallet: "0xbe575CcebE08895e61c8E45652ff63E4a663d4D9",
+    price_micro: 3500,
+    policy_profile: "aggressive",
+    trust_score: 68,
+    policy_violations: 1,
+  },
+  {
+    id: "agent-risky-004",
+    name: "RiskyAgent",
+    handle: "@risky_commerce",
+    specialty: "unknown unverified",
+    endpoint_url: "https://demo.internal/risky-agent",
+    wallet: "0x0000000000000000000000000000000000000001",
+    price_micro: 9000,
+    policy_profile: "aggressive",
+    trust_score: 20,
+    policy_violations: 3,
+  },
+];
+
+function seedAgentRegistryIfEmpty(db: Database.Database) {
+  const count = (db.prepare("SELECT COUNT(*) as n FROM agent_registry").get() as { n: number }).n;
+  if (count > 0) return;
+  const stmt = db.prepare(`
+    INSERT INTO agent_registry (id, name, handle, specialty, endpoint_url, wallet,
+      price_micro, policy_profile, trust_score, policy_violations, status)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active')
+  `);
+  const insert = db.transaction(() => {
+    for (const a of DEMO_AGENTS) {
+      stmt.run(a.id, a.name, a.handle, a.specialty, a.endpoint_url, a.wallet,
+        a.price_micro, a.policy_profile, a.trust_score, a.policy_violations);
+    }
+  });
+  insert();
+}
+
+export function getAgentRegistry(statusFilter?: string): AgentRegistryRow[] {
+  const db = getDb();
+  const rows = statusFilter
+    ? db.prepare("SELECT * FROM agent_registry WHERE status = ? ORDER BY trust_score DESC, total_hired DESC").all(statusFilter)
+    : db.prepare("SELECT * FROM agent_registry ORDER BY trust_score DESC, total_hired DESC").all();
+  return rows.map((r) => rowToAgentRegistry(r as Record<string, unknown>));
+}
+
+export function getAgentRegistryById(id: string): AgentRegistryRow | undefined {
+  const row = getDb().prepare("SELECT * FROM agent_registry WHERE id = ?").get(id) as Record<string, unknown> | undefined;
+  return row ? rowToAgentRegistry(row) : undefined;
+}
+
+export function registerAgent(data: {
+  name: string; handle: string; specialty: string; endpointUrl: string;
+  wallet: string; priceMicro: number; policyProfile: string;
+}): AgentRegistryRow {
+  const id = uuidv4();
+  const db = getDb();
+  db.prepare(`
+    INSERT INTO agent_registry (id, name, handle, specialty, endpoint_url, wallet,
+      price_micro, policy_profile, status)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'active')
+  `).run(id, data.name, data.handle, data.specialty, data.endpointUrl,
+    data.wallet, data.priceMicro, data.policyProfile);
+  return getAgentRegistryById(id)!;
+}
+
+export function updateAgentStats(id: string, stats: {
+  successfulTask?: boolean;
+  failedTask?: boolean;
+  earnedMicro?: number;
+  qualityScore?: number;
+  policyViolation?: boolean;
+}): void {
+  const db = getDb();
+  const agent = getAgentRegistryById(id);
+  if (!agent) return;
+
+  if (stats.successfulTask) {
+    db.prepare("UPDATE agent_registry SET total_hired = total_hired + 1, successful_tasks = successful_tasks + 1, updated_at = datetime('now') WHERE id = ?").run(id);
+  } else if (stats.failedTask) {
+    db.prepare("UPDATE agent_registry SET total_hired = total_hired + 1, failed_tasks = failed_tasks + 1, updated_at = datetime('now') WHERE id = ?").run(id);
+  }
+  if (stats.earnedMicro) {
+    db.prepare("UPDATE agent_registry SET total_earned_micro = total_earned_micro + ?, updated_at = datetime('now') WHERE id = ?").run(stats.earnedMicro, id);
+  }
+  if (stats.qualityScore !== undefined) {
+    const prev = agent.averageQualityScore;
+    const tasks = agent.successfulTasks + (stats.successfulTask ? 1 : 0);
+    const newAvg = tasks > 1 ? (prev * (tasks - 1) + stats.qualityScore) / tasks : stats.qualityScore;
+    db.prepare("UPDATE agent_registry SET average_quality_score = ?, updated_at = datetime('now') WHERE id = ?").run(newAvg, id);
+  }
+  if (stats.policyViolation) {
+    db.prepare("UPDATE agent_registry SET policy_violations = policy_violations + 1, trust_score = MAX(0, trust_score - 5), updated_at = datetime('now') WHERE id = ?").run(id);
+  }
+}
+
+export function saveAgentHireReceipt(receipt: AgentHireReceipt): void {
+  getDb().prepare(`
+    INSERT INTO agent_hire_receipts
+      (id, query_id, orchestrator_id, agent_id, agent_name, agent_wallet, subtask,
+       amount_micro, payment_mode, tx_hash, response_hash, quality_score,
+       policy_status, policy_reason, downstream_receipt_ids, created_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `).run(
+    receipt.id, receipt.queryId, receipt.orchestratorId, receipt.agentId, receipt.agentName,
+    receipt.agentWallet, receipt.subtask, receipt.amountMicro, receipt.paymentMode,
+    receipt.txHash, receipt.responseHash, receipt.qualityScore,
+    receipt.policyStatus, receipt.policyReason,
+    JSON.stringify(receipt.downstreamReceiptIds), receipt.createdAt,
+  );
+}
+
+export function getAgentHireReceipts(queryId?: string, limit = 50): AgentHireReceipt[] {
+  const db = getDb();
+  const rows = queryId
+    ? db.prepare("SELECT * FROM agent_hire_receipts WHERE query_id = ? ORDER BY created_at DESC LIMIT ?").all(queryId, limit)
+    : db.prepare("SELECT * FROM agent_hire_receipts ORDER BY created_at DESC LIMIT ?").all(limit);
+  return rows.map((r) => rowToAgentHireReceipt(r as Record<string, unknown>));
+}
+
+export function getAgentHireReceiptById(id: string): AgentHireReceipt | undefined {
+  const row = getDb().prepare("SELECT * FROM agent_hire_receipts WHERE id = ?").get(id) as Record<string, unknown> | undefined;
+  return row ? rowToAgentHireReceipt(row) : undefined;
 }

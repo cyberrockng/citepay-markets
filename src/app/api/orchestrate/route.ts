@@ -151,6 +151,16 @@ export async function POST(req: NextRequest) {
         send({ type: "trace", line: `[Pilot] Reputation read failed (${(e as Error).message?.slice(0, 60) ?? "unknown"}), proceeding without attestation` });
       }
 
+      // ── Agent Commerce Registry: discover registered agents ───────────────────
+      try {
+        const { getAgentRegistry } = await import("@/lib/db");
+        const registeredAgents = getAgentRegistry("active");
+        if (registeredAgents.length > 0) {
+          send({ type: "trace", line: `[AgentExchange] ${registeredAgents.length} registered agents available: ${registeredAgents.map((a) => `${a.name}(trust:${a.trustScore}%)`).join(" | ")}` });
+          send({ type: "registered_agents", agents: registeredAgents.map((a) => ({ id: a.id, name: a.name, specialty: a.specialty, trustScore: a.trustScore, priceMicro: a.priceMicro })) });
+        }
+      } catch { /* non-fatal */ }
+
       send({ type: "trace", line: `[Orchestrator] Checking Circle Gateway balance…` });
 
       const balances = await orchestratorClient.getBalances();
