@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createHash } from "crypto";
 import { ethers } from "ethers";
+import { fetchAndHash } from "@/lib/content-hash";
 
 const CONTRACT = process.env.NEXT_PUBLIC_CONTRACT_ADDRESS || "0x396cf1646EbAeF85ee8428C2d9239C46Ae956085";
 const RPC      = process.env.ARC_RPC_URL || "https://rpc.testnet.arc.network";
@@ -30,10 +31,21 @@ export async function POST(req: Request) {
       ? walletAddress
       : deriveAddress(credentialId || `${name}:${url}`);
 
-    const contentHash  = createHash("sha256")
-      .update(`${name}|${url}|${description || ""}|${category || "general"}`)
-      .digest("hex");
-    const metadataURI  = JSON.stringify({ name, url, category: category || "general", via: "circle-modular-wallets" });
+    // Fetch and hash real URL content — this is what makes challenges meaningful
+    const fetched = await fetchAndHash(url);
+    const contentHash = fetched.hash;
+    const metadataURI = JSON.stringify({
+      name, url, category: category || "general",
+      via: "circle-modular-wallets",
+      contentFetchedAt: fetched.fetchedAt,
+      contentFetchSource: fetched.source,
+    });
+
+    if (fetched.source === "fallback") {
+      console.warn(`[register-creator] URL fetch failed for ${url}: ${fetched.error} — using fallback hash`);
+    } else {
+      console.log(`[register-creator] Content hash from live fetch — ${fetched.contentLength} chars, hash ${contentHash.slice(0, 16)}…`);
+    }
 
     const provider = new ethers.JsonRpcProvider(RPC);
     const signer   = new ethers.Wallet(pk, provider);
@@ -68,14 +80,19 @@ export async function POST(req: Request) {
 
     return NextResponse.json({
       sourceId,
-      txHash:       receipt.hash,
-      blockNumber:  receipt.blockNumber,
-      explorerUrl:  `https://testnet.arcscan.app/tx/${receipt.hash}`,
-      walletAddress: payoutWallet,
+      txHash:             receipt.hash,
+      blockNumber:        receipt.blockNumber,
+      explorerUrl:        `https://testnet.arcscan.app/tx/${receipt.hash}`,
+      walletAddress:      payoutWallet,
       userOpHash,
-      gasSponsored: true,
-      sponsor:      "CitePay agent wallet (backend-sponsored testnet registration)",
-      sdks:         ["circle-modular-wallets", "circle-developer-controlled-wallets"],
+      gasSponsored:       true,
+      sponsor:            "CitePay agent wallet (backend-sponsored testnet registration)",
+      sdks:               ["circle-modular-wallets", "circle-developer-controlled-wallets"],
+      contentHash,
+      contentFetchSource: fetched.source,
+      contentLength:      fetched.contentLength,
+      contentFetchedAt:   fetched.fetchedAt,
+      contentFetchError:  fetched.error,
     });
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err);

@@ -15,6 +15,17 @@ export default function ReceiptPage({ params }: { params: Promise<{ id: string }
   const [loading, setLoading] = useState(true);
   const [shared, setShared] = useState(false);
   const [preimageOpen, setPreimageOpen] = useState(false);
+  const [verifying, setVerifying] = useState(false);
+  const [verifyResult, setVerifyResult] = useState<{
+    verdict: "VERIFIED" | "CHANGED" | "FETCH_FAILED";
+    verdictDetail: string;
+    liveHash: string;
+    contentLength: number;
+    fetchedAt: string;
+    challengeable: boolean;
+    fetchError?: string;
+  } | null>(null);
+  const [challenging, setChallenging] = useState(false);
 
   useEffect(() => {
     fetch(`/api/receipt/${id}`)
@@ -394,35 +405,110 @@ Powered by CitePay Markets`}
           <div className="text-[10px] font-mono text-[#4a4a5e] tracking-widest mb-3">CONTENT INTEGRITY PROOF</div>
           <div className="space-y-2 text-xs font-mono">
             <div className="flex items-start justify-between gap-4">
-              <span className="text-[#8b8b9e] flex-shrink-0">Hash at payment</span>
+              <span className="text-[#8b8b9e] flex-shrink-0">Hash at citation</span>
               <span className="text-[#00ff88] break-all text-right">{receipt.contentHashAtDecision}</span>
             </div>
+            {verifyResult && verifyResult.verdict !== "FETCH_FAILED" && (
+              <div className="flex items-start justify-between gap-4">
+                <span className="text-[#8b8b9e] flex-shrink-0">Live hash</span>
+                <span className={`break-all text-right ${verifyResult.verdict === "VERIFIED" ? "text-[#00ff88]" : "text-orange-400"}`}>
+                  {verifyResult.liveHash}
+                </span>
+              </div>
+            )}
           </div>
-          {receipt.challenged ? (
+
+          {/* Static state */}
+          {receipt.challenged && !verifyResult && (
             <div className="mt-3 flex items-start gap-2 bg-orange-900/10 border border-orange-700/30 rounded-lg px-3 py-2 text-xs">
               <span className="text-orange-400 flex-shrink-0">⚠</span>
               <span className="text-orange-400">Challenge resolved — content was modified after payment. Creator reputation slashed.</span>
             </div>
-          ) : (
+          )}
+          {!receipt.challenged && !verifyResult && (
             <div className="mt-3 flex items-start gap-2 bg-[#00ff88]/5 border border-[#00ff88]/20 rounded-lg px-3 py-2 text-xs">
               <span className="text-[#00ff88] flex-shrink-0">✓</span>
-              <span className="text-[#8b8b9e]">Content integrity verified — creator has not modified this source since payment</span>
+              <span className="text-[#8b8b9e]">Content hash recorded at citation time. Click verify to check current content.</span>
             </div>
           )}
-          {isPay && !receipt.challenged && (
-            <button
-              onClick={async () => {
-                const res = await fetch(`/api/challenge/${receipt.id}`, { method: "POST" });
-                const d = await res.json();
-                if (res.ok) alert(`Challenge resolved: ${d.message}`);
-                else alert(`Challenge failed: ${d.error}`);
-                window.location.reload();
-              }}
-              className="mt-3 text-[10px] font-mono text-[#4a4a5e] hover:text-orange-400 underline transition-colors"
-            >
-              Verify content integrity →
-            </button>
+
+          {/* Live verification result */}
+          {verifyResult && (
+            <div className={`mt-3 rounded-lg px-3 py-2 text-xs border ${
+              verifyResult.verdict === "VERIFIED"
+                ? "bg-[#00ff88]/5 border-[#00ff88]/30"
+                : verifyResult.verdict === "CHANGED"
+                ? "bg-orange-900/10 border-orange-700/30"
+                : "bg-yellow-900/10 border-yellow-700/30"
+            }`}>
+              <div className={`font-bold font-mono mb-1 ${
+                verifyResult.verdict === "VERIFIED" ? "text-[#00ff88]"
+                : verifyResult.verdict === "CHANGED" ? "text-orange-400"
+                : "text-yellow-400"
+              }`}>
+                {verifyResult.verdict === "VERIFIED" ? "✓ VERIFIED"
+                 : verifyResult.verdict === "CHANGED" ? "⚠ CONTENT CHANGED"
+                 : "⚡ FETCH FAILED"}
+              </div>
+              <div className="text-[#8b8b9e]">{verifyResult.verdictDetail}</div>
+              {verifyResult.contentLength > 0 && (
+                <div className="text-[#4a4a5e] mt-1">
+                  {verifyResult.contentLength.toLocaleString()} chars · verified {new Date(verifyResult.fetchedAt).toLocaleTimeString()}
+                </div>
+              )}
+              {verifyResult.fetchError && (
+                <div className="text-yellow-400 mt-1">{verifyResult.fetchError}</div>
+              )}
+            </div>
           )}
+
+          {/* Action buttons */}
+          <div className="mt-3 flex gap-3 flex-wrap">
+            {isPay && !receipt.challenged && (
+              <button
+                onClick={async () => {
+                  setVerifying(true);
+                  setVerifyResult(null);
+                  try {
+                    const res = await fetch(`/api/verify/${receipt.id}`);
+                    const d = await res.json();
+                    setVerifyResult(d);
+                  } catch {
+                    setVerifyResult({ verdict: "FETCH_FAILED", verdictDetail: "Request failed", liveHash: "", contentLength: 0, fetchedAt: new Date().toISOString(), challengeable: false });
+                  } finally {
+                    setVerifying(false);
+                  }
+                }}
+                disabled={verifying}
+                className="text-[10px] font-mono text-[#6366f1] hover:text-indigo-400 underline transition-colors disabled:opacity-50"
+              >
+                {verifying ? "Verifying…" : "Verify now →"}
+              </button>
+            )}
+            {verifyResult?.challengeable && (
+              <button
+                onClick={async () => {
+                  setChallenging(true);
+                  try {
+                    const res = await fetch(`/api/challenge/${receipt.id}`, { method: "POST" });
+                    const d = await res.json();
+                    if (res.ok) {
+                      setVerifyResult((v) => v ? { ...v, challengeable: false } : v);
+                      window.location.reload();
+                    } else {
+                      alert(`Challenge failed: ${d.error}`);
+                    }
+                  } finally {
+                    setChallenging(false);
+                  }
+                }}
+                disabled={challenging}
+                className="text-[10px] font-mono text-orange-400 hover:text-orange-300 underline transition-colors disabled:opacity-50"
+              >
+                {challenging ? "Filing challenge…" : "File challenge →"}
+              </button>
+            )}
+          </div>
         </div>
       )}
     </PageShell>
