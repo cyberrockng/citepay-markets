@@ -36,59 +36,103 @@ export interface ArcCitationStats {
   uniqueCreators: number;
 }
 
-let _cache: { data: ArcCitationStats; ts: number } | null = null;
+export interface ArcCitationEvent {
+  receiptId: number;
+  sourceId: number;
+  agentAddress: string;
+  creatorWallet: string; // payoutWallet from SourceRegistered, not creator from CitationPaid
+  amountMicro: number;
+  txHash: string;
+  blockNumber: number;
+}
+
+interface _ScanResult {
+  stats: ArcCitationStats;
+  events: ArcCitationEvent[];
+  payoutWallets: Map<number, string>;
+}
+
+let _cache: { data: _ScanResult; ts: number } | null = null;
+
+async function _scan(): Promise<_ScanResult> {
+  const client = createPublicClient({ chain: arcTestnet, transport: http(ARC_RPC) });
+  const latest = await client.getBlockNumber();
+
+  let citationCount = 0;
+  let totalAmountMicro = 0n;
+  const agents = new Set<string>();
+  const citedSourceIds = new Set<bigint>();
+  const payoutWallets = new Map<number, string>(); // sourceId → payoutWallet
+  const rawEvents: { receiptId: number; sourceId: number; agent: string; amount: bigint; txHash: string; blockNumber: number }[] = [];
+
+  for (let from = DEPLOY_BLOCK; from <= latest; from += CHUNK + 1n) {
+    const to = from + CHUNK <= latest ? from + CHUNK : latest;
+    const [citationLogs, sourceLogs] = await Promise.all([
+      client.getLogs({ address: CONTRACT, event: CITATION_PAID_EVENT, fromBlock: from, toBlock: to }),
+      client.getLogs({ address: CONTRACT, event: SOURCE_REGISTERED_EVENT, fromBlock: from, toBlock: to }),
+    ]);
+    for (const log of sourceLogs) {
+      if (log.args.sourceId !== undefined && log.args.payoutWallet) {
+        payoutWallets.set(Number(log.args.sourceId), log.args.payoutWallet);
+      }
+    }
+    for (const log of citationLogs) {
+      citationCount++;
+      if (log.args.amount) totalAmountMicro += log.args.amount;
+      if (log.args.agent) agents.add(log.args.agent.toLowerCase());
+      if (log.args.sourceId !== undefined) citedSourceIds.add(log.args.sourceId);
+      rawEvents.push({
+        receiptId: Number(log.args.receiptId ?? 0n),
+        sourceId: Number(log.args.sourceId ?? 0n),
+        agent: String(log.args.agent ?? ""),
+        amount: log.args.amount ?? 0n,
+        txHash: log.transactionHash,
+        blockNumber: Number(log.blockNumber),
+      });
+    }
+  }
+
+  const paidCreatorWallets = new Set<string>();
+  for (const sid of citedSourceIds) {
+    const wallet = payoutWallets.get(Number(sid));
+    if (wallet) paidCreatorWallets.add(wallet.toLowerCase());
+  }
+
+  const events: ArcCitationEvent[] = rawEvents.map((e) => ({
+    receiptId: e.receiptId,
+    sourceId: e.sourceId,
+    agentAddress: e.agent,
+    creatorWallet: payoutWallets.get(e.sourceId) ?? "",
+    amountMicro: Number(e.amount),
+    txHash: e.txHash,
+    blockNumber: e.blockNumber,
+  }));
+
+  return {
+    stats: { citationCount, totalAmountMicro, uniqueAgents: agents.size, uniqueCreators: paidCreatorWallets.size },
+    events,
+    payoutWallets,
+  };
+}
 
 export async function getArcCitationStats(): Promise<ArcCitationStats> {
-  if (_cache && Date.now() - _cache.ts < CACHE_TTL_MS) return _cache.data;
-
+  if (_cache && Date.now() - _cache.ts < CACHE_TTL_MS) return _cache.data.stats;
   try {
-    const client = createPublicClient({ chain: arcTestnet, transport: http(ARC_RPC) });
-    const latest = await client.getBlockNumber();
-
-    let citationCount = 0;
-    let totalAmountMicro = 0n;
-    const agents = new Set<string>();
-    const citedSourceIds = new Set<bigint>();
-    const sourcePayoutWallets = new Map<string, string>(); // sourceId → payoutWallet
-
-    for (let from = DEPLOY_BLOCK; from <= latest; from += CHUNK + 1n) {
-      const to = from + CHUNK <= latest ? from + CHUNK : latest;
-
-      const [citationLogs, sourceLogs] = await Promise.all([
-        client.getLogs({ address: CONTRACT, event: CITATION_PAID_EVENT, fromBlock: from, toBlock: to }),
-        client.getLogs({ address: CONTRACT, event: SOURCE_REGISTERED_EVENT, fromBlock: from, toBlock: to }),
-      ]);
-
-      for (const log of sourceLogs) {
-        if (log.args.sourceId !== undefined && log.args.payoutWallet) {
-          sourcePayoutWallets.set(String(log.args.sourceId), log.args.payoutWallet.toLowerCase());
-        }
-      }
-      for (const log of citationLogs) {
-        citationCount++;
-        if (log.args.amount) totalAmountMicro += log.args.amount;
-        if (log.args.agent) agents.add(log.args.agent.toLowerCase());
-        if (log.args.sourceId !== undefined) citedSourceIds.add(log.args.sourceId);
-      }
-    }
-
-    // Count creators who received at least one citation
-    const paidCreatorWallets = new Set<string>();
-    for (const sid of citedSourceIds) {
-      const wallet = sourcePayoutWallets.get(String(sid));
-      if (wallet) paidCreatorWallets.add(wallet);
-    }
-
-    const data: ArcCitationStats = {
-      citationCount,
-      totalAmountMicro,
-      uniqueAgents: agents.size,
-      uniqueCreators: paidCreatorWallets.size,
-    };
-    _cache = { data, ts: Date.now() };
-    return data;
+    const result = await _scan();
+    _cache = { data: result, ts: Date.now() };
+    return result.stats;
   } catch {
-    // Return cached data if available, else safe fallback (628000 micro = $0.628 USDC)
-    return _cache?.data ?? { citationCount: 292, totalAmountMicro: 628_000n, uniqueAgents: 1, uniqueCreators: 10 };
+    return _cache?.data.stats ?? { citationCount: 292, totalAmountMicro: 628_000n, uniqueAgents: 1, uniqueCreators: 10 };
+  }
+}
+
+export async function getArcCitationEvents(): Promise<ArcCitationEvent[]> {
+  if (_cache && Date.now() - _cache.ts < CACHE_TTL_MS) return _cache.data.events;
+  try {
+    const result = await _scan();
+    _cache = { data: result, ts: Date.now() };
+    return result.events;
+  } catch {
+    return _cache?.data.events ?? [];
   }
 }

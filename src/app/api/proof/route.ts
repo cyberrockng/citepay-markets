@@ -1,16 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
-import { ethers } from "ethers";
 import { getDb } from "@/lib/db";
+import { getArcCitationEvents } from "@/lib/arc-reader";
 
 export const dynamic = "force-dynamic";
 
 const CONTRACT = process.env.NEXT_PUBLIC_CONTRACT_ADDRESS || "0x396cf1646EbAeF85ee8428C2d9239C46Ae956085";
-const RPC      = process.env.ARC_RPC_URL || "https://rpc.testnet.arc.network";
-
-const CITATION_ABI = [
-  "event CitationPaid(uint256 indexed receiptId, uint256 indexed sourceId, address indexed agent, address creator, uint256 amount, bytes32 queryHash, bytes32 evidenceHash)",
-  "event SourceRegistered(uint256 indexed sourceId, address indexed creator, address payoutWallet, bytes32 contentHash, uint256 price, uint256 bond)",
-];
 
 export async function GET(req: NextRequest) {
   const limit = Math.min(
@@ -35,7 +29,6 @@ export async function GET(req: NextRequest) {
     for (const r of rows) sqliteMap.set(r.on_chain_receipt_id, r);
   } catch { /* SQLite cold start — continue with on-chain only */ }
 
-  // Fetch CitationPaid events from Arc Testnet
   let onChainSource = false;
   let receipts: Array<{
     receiptId: number;
@@ -52,58 +45,23 @@ export async function GET(req: NextRequest) {
   }> = [];
 
   try {
-    const provider  = new ethers.JsonRpcProvider(RPC);
-    const contract  = new ethers.Contract(CONTRACT, CITATION_ABI, provider);
-    const latest    = await provider.getBlockNumber();
-    // Scan from contract deploy block to catch all historical events, not just last 500 blocks
-    const DEPLOY_BLOCK = 48_040_000;
-    const CHUNK = 9_000;
-    const filter = contract.filters.CitationPaid();
+    // Uses shared 60s cache — no duplicate RPC scans across routes
+    const events = await getArcCitationEvents();
+    onChainSource = events.length > 0;
 
-    // Fetch all events in chunks to avoid RPC range limits
-    const allCitationEvents: ethers.EventLog[] = [];
-    const allSourceEvents: ethers.EventLog[] = [];
-    const citationFilter = contract.filters.CitationPaid();
-    const sourceFilter   = contract.filters.SourceRegistered();
-
-    for (let from = DEPLOY_BLOCK; from <= latest; from += CHUNK + 1) {
-      const to = Math.min(from + CHUNK, latest);
-      const [citChunk, srcChunk] = await Promise.all([
-        contract.queryFilter(citationFilter, from, to) as Promise<ethers.EventLog[]>,
-        contract.queryFilter(sourceFilter, from, to)   as Promise<ethers.EventLog[]>,
-      ]);
-      allCitationEvents.push(...citChunk);
-      allSourceEvents.push(...srcChunk);
-    }
-
-    // Build sourceId → payoutWallet map from SourceRegistered events
-    // payoutWallet (args[2]) is the actual creator wallet; creator (args[1]) is msg.sender (agent)
-    const payoutWalletMap = new Map<number, string>();
-    for (const e of allSourceEvents) {
-      payoutWalletMap.set(Number(e.args[0]), String(e.args[2]));
-    }
-
-    onChainSource = true;
-    receipts = allCitationEvents
+    receipts = events
       .slice(-limit)
       .reverse()
       .map((e) => {
-        const receiptId = Number(e.args[0]);
-        const sourceId  = Number(e.args[1]);
-        const agent     = String(e.args[2]);
-        const amount    = Number(e.args[4]);
-        const txHash    = e.transactionHash;
-        const sqlite    = sqliteMap.get(receiptId);
-        // Use payoutWallet from SourceRegistered — the actual creator, not msg.sender
-        const creatorWallet = payoutWalletMap.get(sourceId) ?? String(e.args[3]);
+        const sqlite = sqliteMap.get(e.receiptId);
         return {
-          receiptId,
-          sourceId,
-          agentAddress: agent,
-          creatorWallet,
-          amountPaid: amount / 1e6,
-          txHash,
-          arcScanUrl: `https://testnet.arcscan.app/tx/${txHash}`,
+          receiptId: e.receiptId,
+          sourceId: e.sourceId,
+          agentAddress: e.agentAddress,
+          creatorWallet: e.creatorWallet,
+          amountPaid: e.amountMicro / 1e6,
+          txHash: e.txHash,
+          arcScanUrl: `https://testnet.arcscan.app/tx/${e.txHash}`,
           ...(sqlite ? {
             sourceTitle: sqlite.source_title,
             evidenceHash: sqlite.evidence_hash,
