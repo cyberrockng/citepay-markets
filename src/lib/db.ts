@@ -441,6 +441,12 @@ export function getReceiptsByCreatorWallet(wallet: string): Receipt[] {
   return getDb().prepare("SELECT * FROM receipts WHERE creator_wallet = ? ORDER BY created_at DESC").all(wallet).map((r) => rowToReceipt(r as Record<string, unknown>));
 }
 
+export function getSourcesByWallet(wallet: string): Source[] {
+  return getDb().prepare(
+    "SELECT * FROM sources WHERE payout_wallet = ? ORDER BY created_at DESC"
+  ).all(wallet).map((r) => rowToSource(r as Record<string, unknown>));
+}
+
 export function getReceiptsByQueryId(queryId: string): Receipt[] {
   return getDb().prepare("SELECT * FROM receipts WHERE query_id = ? ORDER BY created_at DESC").all(queryId).map((r) => rowToReceipt(r as Record<string, unknown>));
 }
