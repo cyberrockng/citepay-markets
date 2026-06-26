@@ -1,0 +1,19 @@
+{
+  "name": "citepay-mcp",
+  "version": "1.0.0",
+  "description": "MCP server for CitePay Markets — AI agents pay creators in USDC per citation on Arc Testnet",
+  "main": "index.js",
+  "bin": {
+    "citepay-mcp": "./index.js"
+  },
+  "keywords": ["mcp", "citepay", "ai", "payments", "x402", "usdc", "arc", "citation"],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/cyberrockng/citepay-markets"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "files": ["index.js"]
+}

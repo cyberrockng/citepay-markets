@@ -561,7 +561,7 @@ const { data } = await client.pay("https://citepay-markets.vercel.app/api/ask", 
           <div className="text-[#4a4a5e] text-sm font-mono">
             CitePay Markets · Built for{" "}
             <span className="text-[#f0f0f5]">Lepton Hackathon</span>
-            {" "}· Jun 15–29 2026<br />
+            {" "}· Jun 15 – Jul 6 2026<br />
             <span className="text-xs">Demo agent: </span>
             <span className="text-[#6366f1] text-xs">
               {DEMO_AGENT.slice(0, 6)}…{DEMO_AGENT.slice(-4)}
@@ -577,6 +577,7 @@ const { data } = await client.pay("https://citepay-markets.vercel.app/api/ask", 
             <Link href="/leaderboard" className="hover:text-[#f0f0f5] transition-colors">Leaderboard</Link>
             <Link href="/traction"    className="hover:text-[#f0f0f5] transition-colors">Traction</Link>
             <Link href="/creator"     className="hover:text-[#f0f0f5] transition-colors">Creator</Link>
+            <Link href="/agents"      className="hover:text-[#f0f0f5] transition-colors">For Agents</Link>
             <Link href="/revenue"     className="hover:text-[#f0f0f5] transition-colors">Revenue</Link>
             <Link href="/subscribe"   className="hover:text-[#f0f0f5] transition-colors">Subscribe</Link>
             <Link href="/audit"       className="hover:text-[#f0f0f5] transition-colors">Audit</Link>

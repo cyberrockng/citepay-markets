@@ -469,6 +469,184 @@ function EarningsDashboard({ wallet }: { wallet: string }) {
   );
 }
 
+// ── RSS Feed registration form ────────────────────────────────────────────────
+
+function RssForm({ onRegistered }: { onRegistered: (wallet: string) => void }) {
+  const [form, setForm] = useState({
+    feedUrl: "", creatorName: "", handle: "", wallet: "",
+    category: "Research", price: 1500,
+  });
+  const [step, setStep] = useState<"idle" | "loading" | "done" | "error">("idle");
+  const [result, setResult] = useState<{
+    registered: number; failed: number; message: string;
+    sources: Array<{ id: string; title: string; url: string; error?: string }>;
+  } | null>(null);
+  const [error, setError] = useState("");
+
+  function set(k: keyof typeof form, v: string | number) {
+    setForm((f) => ({ ...f, [k]: v }));
+  }
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!form.feedUrl || !form.creatorName || !form.wallet) return;
+    setStep("loading");
+    setError("");
+    try {
+      const res = await fetch("/api/sources/register-rss", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          feedUrl:      form.feedUrl,
+          creatorName:  form.creatorName,
+          handle:       form.handle || form.creatorName,
+          payoutWallet: form.wallet,
+          category:     form.category,
+          price:        form.price,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "Registration failed");
+      setResult(data);
+      setStep("done");
+      if (data.registered > 0) onRegistered(form.wallet);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+      setStep("error");
+    }
+  }
+
+  const busy = step === "loading";
+
+  return (
+    <div className="bg-[#111118] border border-[#1e1e2e] rounded-2xl p-6" id="rss">
+      <div className="text-[10px] font-mono text-[#4a4a5e] tracking-widest mb-4">REGISTER YOUR ENTIRE FEED</div>
+
+      {step === "done" && result ? (
+        <div className="space-y-4">
+          <div className="flex items-center gap-2 text-[#00ff88] font-semibold">
+            <span className="text-lg">✓</span>
+            <span>{result.message}</span>
+          </div>
+          <div className="space-y-2 max-h-64 overflow-y-auto">
+            {result.sources.filter((s) => !s.error).map((s) => (
+              <div key={s.id} className="flex items-center gap-2 px-3 py-2 bg-[#0a0a0f] border border-[#1e1e2e] rounded-lg text-xs font-mono">
+                <span className="text-[#00ff88]">✓</span>
+                <span className="text-[#f0f0f5] flex-1 truncate">{s.title}</span>
+                <a href={`/source/${s.id}`} className="text-[#6366f1] hover:text-indigo-300 shrink-0">view →</a>
+              </div>
+            ))}
+            {result.sources.filter((s) => s.error).map((s, i) => (
+              <div key={i} className="flex items-center gap-2 px-3 py-2 bg-[#0a0a0f] border border-red-900/30 rounded-lg text-xs font-mono">
+                <span className="text-red-400">✗</span>
+                <span className="text-[#8b8b9e] flex-1 truncate">{s.title}</span>
+                <span className="text-red-400 text-[10px]">fetch failed</span>
+              </div>
+            ))}
+          </div>
+          <button
+            onClick={() => { setStep("idle"); setResult(null); }}
+            className="text-sm font-mono text-[#6366f1] hover:text-indigo-300 underline"
+          >
+            Register another feed
+          </button>
+        </div>
+      ) : (
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label className="block text-xs font-mono text-[#8b8b9e] mb-1">RSS / Atom Feed URL *</label>
+            <input
+              type="url"
+              placeholder="https://your-blog.com/feed.xml"
+              value={form.feedUrl}
+              onChange={(e) => set("feedUrl", e.target.value)}
+              required
+              className="w-full bg-[#0a0a0f] border border-[#1e1e2e] rounded-lg px-3 py-2 text-sm font-mono text-[#f0f0f5] placeholder-[#2e2e3e] focus:outline-none focus:border-[#6366f1] transition-colors"
+            />
+            <p className="text-[10px] text-[#4a4a5e] mt-1">
+              We parse your feed and fingerprint up to 20 articles — all registered at once
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-mono text-[#8b8b9e] mb-1">Your Name *</label>
+              <input
+                type="text"
+                placeholder="Ada Lovelace"
+                value={form.creatorName}
+                onChange={(e) => set("creatorName", e.target.value)}
+                required
+                className="w-full bg-[#0a0a0f] border border-[#1e1e2e] rounded-lg px-3 py-2 text-sm font-mono text-[#f0f0f5] placeholder-[#2e2e3e] focus:outline-none focus:border-[#6366f1] transition-colors"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-mono text-[#8b8b9e] mb-1">Handle</label>
+              <input
+                type="text"
+                placeholder="@ada"
+                value={form.handle}
+                onChange={(e) => set("handle", e.target.value)}
+                className="w-full bg-[#0a0a0f] border border-[#1e1e2e] rounded-lg px-3 py-2 text-sm font-mono text-[#f0f0f5] placeholder-[#2e2e3e] focus:outline-none focus:border-[#6366f1] transition-colors"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-xs font-mono text-[#8b8b9e] mb-1">Payout Wallet *</label>
+            <input
+              type="text"
+              placeholder="0x…"
+              value={form.wallet}
+              onChange={(e) => set("wallet", e.target.value)}
+              required
+              className="w-full bg-[#0a0a0f] border border-[#1e1e2e] rounded-lg px-3 py-2 text-sm font-mono text-[#f0f0f5] placeholder-[#2e2e3e] focus:outline-none focus:border-[#6366f1] transition-colors"
+            />
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-mono text-[#8b8b9e] mb-1">Category</label>
+              <select
+                value={form.category}
+                onChange={(e) => set("category", e.target.value)}
+                className="w-full bg-[#0a0a0f] border border-[#1e1e2e] rounded-lg px-3 py-2 text-sm font-mono text-[#f0f0f5] focus:outline-none focus:border-[#6366f1] transition-colors"
+              >
+                {CATEGORIES.map((c) => <option key={c}>{c}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs font-mono text-[#8b8b9e] mb-1">
+                Price per citation <span className="text-[#4a4a5e]">({(form.price / 1_000_000).toFixed(4)} USDC)</span>
+              </label>
+              <input
+                type="range" min={500} max={10000} step={250}
+                value={form.price}
+                onChange={(e) => set("price", Number(e.target.value))}
+                className="w-full accent-indigo-500"
+              />
+            </div>
+          </div>
+
+          {error && (
+            <div className="bg-red-900/20 border border-red-800/40 rounded-lg px-4 py-3 text-sm text-red-400 font-mono">
+              {error}
+            </div>
+          )}
+
+          <button
+            type="submit"
+            disabled={busy}
+            className="w-full bg-[#6366f1] hover:bg-indigo-500 disabled:opacity-50 text-white font-semibold py-3 rounded-xl transition-colors text-sm"
+          >
+            {busy ? "Fetching and registering articles…" : "Register all articles from feed →"}
+          </button>
+        </form>
+      )}
+    </div>
+  );
+}
+
 // ── Wallet lookup bar ─────────────────────────────────────────────────────────
 
 function WalletLookup({ onWallet }: { onWallet: (w: string) => void }) {
@@ -496,6 +674,7 @@ function WalletLookup({ onWallet }: { onWallet: (w: string) => void }) {
 
 export default function CreatorPage() {
   const [activeWallet, setActiveWallet] = useState<string | null>(null);
+  const [regTab, setRegTab] = useState<"url" | "rss">("url");
 
   return (
     <div className="min-h-screen bg-[#0a0a0f] text-[#f0f0f5]">
@@ -504,18 +683,17 @@ export default function CreatorPage() {
 
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-2xl font-bold text-[#f0f0f5] mb-2">Creator Dashboard</h1>
+          <h1 className="text-2xl font-bold text-[#f0f0f5] mb-2">Get paid when AI cites your work</h1>
           <p className="text-sm text-[#8b8b9e] leading-relaxed">
-            Register your content and earn USDC every time an AI agent cites it.
-            Your content is fingerprinted at registration — if you change it after
-            being cited, agents can verify the hash and file a challenge.
+            Register your articles, research, or documentation. Every time an AI agent cites
+            your work, you earn USDC — instantly, on Arc Testnet. No approval needed.
           </p>
         </div>
 
         {/* How it works */}
         <div className="grid grid-cols-3 gap-3 mb-8">
           {[
-            { n: "1", title: "Register", desc: "Paste your URL. We fetch and fingerprint the content." },
+            { n: "1", title: "Register", desc: "Paste your URL or RSS feed. We fingerprint the content." },
             { n: "2", title: "Get cited", desc: "Agents evaluate your source for relevance and pay you." },
             { n: "3", title: "Earn USDC", desc: "Payment flows to your wallet on Arc Testnet instantly." },
           ].map((s) => (
@@ -529,8 +707,36 @@ export default function CreatorPage() {
           ))}
         </div>
 
+        {/* Registration tabs */}
+        <div className="flex gap-1 mb-4 bg-[#111118] border border-[#1e1e2e] rounded-xl p-1">
+          <button
+            onClick={() => setRegTab("url")}
+            className={`flex-1 py-2 text-xs font-mono font-semibold rounded-lg transition-colors ${
+              regTab === "url"
+                ? "bg-[#6366f1] text-white"
+                : "text-[#4a4a5e] hover:text-[#8b8b9e]"
+            }`}
+          >
+            Single URL
+          </button>
+          <button
+            onClick={() => setRegTab("rss")}
+            className={`flex-1 py-2 text-xs font-mono font-semibold rounded-lg transition-colors ${
+              regTab === "rss"
+                ? "bg-[#6366f1] text-white"
+                : "text-[#4a4a5e] hover:text-[#8b8b9e]"
+            }`}
+          >
+            RSS Feed <span className="ml-1 text-[9px] px-1.5 py-0.5 rounded bg-[#00ff88]/20 text-[#00ff88] font-mono">NEW</span>
+          </button>
+        </div>
+
         {/* Registration */}
-        <RegisterForm onRegistered={(wallet) => setActiveWallet(wallet)} />
+        {regTab === "url" ? (
+          <RegisterForm onRegistered={(wallet) => setActiveWallet(wallet)} />
+        ) : (
+          <RssForm onRegistered={(wallet) => setActiveWallet(wallet)} />
+        )}
 
         {/* Earnings */}
         <div className="mt-8">
