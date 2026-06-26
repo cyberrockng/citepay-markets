@@ -294,85 +294,51 @@ export async function runBuyerAgent(
 }
 
 /**
- * Post-synthesis contribution scoring.
- * Called AFTER the answer is synthesised — scores how much each PAY'd source
- * actually contributed to the final text, then applies floor/cap multipliers
- * so high-value sources earn a premium and peripheral ones earn a floor wage.
+ * Post-synthesis contribution scoring — inline citation counting.
  *
- * Floor  : 0.25× listed price  — source got cited, earns something
- * Cap    : 1.50× listed price  — primary source, earns a bonus
- * Neutral: 1.00× listed price  — equal contribution (weight = 1/N)
+ * Counts how many times each source is cited as [Source Title] in the
+ * synthesised answer. More mentions = larger share of the creator budget.
+ *
+ * Every PAY'd source gets a minimum count of 1 — the agent decided it was
+ * worth paying for, so it contributed something even if not directly quoted.
+ *
+ * Weights sum to 1.0. Payments sum exactly to totalCreatorBudget.
+ * No LLM call needed — objective, fast, tamper-resistant.
  */
-export async function scoreContributionWeights(
+export function scoreContributionWeights(
   answer: string,
   payDecisions: AgentDecision[]
-): Promise<void> {
+): void {
   if (payDecisions.length === 0) return;
 
-  let weights: number[];
+  // Count [Source Title] occurrences for each PAY'd source (case-insensitive)
+  const counts = payDecisions.map((d) => {
+    const escaped = d.source.title.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const matches = answer.match(new RegExp(`\\[${escaped}\\]`, "gi"));
+    // Minimum 1 — agent paid for it, so it contributed something
+    return Math.max(1, matches?.length ?? 0);
+  });
 
-  if (payDecisions.length === 1) {
-    weights = [1.0];
-  } else {
-    const sourceList = payDecisions
-      .map((d, i) =>
-        `[S${i + 1}] ${d.source.title}: ${(d.excerptUsed || d.source.description || "").slice(0, 200)}`
-      )
-      .join("\n");
+  const totalCounts = counts.reduce((s, c) => s + c, 0);
 
-    const prompt = `You are scoring how much each cited source contributed to this synthesised answer.
-
-Answer: "${answer.slice(0, 800)}"
-
-Sources cited:
-${sourceList}
-
-Score each source's contribution from 0.0 to 1.0. All weights must sum exactly to 1.0.
-- Core source that provided the primary answer: 0.50–0.80
-- Supporting source that added important context: 0.15–0.35
-- Peripheral source barely referenced: 0.02–0.10
-
-Return ONLY valid JSON with exactly ${payDecisions.length} weights: {"weights": [w1, w2, ...]}`;
-
-    try {
-      const msg = await client.messages.create({
-        model: "claude-haiku-4-5-20251001",
-        max_tokens: 128,
-        messages: [{ role: "user", content: prompt }],
-      });
-      const text = (msg.content[0] as { text: string }).text;
-      const parsed = JSON.parse(text.match(/\{[\s\S]*\}/)?.[0] || "{}");
-      const raw: number[] = Array.isArray(parsed.weights) ? parsed.weights : [];
-
-      if (raw.length !== payDecisions.length) throw new Error("length mismatch");
-
-      const total = raw.reduce((s, w) => s + Math.max(0, w), 0);
-      if (total <= 0) throw new Error("zero sum");
-
-      weights = raw.map((w) => Math.round((Math.max(0, w) / total) * 10000) / 10000);
-    } catch {
-      // Fallback: proportional to pre-synthesis relevance scores
-      const totalRel = payDecisions.reduce((s, d) => s + d.scores.relevance, 0);
-      weights = payDecisions.map((d) =>
-        totalRel > 0
-          ? Math.round((d.scores.relevance / totalRel) * 10000) / 10000
-          : Math.round((1 / payDecisions.length) * 10000) / 10000
-      );
-    }
-  }
+  // Compute weights proportional to citation count
+  const weights = counts.map((c) =>
+    Math.round((c / totalCounts) * 10000) / 10000
+  );
 
   // Split total creator budget proportionally — weights sum to 1.0, payments sum to totalBudget
   const totalBudget = payDecisions.reduce((s, d) => s + d.source.price, 0);
   for (let i = 0; i < payDecisions.length; i++) {
     const d = payDecisions[i];
-    d.contributionWeight = Math.round(weights[i] * 10000) / 10000;
+    d.contributionWeight = weights[i];
     d.weightedAmount    = Math.round(totalBudget * weights[i]);
   }
+
   // Correct rounding drift so payments sum exactly to totalBudget
   const allocated = payDecisions.reduce((s, d) => s + (d.weightedAmount ?? 0), 0);
   const drift = totalBudget - allocated;
   if (drift !== 0) {
-    const topIdx = weights.indexOf(Math.max(...weights));
+    const topIdx = counts.indexOf(Math.max(...counts));
     payDecisions[topIdx].weightedAmount = (payDecisions[topIdx].weightedAmount ?? 0) + drift;
   }
 }

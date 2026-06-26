@@ -166,10 +166,9 @@ Provide a concise answer with inline citations.`,
       answer = `Based on ${paidDecisionsForSynth.length} cited source(s): ${paidDecisionsForSynth.map((d) => d.source.title).join(", ")}.`;
     }
 
-    // ── Step 6.5: Post-synthesis VCS scoring — overrides pre-synthesis weights ─
-    // Uses the actual answer text to score how much each source contributed.
-    // Applies floor (0.25×) and cap (1.5×) multipliers to per-source prices.
-    await scoreContributionWeights(answer, paidDecisionsForSynth);
+    // ── Step 6.5: VCS — count [Source Title] mentions in the answer ───────────
+    // Objective inline citation counting: more mentions = larger budget share.
+    scoreContributionWeights(answer, paidDecisionsForSynth);
   }
 
   // ── Step 7: Process each decision (now with final post-synthesis amounts) ──
