@@ -133,6 +133,44 @@ export default function ReceiptPage({ params }: { params: Promise<{ id: string }
         </div>
       </div>
 
+      {/* VCS Badge — Verifiable Contribution Score */}
+      {isPay && receipt.contributionWeight != null && (
+        <div className="mb-4">
+          {(() => {
+            const w = receipt.contributionWeight;
+            const pct = Math.round(w * 100);
+            const isPrimary  = pct >= 50;
+            const isSupport  = pct >= 20 && pct < 50;
+            const role       = isPrimary ? "Primary Source" : isSupport ? "Supporting Source" : "Peripheral Source";
+            const roleColor  = isPrimary ? "text-[#00ff88] border-[#00ff88]/40 bg-[#00ff88]/5"
+                             : isSupport ? "text-[#6366f1] border-[#6366f1]/40 bg-[#6366f1]/5"
+                             : "text-[#4a4a5e] border-[#1e1e2e] bg-[#0a0a0f]";
+            const barColor   = isPrimary ? "bg-[#00ff88]" : isSupport ? "bg-[#6366f1]" : "bg-[#2e2e3e]";
+            return (
+              <div className={`rounded-xl p-5 border ${roleColor}`}>
+                <div className="flex items-center justify-between mb-3">
+                  <div>
+                    <div className="text-[10px] font-mono tracking-widest opacity-70 mb-1">VERIFIABLE CONTRIBUTION SCORE</div>
+                    <div className="text-lg font-bold">{role}</div>
+                  </div>
+                  <div className="text-right">
+                    <div className="text-3xl font-bold font-mono">{pct}%</div>
+                    <div className="text-[10px] opacity-70">of answer</div>
+                  </div>
+                </div>
+                <div className="h-2 bg-black/20 rounded-full overflow-hidden">
+                  <div className={`h-full rounded-full ${barColor} transition-all`} style={{ width: `${pct}%` }} />
+                </div>
+                <div className="flex items-center justify-between mt-2 text-[10px] opacity-70">
+                  <span>Scored from synthesised answer · floor 25% · cap 150% of listed price</span>
+                  <span className="font-mono">${(receipt.amountPaid / 1e6).toFixed(4)} USDC paid</span>
+                </div>
+              </div>
+            );
+          })()}
+        </div>
+      )}
+
       {/* Summary Card */}
       <div className="bg-[#111118] rounded-xl p-6 border border-[#1e1e2e] mb-4" style={{ borderLeftWidth: "3px", borderLeftColor: accent }}>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 text-sm">
@@ -148,10 +186,10 @@ export default function ReceiptPage({ params }: { params: Promise<{ id: string }
             accent={isPay ? "text-[#00ff88]" : "text-[#8b8b9e]"}
             mono={isPay}
           />
-          {isPay && receipt.evidencePreimage?.scoreInputs?.contributionWeight !== undefined && (
+          {isPay && receipt.contributionWeight != null && (
             <DataRow
               label="Contribution Weight"
-              value={`${(receipt.evidencePreimage.scoreInputs.contributionWeight * 100).toFixed(1)}% of creator budget (relevance-weighted)`}
+              value={`${(receipt.contributionWeight * 100).toFixed(1)}% — post-synthesis VCS`}
               accent="text-[#a78bfa]"
               mono
             />

@@ -21,6 +21,8 @@ export interface Source {
   createdAt: string;
   onChainId?: number | null; // CitePayMarket.sol sourceId once registered
   category?: string; // e.g. "Protocol", "Research", "Infrastructure", "AI/Agents"
+  avgContributionWeight?: number; // running average of post-synthesis contribution scores (0–1)
+  totalContributionQueries?: number; // number of PAY decisions that contributed to avg
 }
 
 export interface ScoreBreakdown {
@@ -101,6 +103,7 @@ export interface Receipt {
   onChainReceiptId?: number | null; // CitePayMarket.sol receiptId
   onChainTxHash?: string | null;    // tx that wrote to the contract
   purposeCode?: string | null;      // ISO-style: CITE | QUERY_FEE | AGENT_REWARD | BOND_SLASH | REFUSE | BLOCKED
+  contributionWeight?: number | null; // post-synthesis VCS score: fraction of answer this source contributed (0–1)
 }
 
 export interface QueryRecord {

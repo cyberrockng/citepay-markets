@@ -112,6 +112,18 @@ function migrate(db: Database.Database) {
       ('active_agents', 0);
   `);
 
+  // ── Additive migrations (safe to run on existing DBs) ──────────────────────
+  const receiptCols = (db.prepare("PRAGMA table_info(receipts)").all() as { name: string }[]).map((c) => c.name);
+  if (!receiptCols.includes("contribution_weight")) {
+    db.exec("ALTER TABLE receipts ADD COLUMN contribution_weight REAL DEFAULT NULL");
+  }
+
+  const sourceCols = (db.prepare("PRAGMA table_info(sources)").all() as { name: string }[]).map((c) => c.name);
+  if (!sourceCols.includes("avg_contribution_weight")) {
+    db.exec("ALTER TABLE sources ADD COLUMN avg_contribution_weight REAL NOT NULL DEFAULT 0");
+    db.exec("ALTER TABLE sources ADD COLUMN total_contribution_queries INTEGER NOT NULL DEFAULT 0");
+  }
+
   // ── Bounties ────────────────────────────────────────────────────────────────
   db.exec(`
     CREATE TABLE IF NOT EXISTS bounties (
@@ -336,10 +348,26 @@ export function getSourceById(id: string): Source | null {
   return row ? rowToSource(row) : null;
 }
 
-export function updateSourceStats(id: string, decision: "PAY" | "REFUSE" | "SKIP" | "BLOCKED_BY_POLICY"): void {
+export function updateSourceStats(
+  id: string,
+  decision: "PAY" | "REFUSE" | "SKIP" | "BLOCKED_BY_POLICY",
+  contributionWeight?: number
+): void {
   const db = getDb();
   if (decision === "PAY") {
-    db.prepare("UPDATE sources SET paid_count = paid_count + 1, reputation = reputation + 1 WHERE id = ?").run(id);
+    if (contributionWeight != null && contributionWeight >= 0) {
+      // Rolling average: avg = (avg * n + weight) / (n + 1)
+      db.prepare(`
+        UPDATE sources SET
+          paid_count = paid_count + 1,
+          reputation = reputation + 1,
+          avg_contribution_weight = (avg_contribution_weight * total_contribution_queries + ?) / (total_contribution_queries + 1),
+          total_contribution_queries = total_contribution_queries + 1
+        WHERE id = ?
+      `).run(contributionWeight, id);
+    } else {
+      db.prepare("UPDATE sources SET paid_count = paid_count + 1, reputation = reputation + 1 WHERE id = ?").run(id);
+    }
     void redisIncrSourcePaid(id);
   } else if (decision === "REFUSE") {
     db.prepare("UPDATE sources SET refused_count = refused_count + 1, reputation = reputation - 1 WHERE id = ?").run(id);
@@ -388,6 +416,8 @@ function rowToSource(r: Record<string, unknown>): Source {
     createdAt: r.created_at as string,
     onChainId: (r.on_chain_id as number | null) ?? null,
     category: (r.category as string | null) ?? "General",
+    avgContributionWeight: (r.avg_contribution_weight as number | null) ?? 0,
+    totalContributionQueries: (r.total_contribution_queries as number | null) ?? 0,
   };
 }
 
@@ -400,8 +430,8 @@ export function insertReceipt(r: Receipt): void {
       evidence_hash, evidence_preimage, content_hash_at_decision, scores, reason,
       tx_hash, payment_status, policy_profile, policy_rules_passed, policy_rules_failed,
       policy_reason, agent_signature, budget_before, budget_after, challenged, created_at,
-      purpose_code)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      purpose_code, contribution_weight)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).run(
     r.id, r.sourceId, r.queryId, r.agentAddress, r.creatorWallet,
     r.decision, r.query, r.queryHash, r.sourceTitle, r.sourceUrl, r.amountPaid,
@@ -412,7 +442,8 @@ export function insertReceipt(r: Receipt): void {
     r.policyRulesFailed ? JSON.stringify(r.policyRulesFailed) : null,
     r.policyReason ?? null, r.agentSignature ?? null,
     r.budgetBefore, r.budgetAfter, r.challenged ? 1 : 0, r.createdAt,
-    r.purposeCode ?? null
+    r.purposeCode ?? null,
+    r.contributionWeight ?? null
   );
   // Durable write to Neon — fire-and-forget, never blocks the response
   persistReceipt({
@@ -526,6 +557,7 @@ function rowToReceipt(r: Record<string, unknown>): Receipt {
     onChainReceiptId: (r.on_chain_receipt_id as number | null) ?? null,
     onChainTxHash: (r.on_chain_tx_hash as string | null) ?? null,
     purposeCode: (r.purpose_code as string | null) ?? null,
+    contributionWeight: (r.contribution_weight as number | null) ?? null,
   };
 }
 

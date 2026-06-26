@@ -94,6 +94,50 @@ export default function SourcePage({ params }: { params: Promise<{ id: string }>
         <StatCard label="Refusals" value={refused.length} accent="text-red-400" />
       </div>
 
+      {/* VCS — Avg Contribution Quality */}
+      {(source.totalContributionQueries ?? 0) > 0 && (
+        <div className="bg-[#111118] border border-[#1e1e2e] rounded-xl p-5 mb-6">
+          <div className="flex items-center justify-between mb-3">
+            <div>
+              <div className="text-[10px] font-mono text-[#4a4a5e] tracking-widest mb-1">VERIFIABLE CONTRIBUTION SCORE</div>
+              <div className="text-sm font-semibold text-[#f0f0f5]">
+                {(() => {
+                  const avg = (source.avgContributionWeight ?? 0) * 100;
+                  if (avg >= 50) return "Primary Source";
+                  if (avg >= 20) return "Supporting Source";
+                  return "Peripheral Source";
+                })()}
+              </div>
+              <div className="text-[10px] text-[#4a4a5e] mt-0.5">
+                Avg across {source.totalContributionQueries} citation{source.totalContributionQueries !== 1 ? "s" : ""} · post-synthesis scored
+              </div>
+            </div>
+            <div className="text-right">
+              <div className={`text-2xl font-bold font-mono ${
+                (source.avgContributionWeight ?? 0) >= 0.5 ? "text-[#00ff88]"
+                : (source.avgContributionWeight ?? 0) >= 0.2 ? "text-[#6366f1]"
+                : "text-[#4a4a5e]"
+              }`}>
+                {Math.round((source.avgContributionWeight ?? 0) * 100)}%
+              </div>
+            </div>
+          </div>
+          <div className="h-2 bg-[#0a0a0f] rounded-full overflow-hidden">
+            <div
+              className={`h-full rounded-full transition-all ${
+                (source.avgContributionWeight ?? 0) >= 0.5 ? "bg-[#00ff88]"
+                : (source.avgContributionWeight ?? 0) >= 0.2 ? "bg-[#6366f1]"
+                : "bg-[#2e2e3e]"
+              }`}
+              style={{ width: `${Math.round((source.avgContributionWeight ?? 0) * 100)}%` }}
+            />
+          </div>
+          <div className="text-[10px] text-[#4a4a5e] mt-2">
+            50%+ = primary source · 20–49% = supporting · below 20% = peripheral
+          </div>
+        </div>
+      )}
+
       {/* Source Metadata */}
       <div className="bg-[#111118] rounded-xl p-6 border border-[#1e1e2e] mb-6">
         <h2 className="font-semibold mb-5 text-[#f0f0f5]">Source Metadata</h2>

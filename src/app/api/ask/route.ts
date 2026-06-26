@@ -4,7 +4,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { build402Response, verifyGatewayPayment, QUERY_FEE_MICRO, computeActualCharge } from "@/lib/x402";
 import { isReplayed, recordSignature } from "@/lib/replay-guard";
 import { validateAndConsume } from "@/lib/subscription";
-import { runBuyerAgent, getAgentAddress } from "@/lib/agent";
+import { runBuyerAgent, getAgentAddress, scoreContributionWeights } from "@/lib/agent";
 import { buildEvidencePreimage, hashEvidence, sha256, parseUSDC } from "@/lib/evidence";
 import { payCreator } from "@/lib/payments";
 import { anchorPAY, anchorBLOCKED, checkAnchorReady, createMandateOnChain, closeMandateOnChain } from "@/lib/anchor";
@@ -136,7 +136,43 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Agent error", detail: String(err) }, { status: 500 });
   }
 
-  // ── Step 6: Process each decision ─────────────────────────────────────────
+  // ── Step 6: Synthesise answer FIRST so contribution weights use real output ─
+  const paidDecisionsForSynth = decisions.filter((d) => d.decision === "PAY");
+  let answer = "No sources were paid for this query.";
+
+  if (paidDecisionsForSynth.length > 0) {
+    const citationContext = paidDecisionsForSynth
+      .map((d) => `[${d.source.title}](${d.source.url}): ${d.excerptUsed}`)
+      .join("\n");
+    try {
+      const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+      const resp = await client.messages.create({
+        model: "claude-haiku-4-5-20251001",
+        max_tokens: 512,
+        messages: [{
+          role: "user",
+          content: `Answer this question using ONLY the provided cited sources. Cite each source inline like [Source Title].
+
+Question: ${query}
+
+Sources:
+${citationContext}
+
+Provide a concise answer with inline citations.`,
+        }],
+      });
+      answer = (resp.content[0] as { text: string }).text;
+    } catch {
+      answer = `Based on ${paidDecisionsForSynth.length} cited source(s): ${paidDecisionsForSynth.map((d) => d.source.title).join(", ")}.`;
+    }
+
+    // ── Step 6.5: Post-synthesis VCS scoring — overrides pre-synthesis weights ─
+    // Uses the actual answer text to score how much each source contributed.
+    // Applies floor (0.25×) and cap (1.5×) multipliers to per-source prices.
+    await scoreContributionWeights(answer, paidDecisionsForSynth);
+  }
+
+  // ── Step 7: Process each decision (now with final post-synthesis amounts) ──
   const receiptIds: string[] = [];
   let totalPaid = 0;
   let budgetRemaining = budgetMicro;
@@ -223,6 +259,7 @@ export async function POST(req: NextRequest) {
       challenged: false,
       createdAt: new Date().toISOString(),
       purposeCode,
+      contributionWeight: d.contributionWeight ?? null,
     };
 
     insertReceipt(receipt);
@@ -264,7 +301,7 @@ export async function POST(req: NextRequest) {
         console.log(`[anchor] PAY receipt ${receiptId} → on-chain #${anchor.onChainReceiptId} (${anchor.txHash})`);
       }
     }
-    updateSourceStats(d.source.id, d.decision);
+    updateSourceStats(d.source.id, d.decision, d.contributionWeight ?? undefined);
     void redisIncrDecision(d.decision, d.decision === "PAY" ? (d.weightedAmount ?? d.source.price) : 0);
     receiptIds.push(receiptId);
     receiptsOut.push({
@@ -299,44 +336,10 @@ export async function POST(req: NextRequest) {
   // Close session mandate — records final tally (fire-and-forget, don't block response)
   if (mandateId) void closeMandateOnChain(mandateId);
 
-  // ── Step 7: Generate answer ───────────────────────────────────────────────
-  const paidSources = decisions.filter((d) => d.decision === "PAY");
-  let answer = "No sources were paid for this query.";
-
-  if (paidSources.length > 0) {
-    const citationContext = paidSources
-      .map((d) => `[${d.source.title}](${d.source.url}): ${d.excerptUsed}`)
-      .join("\n");
-
-    try {
-      const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
-      const resp = await client.messages.create({
-        model: "claude-haiku-4-5-20251001",
-        max_tokens: 512,
-        messages: [
-          {
-            role: "user",
-            content: `Answer this question using ONLY the provided cited sources. Cite each source inline like [Source Title].
-
-Question: ${query}
-
-Sources:
-${citationContext}
-
-Provide a concise answer with inline citations.`,
-          },
-        ],
-      });
-      answer = (resp.content[0] as { text: string }).text;
-    } catch {
-      answer = `Based on ${paidSources.length} cited source(s): ${paidSources.map((d) => d.source.title).join(", ")}.`;
-    }
-  }
-
   // ── Step 8: Update query record ───────────────────────────────────────────
   updateQuery(queryId, { status: "completed", answer, receiptIds, totalPaid });
 
-  const sourcesCharged = paidSources.length;
+  const sourcesCharged = paidDecisionsForSynth.length;
   const actualChargeMicro = computeActualCharge(sourcesCharged);
 
   return NextResponse.json({

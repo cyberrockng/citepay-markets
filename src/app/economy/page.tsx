@@ -32,6 +32,8 @@ interface Source {
   reputation: number;
   category: string;
   onChainId: number | null;
+  avgContributionWeight?: number;
+  totalContributionQueries?: number;
 }
 
 interface Agent {
@@ -155,10 +157,19 @@ function TopSources({ sources }: { sources: Source[] }) {
                     {s.category}
                   </span>
                 </div>
-                <div className="flex items-center gap-3 mt-0.5">
+                <div className="flex items-center gap-3 mt-0.5 flex-wrap">
                   <span className="text-[10px] font-mono text-[#4a4a5e]">{s.creatorName}</span>
                   {s.onChainId && (
                     <span className="text-[10px] font-mono text-[#00ff88]">on-chain ✓</span>
+                  )}
+                  {(s.totalContributionQueries ?? 0) > 0 && (
+                    <span className={`text-[10px] font-mono font-bold ${
+                      (s.avgContributionWeight ?? 0) >= 0.5 ? "text-[#00ff88]"
+                      : (s.avgContributionWeight ?? 0) >= 0.2 ? "text-[#a78bfa]"
+                      : "text-[#4a4a5e]"
+                    }`}>
+                      VCS {Math.round((s.avgContributionWeight ?? 0) * 100)}%
+                    </span>
                   )}
                 </div>
                 <Bar pct={(s.paidCount / maxCite) * 100} color="bg-[#6366f1]" />
