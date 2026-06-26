@@ -162,7 +162,7 @@ export default function ReceiptPage({ params }: { params: Promise<{ id: string }
                   <div className={`h-full rounded-full ${barColor} transition-all`} style={{ width: `${pct}%` }} />
                 </div>
                 <div className="flex items-center justify-between mt-2 text-[10px] opacity-70">
-                  <span>Scored from synthesised answer · floor 25% · cap 150% of listed price</span>
+                  <span>Share of total creator budget · all sources sum to 100%</span>
                   <span className="font-mono">${(receipt.amountPaid / 1e6).toFixed(4)} USDC paid</span>
                 </div>
               </div>

@@ -361,13 +361,18 @@ Return ONLY valid JSON with exactly ${payDecisions.length} weights: {"weights": 
     }
   }
 
-  // Apply floor (0.25×) and cap (1.5×) per-source multipliers
-  const N = payDecisions.length;
+  // Split total creator budget proportionally — weights sum to 1.0, payments sum to totalBudget
+  const totalBudget = payDecisions.reduce((s, d) => s + d.source.price, 0);
   for (let i = 0; i < payDecisions.length; i++) {
     const d = payDecisions[i];
-    const weight = weights[i];
-    const multiplier = Math.min(1.5, Math.max(0.25, weight * N));
-    d.contributionWeight = Math.round(weight * 10000) / 10000;
-    d.weightedAmount    = Math.round(d.source.price * multiplier);
+    d.contributionWeight = Math.round(weights[i] * 10000) / 10000;
+    d.weightedAmount    = Math.round(totalBudget * weights[i]);
+  }
+  // Correct rounding drift so payments sum exactly to totalBudget
+  const allocated = payDecisions.reduce((s, d) => s + (d.weightedAmount ?? 0), 0);
+  const drift = totalBudget - allocated;
+  if (drift !== 0) {
+    const topIdx = weights.indexOf(Math.max(...weights));
+    payDecisions[topIdx].weightedAmount = (payDecisions[topIdx].weightedAmount ?? 0) + drift;
   }
 }
