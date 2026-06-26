@@ -5,6 +5,7 @@ import { createHash } from "crypto";
 import { v4 as uuidv4 } from "uuid";
 import type { Source, Receipt, QueryRecord } from "@/types";
 import { redisIncrSourcePaid, redisIncrSourceRefused } from "@/lib/redis-stats";
+import { persistReceipt } from "@/lib/neon";
 
 const DATA_DIR = process.env.NODE_ENV === "production"
   ? "/tmp"
@@ -413,6 +414,18 @@ export function insertReceipt(r: Receipt): void {
     r.budgetBefore, r.budgetAfter, r.challenged ? 1 : 0, r.createdAt,
     r.purposeCode ?? null
   );
+  // Durable write to Neon — fire-and-forget, never blocks the response
+  persistReceipt({
+    id: r.id, sourceId: r.sourceId, queryId: r.queryId,
+    agentAddress: r.agentAddress, creatorWallet: r.creatorWallet,
+    decision: r.decision, query: r.query, queryHash: r.queryHash,
+    sourceTitle: r.sourceTitle, sourceUrl: r.sourceUrl,
+    amountPaid: r.amountPaid, evidenceHash: r.evidenceHash,
+    reason: r.reason, txHash: r.txHash ?? null,
+    paymentStatus: r.paymentStatus ?? null, policyProfile: r.policyProfile ?? null,
+    onChainReceiptId: r.onChainReceiptId ?? null, onChainTxHash: r.onChainTxHash ?? null,
+    purposeCode: r.purposeCode ?? null, createdAt: r.createdAt,
+  });
 }
 
 export function getReceiptById(id: string): Receipt | null {

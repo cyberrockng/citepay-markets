@@ -77,11 +77,14 @@ Browser → POST /api/demo-query
 - **policyStatus**: `APPROVED` for selected, `WARNING` for selected-but-warned, `BLOCKED` for rejected
 - **Rate limiting**: hire 1/8s per IP (max 20/instance), run 1/10s per IP (max 15/instance)
 
-## Traction three-layer
+## Traction four-layer
 
-`/api/traction` merges three sources, always taking the max:
+`/api/traction` merges four sources, always taking the max:
 1. **SQLite** (ephemeral) — `amount_paid` is INTEGER micro-USDC, divided by 1e6 for USDC display
 2. **Redis/Edge Config** (cross-instance) — persists across cold starts
-3. **Arc Testnet** (permanent) — `getArcCitationStats()` returns `citationCount`, `totalAmountMicro`, `uniqueAgents`, `uniqueCreators`
+3. **Neon Postgres** (durable, permanent) — `cp_receipts` + `cp_traction` tables; every receipt written via `persistReceipt()` in `src/lib/neon.ts`; `getNeonTotals()` returns `paidCitations`, `refusals`, `skips`, `totalPaidMicro`, `creatorsPaid`, `totalQueries`
+4. **Arc Testnet** (permanent) — `getArcCitationStats()` returns `citationCount`, `totalAmountMicro`, `uniqueAgents`, `uniqueCreators`
 
 `creatorsPaid` uses live `arcStats.uniqueCreators` (from SourceRegistered events cross-referenced with CitationPaid sourceIds).
+
+Env var: `DATABASE_URL` — Neon connection string. When unset, `persistReceipt` and `getNeonTotals` no-op silently.

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getFullTractionStats } from "@/lib/db";
 import { getRedisTotals } from "@/lib/redis-stats";
 import { getArcCitationStats } from "@/lib/arc-reader";
+import { getNeonTotals } from "@/lib/neon";
 
 export const dynamic = "force-dynamic";
 
@@ -22,11 +23,12 @@ const FLOOR = {
 };
 
 export async function GET() {
-  // Fetch all three sources in parallel
-  const [sqlite, redis, arcStats] = await Promise.all([
+  // Fetch all four sources in parallel
+  const [sqlite, redis, arcStats, neon] = await Promise.all([
     Promise.resolve(getFullTractionStats()),
     getRedisTotals(),
     getArcCitationStats(),
+    getNeonTotals(),
   ]);
 
   // On-chain is the single source of truth for confirmed payments and USDC routed.
@@ -55,19 +57,27 @@ export async function GET() {
       }
     : { ...sqlite, totalUSDCRouted: sqliteUSDC, avgPaymentPerCitation: sqliteAvg };
 
+  // Neon durable layer — survives cold starts, accumulates across all instances
+  const neonPaidCitations = neon?.paidCitations ?? 0;
+  const neonRefusals      = neon?.refusals ?? 0;
+  const neonSkips         = neon?.skips ?? 0;
+  const neonUSDC          = (neon?.totalPaidMicro ?? 0) / 1e6;
+  const neonCreatorsPaid  = neon?.creatorsPaid ?? 0;
+  const neonTotalQueries  = neon?.totalQueries ?? 0;
+
   // paidCitations and totalUSDCRouted use on-chain as the floor — it's permanent and unforgeable.
   const stats = {
     ...fromRedis,
-    totalQueries:        Math.max(fromRedis.totalQueries,        FLOOR.totalQueries),
+    totalQueries:        Math.max(fromRedis.totalQueries,        neonTotalQueries,     FLOOR.totalQueries),
     totalDecisions:      Math.max(fromRedis.totalDecisions,       FLOOR.totalDecisions),
-    paidCitations:       Math.max(fromRedis.paidCitations,        onChainCitationEvents),
-    refusals:            Math.max(fromRedis.refusals,             FLOOR.refusals),
-    skips:               Math.max(fromRedis.skips,                FLOOR.skips),
-    totalUSDCRouted:     Math.max(fromRedis.totalUSDCRouted,      onChainUSDC, FLOOR.totalUSDCRouted),
+    paidCitations:       Math.max(fromRedis.paidCitations,        neonPaidCitations,   onChainCitationEvents),
+    refusals:            Math.max(fromRedis.refusals,             neonRefusals,         FLOOR.refusals),
+    skips:               Math.max(fromRedis.skips,                neonSkips,            FLOOR.skips),
+    totalUSDCRouted:     Math.max(fromRedis.totalUSDCRouted,      neonUSDC,             onChainUSDC, FLOOR.totalUSDCRouted),
     shareCardsGenerated: Math.max(fromRedis.shareCardsGenerated,  FLOOR.shareCardsGenerated),
     shareCardsOpened:    Math.max(fromRedis.shareCardsOpened,     FLOOR.shareCardsOpened),
     challengeCount:      Math.max(fromRedis.challengeCount,       FLOOR.challengeCount),
-    creatorsPaid:        Math.max(fromRedis.creatorsPaid ?? 0, arcStats.uniqueCreators, FLOOR.creatorsPaid),
+    creatorsPaid:        Math.max(fromRedis.creatorsPaid ?? 0, neonCreatorsPaid, arcStats.uniqueCreators, FLOOR.creatorsPaid),
     avgPaymentPerCitation: (fromRedis.avgPaymentPerCitation && fromRedis.avgPaymentPerCitation > 0)
       ? fromRedis.avgPaymentPerCitation
       : FLOOR.totalUSDCRouted / FLOOR.paidCitations,
