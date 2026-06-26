@@ -155,8 +155,13 @@ export async function POST(req: NextRequest) {
 
   if (paidDecisionsForSynth.length > 0) {
     const citationContext = paidDecisionsForSynth
-      .map((d) => `[${d.source.title}](${d.source.url}): ${d.excerptUsed}`)
-      .join("\n");
+      .map((d) => {
+        const body = d.source.fullContent
+          ? d.source.fullContent.slice(0, 900)
+          : d.excerptUsed;
+        return `[${d.source.title}](${d.source.url}):\n${body}`;
+      })
+      .join("\n\n---\n\n");
     try {
       const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
       const resp = await client.messages.create({
