@@ -3,6 +3,7 @@ import { v4 as uuidv4 } from "uuid";
 import Anthropic from "@anthropic-ai/sdk";
 import { build402Response, verifyGatewayPayment, QUERY_FEE_MICRO, computeActualCharge } from "@/lib/x402";
 import { isReplayed, recordSignature } from "@/lib/replay-guard";
+import { validateAndConsume } from "@/lib/subscription";
 import { runBuyerAgent, getAgentAddress } from "@/lib/agent";
 import { buildEvidencePreimage, hashEvidence, sha256, parseUSDC } from "@/lib/evidence";
 import { payCreator } from "@/lib/payments";
@@ -50,36 +51,54 @@ export async function POST(req: NextRequest) {
   const policy = resolvePolicy(body.policy as string | undefined);
   const category = typeof body.category === "string" ? body.category : undefined;
 
-  // ── Step 1: Check for payment ─────────────────────────────────────────────
-  const hasPayment =
-    req.headers.has("payment-signature") ||
-    req.headers.has("X-PAYMENT") ||
-    req.headers.has("x-payment");
-  if (!hasPayment) {
-    return build402Response(req.url);
+  // ── Step 1: Subscription pass fast-path (bypasses per-query x402) ────────
+  const subToken = req.headers.get("X-Subscription-Token");
+  let usedPass = false;
+  let feesTxHash: string | null = null;
+
+  if (subToken) {
+    const result = validateAndConsume(subToken);
+    if (!result.valid) {
+      return NextResponse.json(
+        { error: "Subscription pass invalid", detail: result.reason, queriesRemaining: 0 },
+        { status: 402 }
+      );
+    }
+    usedPass = true;
+    // Attach remaining count to response headers so clients can track usage
+    // (set after response is built below)
   }
 
-  // ── Step 2: Verify payment via Circle Gateway (Arc testnet) ──────────────
-  const rawSig = req.headers.get("payment-signature") ?? req.headers.get("X-PAYMENT") ?? req.headers.get("x-payment") ?? "";
+  // ── Step 2: x402 payment gate (skipped when valid pass is used) ──────────
+  if (!usedPass) {
+    const hasPayment =
+      req.headers.has("payment-signature") ||
+      req.headers.has("X-PAYMENT") ||
+      req.headers.has("x-payment");
+    if (!hasPayment) {
+      return build402Response(req.url);
+    }
 
-  // Replay guard — reject reused payment signatures within 10-minute TTL
-  if (rawSig && isReplayed(rawSig)) {
-    return NextResponse.json(
-      { error: "Replayed payment signature", detail: "This payment has already been used. Submit a new payment." },
-      { status: 402 }
-    );
+    const rawSig = req.headers.get("payment-signature") ?? req.headers.get("X-PAYMENT") ?? req.headers.get("x-payment") ?? "";
+
+    if (rawSig && isReplayed(rawSig)) {
+      return NextResponse.json(
+        { error: "Replayed payment signature", detail: "This payment has already been used. Submit a new payment." },
+        { status: 402 }
+      );
+    }
+
+    const { valid, txHash: verifiedTxHash, error: payError } = await verifyGatewayPayment(req);
+    if (!valid) {
+      return NextResponse.json(
+        { error: "Payment verification failed", detail: payError },
+        { status: 402 }
+      );
+    }
+
+    feesTxHash = verifiedTxHash ?? null;
+    if (rawSig) recordSignature(rawSig);
   }
-
-  const { valid, txHash: feesTxHash, error: payError } = await verifyGatewayPayment(req);
-  if (!valid) {
-    return NextResponse.json(
-      { error: "Payment verification failed", detail: payError },
-      { status: 402 }
-    );
-  }
-
-  // Record signature as used — must happen after successful verification
-  if (rawSig) recordSignature(rawSig);
 
   // ── Step 3: Create query record ───────────────────────────────────────────
   const queryId = uuidv4();
