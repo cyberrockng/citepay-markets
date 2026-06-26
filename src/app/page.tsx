@@ -571,6 +571,7 @@ const { data } = await client.pay("https://citepay-markets.vercel.app/api/ask", 
             <Link href="/ask"         className="hover:text-[#f0f0f5] transition-colors">Ask</Link>
             <Link href="/register"    className="hover:text-[#6366f1] text-[#6366f1]/70 transition-colors">Register</Link>
             <Link href="/orchestrate" className="hover:text-[#f0f0f5] transition-colors">Orchestrate</Link>
+            <Link href="/estimate"    className="hover:text-[#f0f0f5] transition-colors">Estimate</Link>
             <Link href="/mcp"         className="hover:text-[#f0f0f5] transition-colors">MCP</Link>
             <Link href="/economy"     className="hover:text-[#f0f0f5] transition-colors">Index</Link>
             <Link href="/market"      className="hover:text-[#f0f0f5] transition-colors">Market</Link>
