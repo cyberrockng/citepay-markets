@@ -9,6 +9,7 @@ const RPC      = process.env.ARC_RPC_URL || "https://rpc.testnet.arc.network";
 
 const CITATION_ABI = [
   "event CitationPaid(uint256 indexed receiptId, uint256 indexed sourceId, address indexed agent, address creator, uint256 amount, bytes32 queryHash, bytes32 evidenceHash)",
+  "event SourceRegistered(uint256 indexed sourceId, address indexed creator, address payoutWallet, bytes32 contentHash, uint256 price, uint256 bond)",
 ];
 
 export async function GET(req: NextRequest) {
@@ -59,32 +60,47 @@ export async function GET(req: NextRequest) {
     const CHUNK = 9_000;
     const filter = contract.filters.CitationPaid();
 
-    // Fetch in chunks to avoid RPC range limits
-    const allEvents: ethers.EventLog[] = [];
+    // Fetch all events in chunks to avoid RPC range limits
+    const allCitationEvents: ethers.EventLog[] = [];
+    const allSourceEvents: ethers.EventLog[] = [];
+    const citationFilter = contract.filters.CitationPaid();
+    const sourceFilter   = contract.filters.SourceRegistered();
+
     for (let from = DEPLOY_BLOCK; from <= latest; from += CHUNK + 1) {
       const to = Math.min(from + CHUNK, latest);
-      const chunk = await contract.queryFilter(filter, from, to) as ethers.EventLog[];
-      allEvents.push(...chunk);
+      const [citChunk, srcChunk] = await Promise.all([
+        contract.queryFilter(citationFilter, from, to) as Promise<ethers.EventLog[]>,
+        contract.queryFilter(sourceFilter, from, to)   as Promise<ethers.EventLog[]>,
+      ]);
+      allCitationEvents.push(...citChunk);
+      allSourceEvents.push(...srcChunk);
     }
-    const events = allEvents;
+
+    // Build sourceId → payoutWallet map from SourceRegistered events
+    // payoutWallet (args[2]) is the actual creator wallet; creator (args[1]) is msg.sender (agent)
+    const payoutWalletMap = new Map<number, string>();
+    for (const e of allSourceEvents) {
+      payoutWalletMap.set(Number(e.args[0]), String(e.args[2]));
+    }
 
     onChainSource = true;
-    receipts = events
+    receipts = allCitationEvents
       .slice(-limit)
       .reverse()
       .map((e) => {
         const receiptId = Number(e.args[0]);
         const sourceId  = Number(e.args[1]);
         const agent     = String(e.args[2]);
-        const creator   = String(e.args[3]);
         const amount    = Number(e.args[4]);
         const txHash    = e.transactionHash;
         const sqlite    = sqliteMap.get(receiptId);
+        // Use payoutWallet from SourceRegistered — the actual creator, not msg.sender
+        const creatorWallet = payoutWalletMap.get(sourceId) ?? String(e.args[3]);
         return {
           receiptId,
           sourceId,
           agentAddress: agent,
-          creatorWallet: creator,
+          creatorWallet,
           amountPaid: amount / 1e6,
           txHash,
           arcScanUrl: `https://testnet.arcscan.app/tx/${txHash}`,
