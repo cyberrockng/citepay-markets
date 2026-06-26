@@ -3,10 +3,15 @@
  * Writes PAY decisions to CitePayMarket.sol on Arc Testnet so every
  * paid citation has a verifiable on-chain record alongside the SQLite receipt.
  *
+ * Signing priority:
+ *   1. Circle W3S (MPC — no local key) when CIRCLE_API_KEY + CIRCLE_WALLET_ID set
+ *   2. AGENT_PRIVATE_KEY fallback (ethers.js direct signing)
+ *
  * Also integrates CitationMandate.sol (per-session policy attestation) and
  * CreatorBond.sol (creator bond status queries).
  */
 import { ethers } from "ethers";
+import { isW3SEnabled, w3sPayCitation, w3sCreateMandate, w3sCloseMandate } from "./circle-w3s";
 
 const CONTRACT          = process.env.NEXT_PUBLIC_CONTRACT_ADDRESS        || "0x396cf1646EbAeF85ee8428C2d9239C46Ae956085";
 const BOND_CONTRACT     = process.env.ARC_CREATOR_BOND_ADDRESS            || "";
@@ -130,8 +135,37 @@ export async function anchorPAY(opts: {
   relevanceScore?: number;
   creatorBonded?:  boolean;
 }): Promise<{ onChainReceiptId: number; txHash: string; mandateAllowed?: boolean } | null> {
+  if (!opts.onChainSourceId) return null;
+
+  // ── Preferred path: Circle W3S — no local key ────────────────────────────
+  if (isW3SEnabled()) {
+    try {
+      const w3s = await w3sPayCitation({
+        contract:     CONTRACT,
+        sourceId:     opts.onChainSourceId,
+        queryHash:    toBytes32(opts.queryHash) as `0x${string}`,
+        evidenceHash: toBytes32(opts.evidenceHash) as `0x${string}`,
+      });
+      if (w3s) {
+        let mandateAllowed: boolean | undefined;
+        if (opts.mandateId && opts.amountMicro !== undefined && opts.relevanceScore !== undefined) {
+          mandateAllowed = await recordMandateDecision({
+            mandateId: opts.mandateId, sourceId: opts.onChainSourceId,
+            evidenceHash: opts.evidenceHash, amountMicro: opts.amountMicro,
+            relevanceScore: opts.relevanceScore, creatorBonded: opts.creatorBonded ?? false,
+          });
+        }
+        console.log(`[anchor] payCitation via W3S — tx ${w3s.txHash}`);
+        return { onChainReceiptId: w3s.onChainReceiptId, txHash: w3s.txHash, mandateAllowed };
+      }
+    } catch (err) {
+      console.warn("[anchor] W3S payCitation failed, falling back:", String(err).slice(0, 100));
+    }
+  }
+
+  // ── Fallback: ethers.js with AGENT_PRIVATE_KEY ───────────────────────────
   const contract = getContract();
-  if (!contract || !opts.onChainSourceId) return null;
+  if (!contract) return null;
 
   try {
     const tx = await contract.payCitation(
@@ -198,10 +232,32 @@ const MANDATE_CREATED_IFACE = new ethers.Interface([
  * Records the agent's policy commitment so every PAY can be checked against it.
  */
 export async function createMandateOnChain(policy: AgentPolicy): Promise<number | null> {
+  const policyHash = ethers.keccak256(ethers.toUtf8Bytes(policy.name.toLowerCase())) as `0x${string}`;
+
+  // ── Preferred path: Circle W3S ────────────────────────────────────────────
+  if (isW3SEnabled() && MANDATE_CONTRACT) {
+    try {
+      const w3s = await w3sCreateMandate({
+        contract:       MANDATE_CONTRACT,
+        policyHash,
+        maxPerCitation: policy.maxPricePerCitation || 10_000,
+        sessionCap:     policy.sessionSpendCap     || 100_000,
+        minRelevance:   policy.minRelevanceScore   || 0,
+        requireBonded:  policy.requireBonded,
+      });
+      if (w3s) {
+        console.log(`[anchor] Mandate ${w3s.mandateId} created via W3S`);
+        return w3s.mandateId;
+      }
+    } catch (err) {
+      console.warn("[anchor] W3S createMandate failed, falling back:", String(err).slice(0, 100));
+    }
+  }
+
+  // ── Fallback: ethers.js ───────────────────────────────────────────────────
   const mandateContract = getMandateContract();
   if (!mandateContract) return null;
   try {
-    const policyHash = ethers.keccak256(ethers.toUtf8Bytes(policy.name.toLowerCase()));
     const tx = await mandateContract.createMandate(
       policyHash,
       BigInt(policy.maxPricePerCitation || 10_000),
@@ -301,8 +357,21 @@ export async function anchorBLOCKED(opts: {
  * Closes the session mandate and records final tally on-chain.
  */
 export async function closeMandateOnChain(mandateId: number): Promise<void> {
+  if (!mandateId) return;
+
+  // ── Preferred path: Circle W3S ────────────────────────────────────────────
+  if (isW3SEnabled() && MANDATE_CONTRACT) {
+    try {
+      const ok = await w3sCloseMandate({ contract: MANDATE_CONTRACT, mandateId });
+      if (ok) { console.log(`[anchor] Mandate ${mandateId} closed via W3S`); return; }
+    } catch (err) {
+      console.warn("[anchor] W3S closeMandate failed, falling back:", String(err).slice(0, 100));
+    }
+  }
+
+  // ── Fallback: ethers.js ───────────────────────────────────────────────────
   const mandateContract = getMandateContract();
-  if (!mandateContract || !mandateId) return;
+  if (!mandateContract) return;
   try {
     const tx = await mandateContract.closeMandate(BigInt(mandateId));
     await tx.wait();
