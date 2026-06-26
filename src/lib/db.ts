@@ -895,13 +895,20 @@ export function createBounty(opts: {
   budgetMicro: number;
   deadline: string;
   agentAddress: string;
+  autoPosted?: boolean;
+  gapCategory?: string;
 }): Bounty {
   const id = uuidv4();
   const db = getDb();
   db.prepare(`
-    INSERT INTO bounties (id, title, query, description, budget_micro, deadline, status, agent_address)
-    VALUES (?, ?, ?, ?, ?, ?, 'open', ?)
-  `).run(id, opts.title, opts.query, opts.description, opts.budgetMicro, opts.deadline, opts.agentAddress);
+    INSERT INTO bounties (id, title, query, description, budget_micro, deadline, status, agent_address, auto_posted, gap_category)
+    VALUES (?, ?, ?, ?, ?, ?, 'open', ?, ?, ?)
+  `).run(
+    id, opts.title, opts.query, opts.description,
+    opts.budgetMicro, opts.deadline, opts.agentAddress,
+    opts.autoPosted ? 1 : 0,
+    opts.gapCategory ?? null,
+  );
   return getBountyById(id)!;
 }
 

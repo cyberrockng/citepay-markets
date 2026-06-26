@@ -133,6 +133,7 @@ export default function OrchestratePage() {
   const [agentRewards, setAgentRewards] = useState<AgentReward[]>([]);
   const [knowledgeSourceId, setKnowledgeSourceId] = useState<string | null>(null);
   const [lesson, setLesson] = useState<{ lesson?: string; gap?: string; adjustment?: string } | null>(null);
+  const [autoBounty, setAutoBounty] = useState<{ bountyId: string; gap: string; budgetMicro: number } | null>(null);
   const [error, setError] = useState("");
   const [activeTab, setActiveTab] = useState<number>(0);
   const [pendingCount, setPendingCount] = useState<number | null>(null);
@@ -149,6 +150,7 @@ export default function OrchestratePage() {
     setAgentRewards([]);
     setKnowledgeSourceId(null);
     setLesson(null);
+    setAutoBounty(null);
     setError("");
     setPendingCount(null);
     setActiveTab(0);
@@ -210,6 +212,9 @@ export default function OrchestratePage() {
             } else if (chunk.type === "lesson") {
               const lc = chunk as Record<string, unknown>;
               setLesson({ lesson: lc.lesson as string, gap: lc.gap as string, adjustment: lc.adjustment as string });
+            } else if (chunk.type === "auto_bounty") {
+              const ab = chunk as Record<string, unknown>;
+              setAutoBounty({ bountyId: ab.bountyId as string, gap: ab.gap as string, budgetMicro: ab.budgetMicro as number });
             } else if (chunk.type === "knowledge_registered" && chunk.knowledgeSourceId) {
               setKnowledgeSourceId(chunk.knowledgeSourceId);
             } else if (chunk.type === "final") {
@@ -453,6 +458,31 @@ export default function OrchestratePage() {
                 <p className="text-sm text-white/70 leading-relaxed">{lesson.lesson}</p>
                 {lesson.gap && <p className="text-xs text-amber-400/70 mt-2">Gap identified: {lesson.gap}</p>}
                 {lesson.adjustment && <p className="text-xs text-violet-400/70 mt-1">Next time: {lesson.adjustment}</p>}
+              </div>
+            )}
+
+            {autoBounty && (
+              <div className="rounded-xl border border-amber-500/30 bg-amber-500/5 p-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="w-6 h-6 rounded bg-amber-600/30 flex items-center justify-center text-amber-300 text-xs font-bold">◎</div>
+                  <span className="text-sm font-semibold text-amber-300">Auto-Bounty Posted</span>
+                  <span className="ml-auto text-xs font-mono text-amber-400/60">${(autoBounty.budgetMicro / 1e6).toFixed(2)} USDC prize</span>
+                </div>
+                <p className="text-sm text-white/70 leading-relaxed mb-3">
+                  The agent identified a knowledge gap and automatically posted a bounty for creators who can fill it.
+                </p>
+                <div className="bg-[#0a0a0f] rounded-lg px-3 py-2 text-xs font-mono text-amber-200/70 mb-3 leading-relaxed">
+                  {autoBounty.gap}
+                </div>
+                <div className="flex items-center gap-3 flex-wrap">
+                  <a
+                    href={`/bounties`}
+                    className="text-xs font-mono text-amber-400 hover:text-amber-300 underline transition-colors"
+                  >
+                    View open bounties →
+                  </a>
+                  <span className="text-[10px] font-mono text-[#4a4a5e]">48h deadline · open to all creators</span>
+                </div>
               </div>
             )}
 

@@ -348,7 +348,7 @@ Write a 2-3 sentence self-assessment as JSON:
         if (lm) {
           const lp = JSON.parse(lm[0]) as { lesson?: string; gap?: string; adjustment?: string };
           lessonText = lp.lesson ?? null;
-          const { insertAgentLesson } = await import("@/lib/db");
+          const { insertAgentLesson, createBounty } = await import("@/lib/db");
           lessonId = insertAgentLesson({
             orchestrationQuery: query,
             lesson: lp.lesson ?? "",
@@ -358,6 +358,28 @@ Write a 2-3 sentence self-assessment as JSON:
             scoreAdjustments: lp.adjustment ?? undefined,
           });
           send({ type: "lesson", lessonId, lesson: lp.lesson, gap: lp.gap, adjustment: lp.adjustment });
+
+          // ── Auto-Bounty: gap identified → post open bounty for creators ───
+          if (lp.gap && lp.gap.toLowerCase() !== "null" && lp.gap.trim().length > 10) {
+            try {
+              const bountyTitle = `Knowledge Gap: ${lp.gap.slice(0, 80)}`;
+              const bountyDesc  = `The CitePay agent identified this knowledge gap while researching: "${query}". ` +
+                `Submit a high-quality source that directly answers this gap. ` +
+                `The best submission wins $0.01 USDC paid immediately on Arc Testnet.`;
+              const deadline = new Date(Date.now() + 48 * 3600 * 1000).toISOString();
+              const autoBounty = createBounty({
+                title:       bountyTitle,
+                query:       lp.gap,
+                description: bountyDesc,
+                budgetMicro: 10_000,   // $0.01 USDC prize
+                deadline,
+                agentAddress: orchestratorClient.address,
+                autoPosted:   true,
+                gapCategory:  query.slice(0, 60),
+              });
+              send({ type: "auto_bounty", bountyId: autoBounty.id, gap: lp.gap, budgetMicro: 10_000 });
+            } catch { /* non-fatal — lesson saved even if bounty post fails */ }
+          }
         }
       } catch { /* non-fatal */ }
 
