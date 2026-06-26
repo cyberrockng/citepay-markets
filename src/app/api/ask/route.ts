@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { v4 as uuidv4 } from "uuid";
 import Anthropic from "@anthropic-ai/sdk";
-import { build402Response, verifyGatewayPayment, QUERY_FEE_MICRO, computeActualCharge } from "@/lib/x402";
+import { build402Response, verifyGatewayPayment, verifyDirectPayment, QUERY_FEE_MICRO, computeActualCharge } from "@/lib/x402";
 import { isReplayed, recordSignature } from "@/lib/replay-guard";
 import { validateAndConsume } from "@/lib/subscription";
 import { runBuyerAgent, getAgentAddress, scoreContributionWeights } from "@/lib/agent";
@@ -71,33 +71,46 @@ export async function POST(req: NextRequest) {
 
   // ── Step 2: x402 payment gate (skipped when valid pass is used) ──────────
   if (!usedPass) {
-    const hasPayment =
-      req.headers.has("payment-signature") ||
-      req.headers.has("X-PAYMENT") ||
-      req.headers.has("x-payment");
-    if (!hasPayment) {
+    const hasGateway = req.headers.has("payment-signature");
+    const hasLegacy  = req.headers.has("X-PAYMENT") || req.headers.has("x-payment");
+    const hasDirect  = req.headers.has("X-Arc-Tx-Hash") || req.headers.has("x-arc-tx-hash");
+
+    if (!hasGateway && !hasLegacy && !hasDirect) {
       return build402Response(req.url);
     }
 
-    const rawSig = req.headers.get("payment-signature") ?? req.headers.get("X-PAYMENT") ?? req.headers.get("x-payment") ?? "";
+    if (hasDirect) {
+      // Direct Arc USDC transfer path — any EVM agent, no Circle Gateway required
+      const { valid, txHash: verifiedTxHash, error: payError } = await verifyDirectPayment(req);
+      if (!valid) {
+        return NextResponse.json(
+          { error: "Direct payment verification failed", detail: payError },
+          { status: 402 }
+        );
+      }
+      feesTxHash = verifiedTxHash ?? null;
+    } else {
+      // Circle Gateway path (primary)
+      const rawSig = req.headers.get("payment-signature") ?? req.headers.get("X-PAYMENT") ?? req.headers.get("x-payment") ?? "";
 
-    if (rawSig && isReplayed(rawSig)) {
-      return NextResponse.json(
-        { error: "Replayed payment signature", detail: "This payment has already been used. Submit a new payment." },
-        { status: 402 }
-      );
+      if (rawSig && isReplayed(rawSig)) {
+        return NextResponse.json(
+          { error: "Replayed payment signature", detail: "This payment has already been used. Submit a new payment." },
+          { status: 402 }
+        );
+      }
+
+      const { valid, txHash: verifiedTxHash, error: payError } = await verifyGatewayPayment(req);
+      if (!valid) {
+        return NextResponse.json(
+          { error: "Payment verification failed", detail: payError },
+          { status: 402 }
+        );
+      }
+
+      feesTxHash = verifiedTxHash ?? null;
+      if (rawSig) recordSignature(rawSig);
     }
-
-    const { valid, txHash: verifiedTxHash, error: payError } = await verifyGatewayPayment(req);
-    if (!valid) {
-      return NextResponse.json(
-        { error: "Payment verification failed", detail: payError },
-        { status: 402 }
-      );
-    }
-
-    feesTxHash = verifiedTxHash ?? null;
-    if (rawSig) recordSignature(rawSig);
   }
 
   // ── Step 3: Create query record ───────────────────────────────────────────

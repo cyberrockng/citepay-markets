@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { sha256 } from "./evidence";
+import { isReplayed, recordSignature } from "./replay-guard";
 
 // ── Arc Testnet constants ──────────────────────────────────────────────────
 export const ARC_CHAIN_ID     = 5042002;
@@ -24,12 +25,12 @@ export function computeActualCharge(sourcesCharged: number): number {
   return Math.max(QUERY_FEE_MICRO, Math.min(sourcesCharged * QUERY_FEE_PER_SOURCE_MICRO, QUERY_FEE_MAX_MICRO));
 }
 
-function buildPaymentRequirements() {
+function buildGatewayRequirements() {
   return {
-    scheme: "exact" as const, // Circle Gateway requires exact — upto is surfaced in response metadata
+    scheme: "exact" as const,
     network: ARC_NETWORK,
     asset: ARC_USDC,
-    amount: String(QUERY_FEE_MICRO), // buyer pays minimum upfront; actual charge returned in response
+    amount: String(QUERY_FEE_MICRO),
     payTo: PAYMENT_RECEIVER,
     maxTimeoutSeconds: 345600,
     extra: {
@@ -44,21 +45,43 @@ function buildPaymentRequirements() {
   };
 }
 
+function buildDirectTransferRequirements() {
+  return {
+    scheme: "exact" as const,
+    network: ARC_NETWORK,
+    asset: ARC_USDC,
+    amount: String(QUERY_FEE_MICRO),
+    payTo: PAYMENT_RECEIVER,
+    maxTimeoutSeconds: 600,
+    extra: {
+      name: "DirectTransfer",
+      version: "1",
+      header: "X-Arc-Tx-Hash",
+      description: `Send ≥${QUERY_FEE_MICRO} micro-USDC (${QUERY_FEE_USDC} USDC) to payTo on Arc Testnet, then include the confirmed tx hash in the X-Arc-Tx-Hash header. Tx must be confirmed within 10 minutes.`,
+    },
+  };
+}
+
+// Keep a single-source alias for the primary scheme
+function buildPaymentRequirements() { return buildGatewayRequirements(); }
+
 /**
- * Return HTTP 402 with Circle Gateway payment requirements.
- * Header: PAYMENT-REQUIRED (base64 JSON) — consumed by GatewayClient.
+ * Return HTTP 402 advertising both payment schemes:
+ *   1. GatewayWalletBatched — Circle Gateway (primary, for x402 clients)
+ *   2. DirectTransfer       — raw Arc USDC tx + X-Arc-Tx-Hash header (for any EVM agent)
  */
 export function build402Response(resource: string): NextResponse {
-  const requirements = buildPaymentRequirements();
   const paymentRequired = {
     x402Version: 2,
     resource: {
       url: resource,
-      description:
-        "Pay $0.001 USDC nanopayment to run a CitePay citation query on Arc.",
+      description: "Pay $0.001 USDC to run a CitePay citation query on Arc Testnet.",
       mimeType: "application/json",
     },
-    accepts: [requirements],
+    accepts: [
+      buildGatewayRequirements(),
+      buildDirectTransferRequirements(),
+    ],
   };
 
   return new NextResponse(
@@ -145,5 +168,99 @@ export async function verifyGatewayPayment(req: NextRequest): Promise<{
     };
   } catch (err) {
     return { valid: false, error: String(err) };
+  }
+}
+
+/**
+ * Verify a direct Arc USDC transfer payment.
+ *
+ * The payer sends USDC to PAYMENT_RECEIVER on Arc Testnet, then includes
+ * the confirmed tx hash in the `X-Arc-Tx-Hash` request header.
+ *
+ * Checks:
+ *   - Tx exists and succeeded on Arc Testnet
+ *   - Has a USDC Transfer log to PAYMENT_RECEIVER of ≥ QUERY_FEE_MICRO
+ *   - Block timestamp is within the last 10 minutes
+ *   - Tx hash has not been replayed
+ */
+export async function verifyDirectPayment(req: NextRequest): Promise<{
+  valid: boolean;
+  txHash?: string;
+  payer?: string;
+  error?: string;
+}> {
+  const txHash =
+    req.headers.get("X-Arc-Tx-Hash") ??
+    req.headers.get("x-arc-tx-hash") ??
+    "";
+
+  if (!txHash || !/^0x[0-9a-fA-F]{64}$/.test(txHash)) {
+    return { valid: false, error: "Missing or malformed X-Arc-Tx-Hash header (expect 0x + 64 hex chars)" };
+  }
+
+  if (isReplayed(txHash)) {
+    return { valid: false, error: "Tx hash already used — each payment is single-use" };
+  }
+
+  try {
+    // 1. Fetch tx receipt
+    const receiptRes = await fetch(ARC_RPC, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "eth_getTransactionReceipt", params: [txHash] }),
+      signal: AbortSignal.timeout(8_000),
+    });
+    const { result: receipt } = await receiptRes.json() as { result: {
+      status: string; blockNumber: string;
+      logs: Array<{ address: string; topics: string[]; data: string }>;
+    } | null };
+
+    if (!receipt) return { valid: false, error: "Transaction not found or not yet confirmed on Arc" };
+    if (receipt.status !== "0x1") return { valid: false, error: "Transaction reverted on-chain" };
+
+    // 2. Verify recency via block timestamp
+    const blockRes = await fetch(ARC_RPC, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ jsonrpc: "2.0", id: 2, method: "eth_getBlockByNumber", params: [receipt.blockNumber, false] }),
+      signal: AbortSignal.timeout(8_000),
+    });
+    const { result: block } = await blockRes.json() as { result: { timestamp: string } | null };
+    const blockTs = parseInt(block?.timestamp ?? "0", 16);
+    const nowSec  = Math.floor(Date.now() / 1000);
+    if (nowSec - blockTs > 600) {
+      return { valid: false, error: "Transaction is older than 10 minutes — submit a fresh payment" };
+    }
+
+    // 3. Scan logs for USDC Transfer(from, to=PAYMENT_RECEIVER, amount≥fee)
+    const TRANSFER_SIG = "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef";
+    const receiverTopic = ("0x000000000000000000000000" + PAYMENT_RECEIVER.slice(2)).toLowerCase();
+
+    let totalAmount = 0;
+    let payer: string | undefined;
+
+    for (const log of receipt.logs ?? []) {
+      if (
+        log.address.toLowerCase() === ARC_USDC.toLowerCase() &&
+        log.topics[0]?.toLowerCase() === TRANSFER_SIG &&
+        log.topics[2]?.toLowerCase() === receiverTopic
+      ) {
+        totalAmount += parseInt(log.data || "0x0", 16);
+        if (log.topics[1]) payer = ("0x" + log.topics[1].slice(26)).toLowerCase();
+      }
+    }
+
+    if (totalAmount < QUERY_FEE_MICRO) {
+      return {
+        valid: false,
+        error: `Payment too small: received ${totalAmount} micro-USDC, need ≥${QUERY_FEE_MICRO} ($${QUERY_FEE_USDC})`,
+      };
+    }
+
+    recordSignature(txHash);
+    return { valid: true, txHash, payer };
+
+  } catch (err) {
+    return { valid: false, error: `Arc RPC error: ${String(err)}` };
   }
 }
