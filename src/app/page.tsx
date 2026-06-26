@@ -231,9 +231,14 @@ export default function LandingPage() {
       <section ref={statsRef} className="max-w-4xl mx-auto px-6 py-16 border-t border-[#1e1e2e]">
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-lg font-semibold text-[#f0f0f5]">Live Market Stats</h2>
-          <Link href="/traction" className="text-xs text-[#6366f1] hover:text-indigo-300 transition-colors">
-            Full dashboard →
-          </Link>
+          <div className="flex items-center gap-4">
+            <Link href="/revenue" className="text-xs text-[#00ff88]/70 hover:text-[#00ff88] transition-colors">
+              Revenue →
+            </Link>
+            <Link href="/traction" className="text-xs text-[#6366f1] hover:text-indigo-300 transition-colors">
+              Full dashboard →
+            </Link>
+          </div>
         </div>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
           {[
@@ -570,6 +575,7 @@ const { data } = await client.pay("https://citepay-markets.vercel.app/api/ask", 
             <Link href="/market"      className="hover:text-[#f0f0f5] transition-colors">Market</Link>
             <Link href="/leaderboard" className="hover:text-[#f0f0f5] transition-colors">Leaderboard</Link>
             <Link href="/traction"    className="hover:text-[#f0f0f5] transition-colors">Traction</Link>
+            <Link href="/revenue"     className="hover:text-[#f0f0f5] transition-colors">Revenue</Link>
             <Link href="/audit"       className="hover:text-[#f0f0f5] transition-colors">Audit</Link>
             <Link href="/proof"       className="hover:text-[#f0f0f5] transition-colors">Proof</Link>
             <a href="https://github.com/cyberrockng/citepay-markets" target="_blank" rel="noopener noreferrer"
