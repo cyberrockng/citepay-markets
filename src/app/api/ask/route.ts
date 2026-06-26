@@ -283,12 +283,16 @@ export async function POST(req: NextRequest) {
       paymentStatus,
       evidenceHash,
       receiptUrl: `/receipt/${receiptId}`,
-      policyProfile: d.policyProfile,
+      policyProfile:     d.policyProfile,
       policyRulesPassed: d.policyRulesPassed,
       policyRulesFailed: d.policyRulesFailed,
-      policyReason: d.policyReason,
-      sufficiencyStop: d.sufficiencyStop ?? false,
+      policyReason:      d.policyReason,
+      sufficiencyStop:   d.sufficiencyStop ?? false,
       purposeCode,
+      // fetchWithBudget probe fields
+      probePrice:    d.probePrice    ?? null,
+      probePassed:   d.probePassed   ?? null,
+      probeDecision: d.probeDecision ?? null,
     });
   }
 

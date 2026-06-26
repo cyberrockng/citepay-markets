@@ -30,6 +30,7 @@ import { payCreator } from "@/lib/payments";
 import { anchorPAY } from "@/lib/anchor";
 import { resolvePolicy, POLICY_PRESETS } from "@/lib/policy";
 import { signReceiptHash } from "@/lib/signature";
+import { probeX402 } from "@/lib/fetch-with-budget";
 
 export const dynamic = "force-dynamic";
 
@@ -91,6 +92,18 @@ const TOOLS = [
       properties: {
         policy: { type: "string", description: "Policy name to inspect. Omit to return all presets.", enum: ["conservative", "balanced", "aggressive"] },
       },
+    },
+  },
+  {
+    name: "probe_source",
+    description: "Probe an x402-gated URL to check its price before committing to payment (fetchWithBudget probe step). Returns the payment requirements and whether the price fits within the supplied budget. Use this before cite_query to decide if a source is worth paying for.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        url:           { type: "string", description: "The x402-gated URL to probe (e.g. https://citepay-markets.vercel.app/api/ask)." },
+        budget_micro:  { type: "number", description: "Your budget ceiling in micro-USDC (1 USDC = 1,000,000). Probe will report whether price fits." },
+      },
+      required: ["url"],
     },
   },
 ];
@@ -237,6 +250,36 @@ function handleCheckPolicy(args: Record<string, unknown>) {
   return { presets: POLICY_PRESETS };
 }
 
+async function handleProbeSource(args: Record<string, unknown>) {
+  const url = (args.url as string || "").trim();
+  if (!url) throw new Error("url is required");
+  const budgetMicro = typeof args.budget_micro === "number" ? args.budget_micro : null;
+
+  const probe = await probeX402(url);
+
+  const withinBudget = budgetMicro !== null
+    ? probe.priceMicro <= budgetMicro
+    : null;
+
+  return {
+    url,
+    requiresPayment: probe.requiresPayment,
+    priceMicro:      probe.priceMicro,
+    priceUsdc:       probe.priceMicro / 1_000_000,
+    maxPriceMicro:   probe.maxPriceMicro,
+    network:         probe.network,
+    asset:           probe.asset,
+    payTo:           probe.payTo,
+    scheme:          probe.scheme,
+    budgetMicro,
+    withinBudget,
+    recommendation:  !probe.requiresPayment ? "FREE — fetch without payment"
+                   : withinBudget === true   ? "PAY — price fits within budget"
+                   : withinBudget === false   ? "SKIP — price exceeds budget"
+                   : "PROBE ONLY — supply budget_micro to get a PAY/SKIP recommendation",
+  };
+}
+
 // ── Main handler ──────────────────────────────────────────────────────────────
 
 export async function POST(req: NextRequest) {
@@ -320,9 +363,10 @@ export async function POST(req: NextRequest) {
 
     try {
       let result: unknown;
-      if (name === "cite_query")   result = await handleCiteQuery(args);
+      if (name === "cite_query")        result = await handleCiteQuery(args);
       else if (name === "get_receipt")  result = handleGetReceipt(args);
       else if (name === "check_policy") result = handleCheckPolicy(args);
+      else if (name === "probe_source") result = await handleProbeSource(args);
       else return err(id, -32601, `Unknown tool: ${name}`);
 
       return ok(id, {
@@ -347,7 +391,7 @@ export async function POST(req: NextRequest) {
 export async function GET() {
   return NextResponse.json({
     name: "CitePay Markets MCP Server",
-    version: "1.0.0",
+    version: "1.1.0",
     protocol: "MCP 2024-11-05",
     transport: "HTTP JSON-RPC 2.0",
     endpoint: "POST /api/mcp",

@@ -2,6 +2,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import type { Source, ScoreBreakdown, AgentDecision, Decision } from "@/types";
 import { type AgentPolicy, DEFAULT_POLICY, evaluatePolicy } from "@/lib/policy";
 import { getRedisSourceCounts } from "@/lib/redis-stats";
+import { probeSourceBudget } from "@/lib/fetch-with-budget";
 
 async function enrichSourcesWithRedis(sources: Source[]): Promise<Source[]> {
   const counts = await getRedisSourceCounts();
@@ -219,6 +220,14 @@ export async function runBuyerAgent(
       continue;
     }
 
+    // ── Budget probe: explicit price check before scoring commit ─────────────
+    const probe = probeSourceBudget({
+      sourceId:       source.id,
+      sourcePrice:    source.price,
+      budgetRemaining,
+      policyMaxPrice: policy.maxPricePerCitation || 10_000,
+    });
+
     const policyEval = evaluatePolicy(source, scores, sessionSpent, policy);
     let decision: Decision;
 
@@ -248,11 +257,14 @@ export async function runBuyerAgent(
       scores,
       reason,
       excerptUsed,
-      policyProfile: policy.name,
+      policyProfile:     policy.name,
       policyRulesPassed: policyEval.rulesPassed,
       policyRulesFailed: policyEval.rulesFailed,
       policyReason,
       memoryCached,
+      probePrice:    probe.sourcePrice,
+      probePassed:   probe.probePassed,
+      probeDecision: probe.probeDecision,
     });
     onEvent?.({ type: "decision", sourceTitle: source.title, decision, reason, relevance: scores.relevance, score: scores.total, sufficiencyStop: false, memoryCached });
   }

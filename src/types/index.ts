@@ -46,6 +46,9 @@ export interface AgentDecision {
   weightedAmount?: number;     // actual micro-USDC paid (weighted, not flat listed price)
   sufficiencyStop?: boolean;   // true when SKIP was due to early-stop, not weak relevance
   memoryCached?: boolean;      // true when source has ≥3 prior PAY decisions (citation memory)
+  probePrice?: number;         // source price checked during budget probe (micro-USDC)
+  probePassed?: boolean;       // whether price fit within budget and policy at probe time
+  probeDecision?: string;      // human-readable probe outcome
 }
 
 export interface EvidencePreimage {
