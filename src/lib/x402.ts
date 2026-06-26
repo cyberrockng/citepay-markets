@@ -198,7 +198,7 @@ export async function verifyDirectPayment(req: NextRequest): Promise<{
     return { valid: false, error: "Missing or malformed X-Arc-Tx-Hash header (expect 0x + 64 hex chars)" };
   }
 
-  if (isReplayed(txHash)) {
+  if (await isReplayed(txHash)) {
     return { valid: false, error: "Tx hash already used — each payment is single-use" };
   }
 
@@ -257,7 +257,7 @@ export async function verifyDirectPayment(req: NextRequest): Promise<{
       };
     }
 
-    recordSignature(txHash);
+    await recordSignature(txHash);
     return { valid: true, txHash, payer };
 
   } catch (err) {

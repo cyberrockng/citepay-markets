@@ -93,7 +93,7 @@ export async function POST(req: NextRequest) {
       // Circle Gateway path (primary)
       const rawSig = req.headers.get("payment-signature") ?? req.headers.get("X-PAYMENT") ?? req.headers.get("x-payment") ?? "";
 
-      if (rawSig && isReplayed(rawSig)) {
+      if (rawSig && await isReplayed(rawSig)) {
         return NextResponse.json(
           { error: "Replayed payment signature", detail: "This payment has already been used. Submit a new payment." },
           { status: 402 }
@@ -109,7 +109,7 @@ export async function POST(req: NextRequest) {
       }
 
       feesTxHash = verifiedTxHash ?? null;
-      if (rawSig) recordSignature(rawSig);
+      if (rawSig) await recordSignature(rawSig);
     }
   }
 

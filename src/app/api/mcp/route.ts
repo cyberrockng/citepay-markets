@@ -344,7 +344,7 @@ export async function POST(req: NextRequest) {
         });
       }
 
-      if (rawSig && isReplayed(rawSig)) {
+      if (rawSig && await isReplayed(rawSig)) {
         return ok(id, {
           content: [{ type: "text", text: JSON.stringify({ error: "Replayed payment signature. Submit a new payment." }) }],
           isError: true,
@@ -358,7 +358,7 @@ export async function POST(req: NextRequest) {
           isError: true,
         });
       }
-      if (rawSig) recordSignature(rawSig);
+      if (rawSig) await recordSignature(rawSig);
     }
 
     try {
