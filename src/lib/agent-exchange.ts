@@ -178,18 +178,29 @@ export function selectAgents(
 
 // ── Hire a single agent ───────────────────────────────────────────────────────
 
+export interface CitedAgentPayment {
+  agentId: string;
+  agentName: string;
+  agentHandle: string;
+  citationFeeMicro: number;
+  txHash: string | null;
+  paymentMode: "confirmed" | "simulated";
+}
+
 export interface AgentHireResult {
   receipt: AgentHireReceipt;
   response: string;
   qualityScore: number;
   success: boolean;
+  citedAgentPayments: CitedAgentPayment[];
+  totalDownstreamPaidMicro: number;
 }
 
 export async function hireAgent(
   agentId: string,
   query: string,
   queryId: string,
-  budgetMicro: number,
+  budgetMicro: number, // per-agent delegated cap — agent cannot spend more than this
 ): Promise<AgentHireResult> {
   const agent = getAgentRegistryById(agentId);
   if (!agent) throw new Error(`Agent ${agentId} not found`);
@@ -230,7 +241,9 @@ export async function hireAgent(
   }
 
   // ── Step 2: Real USDC payment via agent wallet on Arc Testnet ─────────────
-  const amountMicro = success ? agent.priceMicro : 0;
+  // Enforce delegated budget cap — agent cannot spend beyond its allocation
+  const amountMicro = success ? Math.min(agent.priceMicro, budgetMicro) : 0;
+  const budgetCapEnforced = success && agent.priceMicro > budgetMicro;
   let txHash: string | null = null;
   let paymentMode: "confirmed" | "simulated" = "simulated";
 
@@ -252,7 +265,69 @@ export async function hireAgent(
     }
   }
 
-  // ── Step 3: Quality scoring ───────────────────────────────────────────────
+  // ── Step 3: Agent-to-agent citation payment ───────────────────────────────
+  // Detect @handle mentions in agent response — cited agents earn 15% of hire fee.
+  // This closes the citation loop: agents pay agents for referenced knowledge.
+  const citedAgentPayments: CitedAgentPayment[] = [];
+  const downstreamReceiptIds: string[] = [];
+  const allAgents = getAgentRegistry("active");
+  const citationFeeRate = 0.15; // 15% of hire fee flows to cited agent
+
+  if (success && amountMicro > 0 && response) {
+    // Match @handle patterns in the response text
+    const handlePattern = /@(\w+)/g;
+    const mentionedHandles = new Set<string>();
+    let m: RegExpExecArray | null;
+    while ((m = handlePattern.exec(response)) !== null) {
+      mentionedHandles.add(m[1].toLowerCase());
+    }
+
+    for (const candidateAgent of allAgents) {
+      if (candidateAgent.id === agent.id) continue; // don't self-cite
+      if (!candidateAgent.wallet || candidateAgent.wallet === "0x0000000000000000000000000000000000000001") continue;
+
+      const handle = candidateAgent.handle.replace(/^@/, "").toLowerCase();
+      if (!mentionedHandles.has(handle)) continue;
+
+      const citationFee = Math.max(1, Math.floor(amountMicro * citationFeeRate));
+      const downstreamReceiptId = createHash("sha256")
+        .update(`${receiptId}:${candidateAgent.id}`)
+        .digest("hex")
+        .slice(0, 36);
+
+      let citeTxHash: string | null = null;
+      let citePaymentMode: "confirmed" | "simulated" = "simulated";
+
+      try {
+        const citeResult = await payCreator({
+          creatorWallet: candidateAgent.wallet,
+          amountMicroUsdc: citationFee,
+          sourceId: candidateAgent.id,
+          receiptId: downstreamReceiptId,
+          queryId,
+          policy: "a2a-citation",
+        });
+        citeTxHash = citeResult.txHash;
+        citePaymentMode = citeResult.status === "confirmed" ? "confirmed" : "simulated";
+        updateAgentStats(candidateAgent.id, { successfulTask: false, failedTask: false, earnedMicro: citationFee, qualityScore: 0 });
+      } catch (err) {
+        console.error(`[agent-exchange] A2A citation payment to ${candidateAgent.name} failed:`, String(err).slice(0, 100));
+      }
+
+      citedAgentPayments.push({
+        agentId: candidateAgent.id,
+        agentName: candidateAgent.name,
+        agentHandle: candidateAgent.handle,
+        citationFeeMicro: citationFee,
+        txHash: citeTxHash,
+        paymentMode: citePaymentMode,
+      });
+      downstreamReceiptIds.push(downstreamReceiptId);
+    }
+  }
+  const totalDownstreamPaidMicro = citedAgentPayments.reduce((s, c) => s + c.citationFeeMicro, 0);
+
+  // ── Step 5: Quality scoring ───────────────────────────────────────────────
   const qualityScore = success ? Math.min(100, Math.max(0,
     agent.trustScore * 0.5 +
     specialtyScore(agent.specialty, query) * 15 +
@@ -262,7 +337,7 @@ export async function hireAgent(
 
   const responseHash = createHash("sha256").update(response).digest("hex");
 
-  // ── Step 4: Save receipt ──────────────────────────────────────────────────
+  // ── Step 6: Save receipt ──────────────────────────────────────────────────
   const receipt: AgentHireReceipt = {
     id: receiptId,
     queryId,
@@ -272,13 +347,20 @@ export async function hireAgent(
     agentWallet: agent.wallet,
     subtask: query.slice(0, 200),
     amountMicro,
+    allocatedBudgetMicro: budgetMicro,
     paymentMode,
     txHash,
     responseHash,
     qualityScore: Math.round(qualityScore),
     policyStatus: "APPROVED",
-    policyReason: null,
-    downstreamReceiptIds: [],
+    policyReason: budgetCapEnforced ? `budget_cap_enforced: paid ${amountMicro} of requested ${agent.priceMicro}` : null,
+    downstreamReceiptIds,
+    citedAgents: citedAgentPayments.map(c => ({
+      agentId: c.agentId,
+      agentName: c.agentName,
+      citationFeeMicro: c.citationFeeMicro,
+      txHash: c.txHash,
+    })),
     createdAt: new Date().toISOString(),
   };
 
@@ -290,7 +372,7 @@ export async function hireAgent(
     qualityScore: Math.round(qualityScore),
   });
 
-  return { receipt, response, qualityScore: Math.round(qualityScore), success };
+  return { receipt, response, qualityScore: Math.round(qualityScore), success, citedAgentPayments, totalDownstreamPaidMicro };
 }
 
 // ── Full commerce demo run ────────────────────────────────────────────────────
@@ -313,6 +395,8 @@ export interface AgentCommerceResult {
   hireResults: AgentHireResult[];
   finalAnswer: string;
   totalSpentMicro: number;
+  totalDownstreamPaidMicro: number;
+  agentCitationChain: { from: string; to: string; toHandle: string; feeMicro: number; txHash: string | null }[];
   agentHireReceiptIds: string[];
   generatedAt: string;
 }
@@ -343,6 +427,7 @@ export async function runAgentCommerceDemo(
       agentWallet: b.agent.wallet,
       subtask: query.slice(0, 200),
       amountMicro: 0,
+      allocatedBudgetMicro: 0,
       paymentMode: "simulated",
       txHash: null,
       responseHash: null,
@@ -350,6 +435,7 @@ export async function runAgentCommerceDemo(
       policyStatus: "BLOCKED",
       policyReason: b.reason,
       downstreamReceiptIds: [],
+      citedAgents: [],
       createdAt: new Date().toISOString(),
     };
     saveAgentHireReceipt(r);
@@ -381,6 +467,18 @@ export async function runAgentCommerceDemo(
     : "No agents produced usable responses for this query.";
 
   const totalSpentMicro = hireResults.reduce((s, r) => s + r.receipt.amountMicro, 0);
+  const totalDownstreamPaidMicro = hireResults.reduce((s, r) => s + r.totalDownstreamPaidMicro, 0);
+
+  // Build citation chain DAG — shows which agent paid which for citing their work
+  const agentCitationChain = hireResults.flatMap((r) =>
+    r.citedAgentPayments.map((c) => ({
+      from: r.receipt.agentName,
+      to: c.agentName,
+      toHandle: c.agentHandle,
+      feeMicro: c.citationFeeMicro,
+      txHash: c.txHash,
+    }))
+  );
 
   return {
     queryId,
@@ -393,6 +491,8 @@ export async function runAgentCommerceDemo(
     hireResults,
     finalAnswer,
     totalSpentMicro,
+    totalDownstreamPaidMicro,
+    agentCitationChain,
     agentHireReceiptIds: [
       ...hireResults.map((r) => r.receipt.id),
       ...blockedWithReceipts.map((b) => b.receipt.id),

@@ -96,7 +96,7 @@ describe("payCreator zero-amount guard contract", () => {
   });
 
   it("non-zero amount should proceed to payment path", () => {
-    const amountMicroUsdc = 3000;
+    const amountMicroUsdc: number = 3000;
     const shouldSimulate = amountMicroUsdc === 0;
     expect(shouldSimulate).toBe(false);
   });

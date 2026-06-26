@@ -9,25 +9,37 @@ export const ARC_GATEWAY_WALLET = "0x0077777d7EBA4688BDeF3E311b846F25870A19B9";
 export const ARC_RPC          = "https://rpc.testnet.arc.network";
 export const ARC_EXPLORER     = "https://testnet.arcscan.app";
 
-// Query fee: $0.001 — nanopayment via Circle Gateway on Arc
-export const QUERY_FEE_USDC  = 0.001;
-export const QUERY_FEE_MICRO = Math.round(QUERY_FEE_USDC * 1_000_000); // 1000 micro-USDC
+// Query fee — upto scheme: buyer signs a max budget, CitePay charges per source cited.
+// Min = 1 source at $0.001. Max = 10 sources at $0.001 each = $0.01.
+export const QUERY_FEE_USDC      = 0.001;
+export const QUERY_FEE_MICRO     = Math.round(QUERY_FEE_USDC * 1_000_000); // 1000 micro-USDC (min)
+export const QUERY_FEE_MAX_MICRO = 10_000; // $0.01 — buyer-signed ceiling for upto scheme
+export const QUERY_FEE_PER_SOURCE_MICRO = 1_000; // $0.001 per paid source
 export const PAYMENT_RECEIVER = (
   process.env.AGENT_WALLET_ADDRESS || "0x5389688243328c26a92b301faEEAb5fbf9AFf105"
 ) as `0x${string}`;
 
+/** Compute actual charge based on number of sources cited — upto dynamic pricing. */
+export function computeActualCharge(sourcesCharged: number): number {
+  return Math.max(QUERY_FEE_MICRO, Math.min(sourcesCharged * QUERY_FEE_PER_SOURCE_MICRO, QUERY_FEE_MAX_MICRO));
+}
+
 function buildPaymentRequirements() {
   return {
-    scheme: "exact" as const,
+    scheme: "exact" as const, // Circle Gateway requires exact — upto is surfaced in response metadata
     network: ARC_NETWORK,
     asset: ARC_USDC,
-    amount: String(QUERY_FEE_MICRO),
+    amount: String(QUERY_FEE_MICRO), // buyer pays minimum upfront; actual charge returned in response
     payTo: PAYMENT_RECEIVER,
     maxTimeoutSeconds: 345600,
     extra: {
       name: "GatewayWalletBatched",
       version: "1",
       verifyingContract: ARC_GATEWAY_WALLET,
+      pricing: "upto",
+      minChargeMicro: QUERY_FEE_MICRO,
+      maxChargeMicro: QUERY_FEE_MAX_MICRO,
+      chargePerSourceMicro: QUERY_FEE_PER_SOURCE_MICRO,
     },
   };
 }

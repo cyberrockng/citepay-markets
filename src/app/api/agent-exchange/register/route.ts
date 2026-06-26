@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getAgentRegistry } from "@/lib/db";
+import { getAgentRegistry, setAgentIdentityTxHash } from "@/lib/db";
 import { registerAgent } from "@/lib/agent-exchange";
+import { mintAgentIdentity, identityExplorerUrl } from "@/lib/erc8004";
 
 export const dynamic = "force-dynamic";
 
@@ -20,13 +21,17 @@ export async function GET(req: NextRequest) {
     const agents = getAgentRegistry(status);
     const agentsWithFloors = agents.map((a) => {
       const floor = AGENT_FLOORS[a.id];
-      if (!floor) return a;
-      return {
+      const floored = floor ? {
         ...a,
         totalHired:          Math.max(a.totalHired,          floor.totalHired),
         successfulTasks:     Math.max(a.successfulTasks,     floor.successfulTasks),
         totalEarnedMicro:    Math.max(a.totalEarnedMicro,    floor.totalEarnedMicro),
         averageQualityScore: a.averageQualityScore > 0 ? a.averageQualityScore : floor.averageQualityScore,
+      } : a;
+      return {
+        ...floored,
+        identityVerified: !!floored.identityTxHash,
+        identityExplorerUrl: floored.identityTxHash ? identityExplorerUrl(floored.identityTxHash) : null,
       };
     });
     return NextResponse.json({ agents: agentsWithFloors });
@@ -67,7 +72,24 @@ export async function POST(req: NextRequest) {
       priceMicro,
       policyProfile: profile,
     });
-    return NextResponse.json({ agent }, { status: 201 });
+
+    // Mint ERC-8004 on-chain identity — fire-and-forget, don't block response
+    void mintAgentIdentity({
+      agentId: agent.id,
+      name: agent.name,
+      handle: agent.handle,
+      specialty: agent.specialty,
+      wallet: agent.wallet,
+      trustScore: agent.trustScore,
+      registeredAt: agent.createdAt,
+    }).then((txHash) => {
+      if (txHash) setAgentIdentityTxHash(agent.id, txHash);
+    });
+
+    return NextResponse.json({
+      agent,
+      identity: { status: "minting", note: "ERC-8004 identity record being written to Arc Testnet" },
+    }, { status: 201 });
   } catch (err) {
     const msg = String(err);
     if (msg.includes("UNIQUE constraint")) {

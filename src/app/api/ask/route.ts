@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { v4 as uuidv4 } from "uuid";
 import Anthropic from "@anthropic-ai/sdk";
-import { build402Response, verifyGatewayPayment, QUERY_FEE_MICRO } from "@/lib/x402";
+import { build402Response, verifyGatewayPayment, QUERY_FEE_MICRO, computeActualCharge } from "@/lib/x402";
+import { isReplayed, recordSignature } from "@/lib/replay-guard";
 import { runBuyerAgent, getAgentAddress } from "@/lib/agent";
 import { buildEvidencePreimage, hashEvidence, sha256, parseUSDC } from "@/lib/evidence";
 import { payCreator } from "@/lib/payments";
@@ -59,6 +60,16 @@ export async function POST(req: NextRequest) {
   }
 
   // ── Step 2: Verify payment via Circle Gateway (Arc testnet) ──────────────
+  const rawSig = req.headers.get("payment-signature") ?? req.headers.get("X-PAYMENT") ?? req.headers.get("x-payment") ?? "";
+
+  // Replay guard — reject reused payment signatures within 10-minute TTL
+  if (rawSig && isReplayed(rawSig)) {
+    return NextResponse.json(
+      { error: "Replayed payment signature", detail: "This payment has already been used. Submit a new payment." },
+      { status: 402 }
+    );
+  }
+
   const { valid, txHash: feesTxHash, error: payError } = await verifyGatewayPayment(req);
   if (!valid) {
     return NextResponse.json(
@@ -66,6 +77,9 @@ export async function POST(req: NextRequest) {
       { status: 402 }
     );
   }
+
+  // Record signature as used — must happen after successful verification
+  if (rawSig) recordSignature(rawSig);
 
   // ── Step 3: Create query record ───────────────────────────────────────────
   const queryId = uuidv4();
@@ -299,6 +313,9 @@ Provide a concise answer with inline citations.`,
   // ── Step 8: Update query record ───────────────────────────────────────────
   updateQuery(queryId, { status: "completed", answer, receiptIds, totalPaid });
 
+  const sourcesCharged = paidSources.length;
+  const actualChargeMicro = computeActualCharge(sourcesCharged);
+
   return NextResponse.json({
     queryId,
     query,
@@ -315,6 +332,14 @@ Provide a concise answer with inline citations.`,
     policyProfile: policy.name,
     stoppedEarly,
     mandateId: mandateId ?? null,
+    pricing: {
+      scheme: "upto",
+      sourcesCharged,
+      actualChargeMicro,
+      actualChargeUsdc: actualChargeMicro / 1_000_000,
+      minChargeMicro: QUERY_FEE_MICRO,
+      maxChargeMicro: 10_000,
+    },
   });
 }
 

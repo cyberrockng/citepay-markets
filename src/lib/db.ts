@@ -218,6 +218,7 @@ function migrate(db: Database.Database) {
       agent_wallet TEXT NOT NULL,
       subtask TEXT NOT NULL,
       amount_micro INTEGER NOT NULL DEFAULT 0,
+      allocated_budget_micro INTEGER NOT NULL DEFAULT 0,
       payment_mode TEXT NOT NULL DEFAULT 'simulated',
       tx_hash TEXT,
       response_hash TEXT,
@@ -225,6 +226,7 @@ function migrate(db: Database.Database) {
       policy_status TEXT NOT NULL DEFAULT 'APPROVED',
       policy_reason TEXT,
       downstream_receipt_ids TEXT DEFAULT '[]',
+      cited_agents TEXT DEFAULT '[]',
       created_at TEXT NOT NULL DEFAULT (datetime('now'))
     );
   `);
@@ -245,8 +247,11 @@ function migrate(db: Database.Database) {
     "ALTER TABLE sources  ADD COLUMN source_type           TEXT    DEFAULT 'human'",
     "ALTER TABLE sources  ADD COLUMN synthesized_from      TEXT    DEFAULT NULL",
     "ALTER TABLE sources  ADD COLUMN full_content          TEXT    DEFAULT NULL",
-    "ALTER TABLE bounties ADD COLUMN auto_posted           INTEGER DEFAULT 0",
-    "ALTER TABLE bounties ADD COLUMN gap_category          TEXT    DEFAULT NULL",
+    "ALTER TABLE bounties ADD COLUMN auto_posted                   INTEGER DEFAULT 0",
+    "ALTER TABLE bounties ADD COLUMN gap_category                  TEXT    DEFAULT NULL",
+    "ALTER TABLE agent_hire_receipts ADD COLUMN allocated_budget_micro INTEGER DEFAULT 0",
+    "ALTER TABLE agent_hire_receipts ADD COLUMN cited_agents         TEXT    DEFAULT '[]'",
+    "ALTER TABLE agent_registry ADD COLUMN identity_tx_hash          TEXT    DEFAULT NULL",
   ]) {
     try { db.exec(sql); } catch { /* column already exists */ }
   }
@@ -260,16 +265,16 @@ function migrate(db: Database.Database) {
 // demonstrate the payment flow. Creator names are independent demo accounts,
 // not affiliated with the organizations that publish the referenced URLs.
 const SEED_SOURCES = [
-  { onChainId: 1,  category: "Protocol",       title: "x402: HTTP-Native Payments for AI Agents", url: "https://x402.org", creatorName: "Amara Osei", creatorHandle: "@amara_protocol", payoutWallet: "0x3a0FfFE64537148b3766dA52D983058F98A4e3ce", price: 2000, bond: 10000, contentHash: "70f01a7977012702b243e6a6c2509f6a603b7a61e0241a6f0c3ce845949e1d57", description: "x402 is an open protocol for machine-native payments using HTTP 402 Payment Required. It enables AI agents and automated systems to pay for resources autonomously using USDC on Base." },
-  { onChainId: 2,  category: "Infrastructure", title: "Circle's Programmable Wallets: Powering Agentic Finance", url: "https://developers.circle.com/w3s/programmable-wallets", creatorName: "Priya Nair", creatorHandle: "@priya_infra", payoutWallet: "0x72101E4882159f3e0B3c176951AcA7816A1710e2", price: 3000, bond: 10000, contentHash: "33a7a9314b96f7dbea847c48f7d7cb5ed74537485913516e043b565795a930b5", description: "Circle's Programmable Wallets enable developers to create and manage wallets at scale. USDC transfers on Arc Testnet are instant and near-zero cost, making them ideal for micro-payments between AI agents and content creators." },
-  { onChainId: 3,  category: "Research",       title: "Agentic AI: How Autonomous Agents Will Transform Commerce", url: "https://a16z.com/agentic-ai", creatorName: "James Kweku", creatorHandle: "@kweku_research", payoutWallet: "0xbe575CcebE08895e61c8E45652ff63E4a663d4D9", price: 4000, bond: 5000, contentHash: "2b02947de287cdddc2d2440d37cc1c5961cb7d70f3407e609f400d757b58dac6", description: "Agentic AI systems — autonomous agents that plan, act, and pay for resources — represent a fundamental shift in how software works. These agents need on-chain payment rails to operate at scale without human intervention." },
-  { onChainId: 4,  category: "Research",       title: "The Creator Economy in the Age of AI: Who Gets Paid?", url: "https://github.com/citepay/citepay-markets", creatorName: "CitePay Labs", creatorHandle: "@citepaydemo", payoutWallet: "0xfccead074A3485751351f6b9FF893866A26632AF", price: 2000, bond: 0, contentHash: "256329962cf8c93150940eb17d0a305c284d2b6c0a406a04add51ac658cffb92", description: "As large language models increasingly answer questions by drawing on creator content without attribution or compensation, a new payment layer is needed. CitePay Markets solves this by making citations accountable and paid." },
-  { onChainId: 5,  category: "Infrastructure", title: "Base: The Onchain Platform for Everyone", url: "https://base.org", creatorName: "Fatou Diallo", creatorHandle: "@fatou_chain", payoutWallet: "0x6ed34b116B5040072619f83Dc25f64C70584e1F6", price: 1500, bond: 10000, contentHash: "d282cc888b86dbd8028f9f6af714587c56a00f7264430541e233df145250acb6", description: "Base is a secure, low-cost, developer-friendly Ethereum L2. With near-zero gas fees and USDC native support, Base is the ideal chain for micro-payment applications like AI citation markets." },
-  { onChainId: 6,  category: "Research",       title: "Proof of Personhood and Identity in Decentralized Systems", url: "https://vitalik.eth.limo/general/2023/07/24/biometric.html", creatorName: "Dmitri Volkov", creatorHandle: "@dvolkov_research", payoutWallet: "0xF7b09B900A2676f8c2D8bdFE82FF4B0c4C5A6751", price: 5000, bond: 20000, contentHash: "610d8c75ff1294ae99afa1f0049511f7ead82b6c2f98caff07ca7e881dafe62b", description: "Proof of personhood and biometric identity verification in decentralized systems. Explores the trade-offs between privacy-preserving identity solutions and their role in preventing Sybil attacks in open networks." },
-  { onChainId: 7,  category: "Protocol",       title: "HTTP 402 and the Future of Machine Payments", url: "https://docs.cdp.coinbase.com/x402/docs/welcome", creatorName: "Yuki Tanaka", creatorHandle: "@yuki_protocol", payoutWallet: "0xa20C8F958a31A78Be4bcf33CecA8B463636050ce", price: 2500, bond: 10000, contentHash: "327d0c9a1e2e214d2658b334afac90483ea11836b6676ef8035854a52a08d8b4", description: "HTTP 402 Payment Required has been dormant since the 1990s. x402 revives it as a machine-native payment protocol, enabling any HTTP endpoint to require payment before serving content — perfect for AI agent workflows." },
-  { onChainId: 8,  category: "Research",       title: "Content Integrity and Hash Verification in Web3", url: "https://ipfs.tech/blog/content-addressing", creatorName: "Sara Mensah", creatorHandle: "@sara_web3", payoutWallet: "0x578087F20dfF74e3dB0841C9514285648B4339DE", price: 2000, bond: 5000, contentHash: "77ed5dbce0e8699cf34d041e4db6af0b697821ea25094eca3ee328a4a3dde5d4", description: "Content-addressed storage ensures that what you paid for is what you received. By storing a SHA-256 hash of content at payment time, CitePay Markets can objectively verify if a creator modified their source after receiving payment." },
-  { onChainId: 9,  category: "Infrastructure", title: "USDC: The Dollar for the Internet", url: "https://www.circle.com/usdc", creatorName: "Leon Okafor", creatorHandle: "@leon_stables", payoutWallet: "0xa9EB31434d3eA3679f36f051492451f3f5912a7C", price: 1000, bond: 10000, contentHash: "fac45fcf9ee419e9010f1335ea6f744d2ccd9533f68babea3162e6412a3651df", description: "USDC is a fully reserved, dollar-backed stablecoin that settles instantly on Base. Its programmatic accessibility makes it the default currency for AI agent payments, enabling autonomous financial transactions at internet scale." },
-  { onChainId: 10, category: "AI/Agents",      title: "The Case for AI Agent Accountability: Evidence Logs and Receipts", url: "https://anthropic.com/research/model-cards", creatorName: "Abiola Adewale", creatorHandle: "@abiola_agents", payoutWallet: "0x9925e934B9aB91353F8525135A83112dF3FC567a", price: 3000, bond: 15000, contentHash: "5e49d22dddff4c0357ce8d8c5bf22a75665185ee6cd7c96cd5308b91dac26f13", description: "AI agents that interact with the world on behalf of users must maintain auditable logs of their decisions. A public receipt for every payment, refusal, or skip creates accountability and enables objective dispute resolution." },
+  { onChainId: 14, category: "Protocol",       title: "x402: HTTP-Native Payments for AI Agents", url: "https://x402.org", creatorName: "Amara Osei", creatorHandle: "@amara_protocol", payoutWallet: "0x3a0FfFE64537148b3766dA52D983058F98A4e3ce", price: 2000, bond: 10000, contentHash: "70f01a7977012702b243e6a6c2509f6a603b7a61e0241a6f0c3ce845949e1d57", description: "x402 is an open protocol for machine-native payments using HTTP 402 Payment Required. It enables AI agents and automated systems to pay for resources autonomously using USDC on Base." },
+  { onChainId: 15, category: "Infrastructure", title: "Circle's Programmable Wallets: Powering Agentic Finance", url: "https://developers.circle.com/w3s/programmable-wallets", creatorName: "Priya Nair", creatorHandle: "@priya_infra", payoutWallet: "0x72101E4882159f3e0B3c176951AcA7816A1710e2", price: 3000, bond: 10000, contentHash: "33a7a9314b96f7dbea847c48f7d7cb5ed74537485913516e043b565795a930b5", description: "Circle's Programmable Wallets enable developers to create and manage wallets at scale. USDC transfers on Arc Testnet are instant and near-zero cost, making them ideal for micro-payments between AI agents and content creators." },
+  { onChainId: 16, category: "Research",       title: "Agentic AI: How Autonomous Agents Will Transform Commerce", url: "https://a16z.com/agentic-ai", creatorName: "James Kweku", creatorHandle: "@kweku_research", payoutWallet: "0xbe575CcebE08895e61c8E45652ff63E4a663d4D9", price: 4000, bond: 5000, contentHash: "2b02947de287cdddc2d2440d37cc1c5961cb7d70f3407e609f400d757b58dac6", description: "Agentic AI systems — autonomous agents that plan, act, and pay for resources — represent a fundamental shift in how software works. These agents need on-chain payment rails to operate at scale without human intervention." },
+  { onChainId: 17, category: "Research",       title: "The Creator Economy in the Age of AI: Who Gets Paid?", url: "https://github.com/citepay/citepay-markets", creatorName: "CitePay Labs", creatorHandle: "@citepaydemo", payoutWallet: "0xfccead074A3485751351f6b9FF893866A26632AF", price: 2000, bond: 0, contentHash: "256329962cf8c93150940eb17d0a305c284d2b6c0a406a04add51ac658cffb92", description: "As large language models increasingly answer questions by drawing on creator content without attribution or compensation, a new payment layer is needed. CitePay Markets solves this by making citations accountable and paid." },
+  { onChainId: 18, category: "Infrastructure", title: "Base: The Onchain Platform for Everyone", url: "https://base.org", creatorName: "Fatou Diallo", creatorHandle: "@fatou_chain", payoutWallet: "0x6ed34b116B5040072619f83Dc25f64C70584e1F6", price: 1500, bond: 10000, contentHash: "d282cc888b86dbd8028f9f6af714587c56a00f7264430541e233df145250acb6", description: "Base is a secure, low-cost, developer-friendly Ethereum L2. With near-zero gas fees and USDC native support, Base is the ideal chain for micro-payment applications like AI citation markets." },
+  { onChainId: 19, category: "Research",       title: "Proof of Personhood and Identity in Decentralized Systems", url: "https://vitalik.eth.limo/general/2023/07/24/biometric.html", creatorName: "Dmitri Volkov", creatorHandle: "@dvolkov_research", payoutWallet: "0xF7b09B900A2676f8c2D8bdFE82FF4B0c4C5A6751", price: 5000, bond: 20000, contentHash: "610d8c75ff1294ae99afa1f0049511f7ead82b6c2f98caff07ca7e881dafe62b", description: "Proof of personhood and biometric identity verification in decentralized systems. Explores the trade-offs between privacy-preserving identity solutions and their role in preventing Sybil attacks in open networks." },
+  { onChainId: 20, category: "Protocol",       title: "HTTP 402 and the Future of Machine Payments", url: "https://docs.cdp.coinbase.com/x402/docs/welcome", creatorName: "Yuki Tanaka", creatorHandle: "@yuki_protocol", payoutWallet: "0xa20C8F958a31A78Be4bcf33CecA8B463636050ce", price: 2500, bond: 10000, contentHash: "327d0c9a1e2e214d2658b334afac90483ea11836b6676ef8035854a52a08d8b4", description: "HTTP 402 Payment Required has been dormant since the 1990s. x402 revives it as a machine-native payment protocol, enabling any HTTP endpoint to require payment before serving content — perfect for AI agent workflows." },
+  { onChainId: 21, category: "Research",       title: "Content Integrity and Hash Verification in Web3", url: "https://ipfs.tech/blog/content-addressing", creatorName: "Sara Mensah", creatorHandle: "@sara_web3", payoutWallet: "0x578087F20dfF74e3dB0841C9514285648B4339DE", price: 2000, bond: 5000, contentHash: "77ed5dbce0e8699cf34d041e4db6af0b697821ea25094eca3ee328a4a3dde5d4", description: "Content-addressed storage ensures that what you paid for is what you received. By storing a SHA-256 hash of content at payment time, CitePay Markets can objectively verify if a creator modified their source after receiving payment." },
+  { onChainId: 22, category: "Infrastructure", title: "USDC: The Dollar for the Internet", url: "https://www.circle.com/usdc", creatorName: "Leon Okafor", creatorHandle: "@leon_stables", payoutWallet: "0xa9EB31434d3eA3679f36f051492451f3f5912a7C", price: 1000, bond: 10000, contentHash: "fac45fcf9ee419e9010f1335ea6f744d2ccd9533f68babea3162e6412a3651df", description: "USDC is a fully reserved, dollar-backed stablecoin that settles instantly on Base. Its programmatic accessibility makes it the default currency for AI agent payments, enabling autonomous financial transactions at internet scale." },
+  { onChainId: 23, category: "AI/Agents",      title: "The Case for AI Agent Accountability: Evidence Logs and Receipts", url: "https://anthropic.com/research/model-cards", creatorName: "Abiola Adewale", creatorHandle: "@abiola_agents", payoutWallet: "0x9925e934B9aB91353F8525135A83112dF3FC567a", price: 3000, bond: 15000, contentHash: "5e49d22dddff4c0357ce8d8c5bf22a75665185ee6cd7c96cd5308b91dac26f13", description: "AI agents that interact with the world on behalf of users must maintain auditable logs of their decisions. A public receipt for every payment, refusal, or skip creates accountability and enables objective dispute resolution." },
 ];
 
 export function reseedDb(): { sourcesInserted: number } {
@@ -1111,6 +1116,7 @@ export interface AgentRegistryRow {
   averageQualityScore: number;
   policyViolations: number;
   trustScore: number;
+  identityTxHash: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -1124,6 +1130,7 @@ export interface AgentHireReceipt {
   agentWallet: string;
   subtask: string;
   amountMicro: number;
+  allocatedBudgetMicro: number;
   paymentMode: "confirmed" | "live" | "testnet" | "simulated";
   txHash: string | null;
   responseHash: string | null;
@@ -1131,6 +1138,7 @@ export interface AgentHireReceipt {
   policyStatus: "APPROVED" | "BLOCKED" | "WARNING" | "FALLBACK_USED";
   policyReason: string | null;
   downstreamReceiptIds: string[];
+  citedAgents: { agentId: string; agentName: string; citationFeeMicro: number; txHash: string | null }[];
   createdAt: string;
 }
 
@@ -1152,6 +1160,7 @@ function rowToAgentRegistry(r: Record<string, unknown>): AgentRegistryRow {
     averageQualityScore: r.average_quality_score as number,
     policyViolations: r.policy_violations as number,
     trustScore: r.trust_score as number,
+    identityTxHash: (r.identity_tx_hash as string | null) ?? null,
     createdAt: r.created_at as string,
     updatedAt: r.updated_at as string,
   };
@@ -1167,6 +1176,7 @@ function rowToAgentHireReceipt(r: Record<string, unknown>): AgentHireReceipt {
     agentWallet: r.agent_wallet as string,
     subtask: r.subtask as string,
     amountMicro: r.amount_micro as number,
+    allocatedBudgetMicro: (r.allocated_budget_micro as number) ?? 0,
     paymentMode: (r.payment_mode as AgentHireReceipt["paymentMode"]) ?? "simulated",
     txHash: (r.tx_hash as string | null) ?? null,
     responseHash: (r.response_hash as string | null) ?? null,
@@ -1174,6 +1184,7 @@ function rowToAgentHireReceipt(r: Record<string, unknown>): AgentHireReceipt {
     policyStatus: (r.policy_status as AgentHireReceipt["policyStatus"]) ?? "APPROVED",
     policyReason: (r.policy_reason as string | null) ?? null,
     downstreamReceiptIds: JSON.parse((r.downstream_receipt_ids as string) || "[]"),
+    citedAgents: JSON.parse((r.cited_agents as string) || "[]"),
     createdAt: r.created_at as string,
   };
 }
@@ -1306,17 +1317,19 @@ export function updateAgentStats(id: string, stats: {
 
 export function saveAgentHireReceipt(receipt: AgentHireReceipt): void {
   getDb().prepare(`
-    INSERT INTO agent_hire_receipts
+    INSERT OR REPLACE INTO agent_hire_receipts
       (id, query_id, orchestrator_id, agent_id, agent_name, agent_wallet, subtask,
-       amount_micro, payment_mode, tx_hash, response_hash, quality_score,
-       policy_status, policy_reason, downstream_receipt_ids, created_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+       amount_micro, allocated_budget_micro, payment_mode, tx_hash, response_hash,
+       quality_score, policy_status, policy_reason, downstream_receipt_ids, cited_agents, created_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).run(
     receipt.id, receipt.queryId, receipt.orchestratorId, receipt.agentId, receipt.agentName,
-    receipt.agentWallet, receipt.subtask, receipt.amountMicro, receipt.paymentMode,
-    receipt.txHash, receipt.responseHash, receipt.qualityScore,
+    receipt.agentWallet, receipt.subtask, receipt.amountMicro, receipt.allocatedBudgetMicro ?? 0,
+    receipt.paymentMode, receipt.txHash, receipt.responseHash, receipt.qualityScore,
     receipt.policyStatus, receipt.policyReason,
-    JSON.stringify(receipt.downstreamReceiptIds), receipt.createdAt,
+    JSON.stringify(receipt.downstreamReceiptIds),
+    JSON.stringify(receipt.citedAgents ?? []),
+    receipt.createdAt,
   );
 }
 
@@ -1331,4 +1344,8 @@ export function getAgentHireReceipts(queryId?: string, limit = 50): AgentHireRec
 export function getAgentHireReceiptById(id: string): AgentHireReceipt | undefined {
   const row = getDb().prepare("SELECT * FROM agent_hire_receipts WHERE id = ?").get(id) as Record<string, unknown> | undefined;
   return row ? rowToAgentHireReceipt(row) : undefined;
+}
+
+export function setAgentIdentityTxHash(agentId: string, txHash: string): void {
+  getDb().prepare("UPDATE agent_registry SET identity_tx_hash = ?, updated_at = datetime('now') WHERE id = ?").run(txHash, agentId);
 }

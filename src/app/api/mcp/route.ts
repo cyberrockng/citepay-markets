@@ -18,6 +18,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { v4 as uuidv4 } from "uuid";
 import Anthropic from "@anthropic-ai/sdk";
+import { verifyGatewayPayment, QUERY_FEE_MICRO, PAYMENT_RECEIVER, ARC_NETWORK, ARC_USDC } from "@/lib/x402";
+import { isReplayed, recordSignature } from "@/lib/replay-guard";
 import { runBuyerAgent, getAgentAddress } from "@/lib/agent";
 import {
   getAllSources, insertQuery, updateQuery, insertReceipt,
@@ -58,7 +60,7 @@ function err(id: JsonRpcRequest["id"], code: number, message: string, data?: unk
 const TOOLS = [
   {
     name: "cite_query",
-    description: "Run a citation query against the CitePay source market. The CitePay agent scores sources for relevance, pays creators in USDC, and returns a cited answer. Every decision is recorded as a public Policy Receipt.",
+    description: "Run a citation query against the CitePay source market. Costs $0.001 USDC per call via x402 on Arc Testnet — add a 'payment-signature' header. The CitePay agent scores sources for relevance, pays creators in USDC, and returns a cited answer. Every decision is recorded as a public Policy Receipt.",
     inputSchema: {
       type: "object",
       properties: {
@@ -274,6 +276,47 @@ export async function POST(req: NextRequest) {
   if (method === "tools/call") {
     const name = params.name as string;
     const args = (params.arguments as Record<string, unknown>) ?? {};
+
+    // cite_query requires a $0.001 USDC payment via x402 — get_receipt and check_policy are free
+    if (name === "cite_query") {
+      const rawSig = req.headers.get("payment-signature") ?? req.headers.get("x-payment") ?? "";
+      const hasPayment = !!rawSig || !!req.headers.get("X-PAYMENT");
+
+      if (!hasPayment) {
+        return ok(id, {
+          content: [{ type: "text", text: JSON.stringify({
+            error: "Payment Required",
+            code: -32402,
+            message: "cite_query costs $0.001 USDC per call via x402 on Arc Testnet.",
+            payment: {
+              scheme: "exact",
+              network: ARC_NETWORK,
+              asset: ARC_USDC,
+              amount: String(QUERY_FEE_MICRO),
+              payTo: PAYMENT_RECEIVER,
+              instructions: "Add a 'payment-signature' header with a signed Circle Gateway payment payload.",
+            },
+          }) }],
+          isError: true,
+        });
+      }
+
+      if (rawSig && isReplayed(rawSig)) {
+        return ok(id, {
+          content: [{ type: "text", text: JSON.stringify({ error: "Replayed payment signature. Submit a new payment." }) }],
+          isError: true,
+        });
+      }
+
+      const { valid, error: payError } = await verifyGatewayPayment(req);
+      if (!valid) {
+        return ok(id, {
+          content: [{ type: "text", text: JSON.stringify({ error: "Payment verification failed", detail: payError }) }],
+          isError: true,
+        });
+      }
+      if (rawSig) recordSignature(rawSig);
+    }
 
     try {
       let result: unknown;
