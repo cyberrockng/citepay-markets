@@ -23,6 +23,7 @@ export interface Source {
   category?: string; // e.g. "Protocol", "Research", "Infrastructure", "AI/Agents"
   avgContributionWeight?: number; // running average of post-synthesis contribution scores (0–1)
   totalContributionQueries?: number; // number of PAY decisions that contributed to avg
+  fullContent?: string | null; // indexed plain-text page content for scoring
 }
 
 export interface ScoreBreakdown {

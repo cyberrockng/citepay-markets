@@ -3,6 +3,7 @@ import { v4 as uuidv4 } from "uuid";
 import { insertSource } from "@/lib/db";
 import { registerSourceOnChain } from "@/lib/anchor";
 import { fetchAndHash } from "@/lib/content-hash";
+import { fetchPageContent } from "@/lib/page-indexer";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 30;
@@ -61,32 +62,36 @@ export async function POST(req: NextRequest) {
   if (!url.startsWith("http")) return NextResponse.json({ error: "url must start with http(s)://" }, { status: 400 });
   if (!/^0x[0-9a-fA-F]{40}$/.test(payoutWallet)) return NextResponse.json({ error: "wallet must be a valid 0x address" }, { status: 400 });
 
-  // Fetch page and extract metadata + content hash in parallel
+  // Fetch page — extract metadata, hash, and full-text index in one pass
   let title = "";
   let description = "";
   let contentHash = "";
   let contentLength = 0;
+  let fullContent: string | null = null;
   let fetchSource = "fallback";
 
   try {
     const res = await fetch(url, {
-      headers: { "User-Agent": "CitePay-Bot/1.0" },
-      signal: AbortSignal.timeout(8_000),
+      headers: { "User-Agent": "CitePay-Indexer/1.0" },
+      signal: AbortSignal.timeout(10_000),
     });
     const html = await res.text();
     const meta = extractMeta(html);
     title = meta.title;
     description = meta.description;
     fetchSource = "live";
+    contentLength = html.length;
 
-    // Hash from already-fetched content
+    // Content hash
     const encoder = new TextEncoder();
     const data = encoder.encode(html.slice(0, 65536));
     const hashBuf = await crypto.subtle.digest("SHA-256", data);
     contentHash = Array.from(new Uint8Array(hashBuf)).map((b) => b.toString(16).padStart(2, "0")).join("");
-    contentLength = html.length;
+
+    // Full-text index from the same HTML fetch (no second network call)
+    const { content } = await fetchPageContent(url).catch(() => ({ content: "" }));
+    fullContent = content || null;
   } catch {
-    // Fallback: hash the URL itself
     const encoder = new TextEncoder();
     const data = encoder.encode(url);
     const hashBuf = await crypto.subtle.digest("SHA-256", data);
@@ -112,6 +117,7 @@ export async function POST(req: NextRequest) {
     price,
     contentHash,
     contentLength,
+    fullContent,
     metadataURI: url,
     bond: 0,
     bonded: false,

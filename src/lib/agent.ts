@@ -41,15 +41,24 @@ async function scoreSource(
   const daysOld = (Date.now() - new Date(source.createdAt).getTime()) / (1000 * 60 * 60 * 24);
   const freshnessBonus = daysOld < 7 ? 5 : daysOld < 30 ? 2 : 0;
 
-  const descriptionLine = source.description ? `\nContent preview: "${source.description.substring(0, 300)}"` : "";
   const freshnessLine = freshnessBonus > 0 ? `\nNote: This is a recently registered source (${Math.round(daysOld)} days old).` : "";
+
+  // Prefer indexed full content; fall back to description
+  const contentPreview = source.fullContent
+    ? source.fullContent.slice(0, 1200)
+    : source.description
+    ? source.description.slice(0, 300)
+    : "";
+  const contentLabel = source.fullContent ? "Indexed page content" : "Content preview";
+  const contentLine = contentPreview ? `\n${contentLabel}:\n"""\n${contentPreview}\n"""` : "";
+
   const prompt = `You are scoring a creator source for relevance to a research query.
 
 Query: "${query}"
 
 Source title: "${source.title}"
 Source URL: ${source.url}
-Creator: ${source.creatorName}${descriptionLine}${freshnessLine}
+Creator: ${source.creatorName}${contentLine}${freshnessLine}
 
 Score the relevance from 0 to 100. A score of 80+ means this source directly answers the query. Return ONLY a JSON object like:
 {"relevance": 82, "excerpt": "one-sentence summary of why this source is or isn't relevant"}`;

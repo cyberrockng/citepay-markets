@@ -325,14 +325,18 @@ export function insertSource(s: Source): void {
   db.prepare(`
     INSERT INTO sources (id, title, url, creator_name, creator_handle, payout_wallet,
       content_hash, metadata_uri, description, price, bond, bonded, reputation,
-      paid_count, refused_count, skip_count, active, created_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      paid_count, refused_count, skip_count, active, created_at, full_content)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).run(
     s.id, s.title, s.url, s.creatorName, s.creatorHandle, s.payoutWallet,
     s.contentHash, s.metadataURI || "", s.description || "", s.price, s.bond, s.bonded ? 1 : 0,
     s.reputation, s.paidCount, s.refusedCount, s.skipCount, s.active ? 1 : 0,
-    s.createdAt
+    s.createdAt, s.fullContent ?? null
   );
+}
+
+export function updateSourceContent(id: string, fullContent: string): void {
+  getDb().prepare("UPDATE sources SET full_content = ? WHERE id = ?").run(fullContent, id);
 }
 
 export function getAllSources(category?: string): Source[] {
@@ -418,6 +422,7 @@ function rowToSource(r: Record<string, unknown>): Source {
     category: (r.category as string | null) ?? "General",
     avgContributionWeight: (r.avg_contribution_weight as number | null) ?? 0,
     totalContributionQueries: (r.total_contribution_queries as number | null) ?? 0,
+    fullContent: (r.full_content as string | null) ?? null,
   };
 }
 

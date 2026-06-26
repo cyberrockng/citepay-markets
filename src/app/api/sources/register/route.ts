@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { v4 as uuidv4 } from "uuid";
-import { insertSource, updateSourceOnChainId } from "@/lib/db";
+import { insertSource, updateSourceOnChainId, updateSourceContent } from "@/lib/db";
 import { contentHashFromText } from "@/lib/evidence";
 import { registerSourceOnChain } from "@/lib/anchor";
+import { fetchPageContent } from "@/lib/page-indexer";
 import type { Source } from "@/types";
 
 export async function POST(req: NextRequest) {
@@ -59,6 +60,14 @@ export async function POST(req: NextRequest) {
   };
 
   insertSource(source);
+
+  // Index full page content non-blocking — improves scoring accuracy
+  void fetchPageContent(String(url)).then(({ content, wordCount }) => {
+    if (content) {
+      updateSourceContent(id, content);
+      console.log(`[indexer] source ${id} indexed ${wordCount} words from ${url}`);
+    }
+  });
 
   // Anchor source on-chain (non-blocking — don't delay the HTTP response)
   void registerSourceOnChain({
