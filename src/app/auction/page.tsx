@@ -296,7 +296,7 @@ export default function AuctionPage() {
               ))}
             </div>
             <div className="mt-4 flex flex-col sm:flex-row gap-3">
-              <Link href="/ask"
+              <Link href={`/ask?query=${encodeURIComponent(auctionQuery)}`}
                 className="flex-1 text-center px-5 py-2.5 rounded-lg bg-gradient-to-r from-emerald-600 to-teal-600 text-white text-sm font-semibold hover:opacity-90 transition-opacity">
                 Execute & pay winners →
               </Link>

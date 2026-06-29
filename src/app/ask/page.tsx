@@ -1,5 +1,6 @@
 "use client";
 import { useState, useRef, useEffect } from "react";
+import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { useAccount, useConnect, useDisconnect, useSignMessage } from "wagmi";
 import { injected } from "@wagmi/connectors";
@@ -161,7 +162,8 @@ function formatPolicyRule(rule: string): string {
 }
 
 export default function AskPage() {
-  const [query, setQuery]         = useState("");
+  const searchParams = useSearchParams();
+  const [query, setQuery]         = useState(() => searchParams.get("query") ?? "");
   const [budget, setBudget]       = useState("0.05");
   const [policyKey, setPolicyKey] = useState<"conservative" | "balanced" | "aggressive">("balanced");
   const [step, setStep]           = useState<Step>("idle");
