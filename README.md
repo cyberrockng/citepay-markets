@@ -33,19 +33,35 @@ flowchart LR
 
 | Path | What to show |
 |---|---|
+| `/demo` | Best first stop — auto-runs 4 proofs: tamper → x402 pay → query → challenge. No wallet needed. |
+| `/auction` | Citation Auction — watch Claude score all sources in real time via SSE, top 3 win citation slots |
+| `/ask` | Agent workbench with configurable spend policy, Circle Programmable Wallet, live proof console |
 | `/orchestrate` | Pilot Agent reads onchain reputation → attests plan → hires researcher agents via x402 |
+| `/agent-exchange` | Agent Commerce Network — policy-gated agent hiring with real USDC payments + Claude Haiku responses |
+| `/estimate` | Citation Earnings Estimator — shows unregistered creators what they're leaving on the table |
+| `/join` | One-URL creator self-registration — paste a URL, set a price, start earning |
+| `/economy` | Live CitePay Index — real-time economy overview |
 | `/agents` | 3 competing source agents with live Healthy/Watch/Stop reputation from CitationPaid events |
 | `/wallet` | Circle DCW + App Kit + Unified Balance Kit + DCW Adapter: live USDC balance across chains |
 | `/register` | Public creator onboarding — register content, set price per citation, earn USDC instantly |
 | `/audit` | On-chain audit — reads Arc RPC directly, no database; verify wallet balance + every tx |
 | `/live` | Real-time SSE agent decision feed (auto-reconnects) |
-| `/demo` | Auto-runs 4 proofs: tamper → x402 pay → query → challenge |
-| `/ask` | Agent workbench with configurable spend policy + proof console |
-| `/receipt/:id` | Receipt with evidence preimage viewer + hash recomputation |
-| `/agent-exchange` | Agent Commerce Network — register agents, run policy-gated hiring with real USDC payments + Claude Haiku responses |
-| `/traction` | Live on-chain stats: 700+ agent decisions, 292+ paid citations from CitePayMarket.sol |
+| `/receipt/:id` | Receipt with OG share card, evidence preimage viewer + hash recomputation |
+| `/traction` | Live on-chain stats: 827+ agent decisions, 385+ paid citations from CitePayMarket.sol |
 | `/proof` | On-chain proof explorer — reads CitationPaid events directly from Arc Testnet, no database |
 | `/mcp` | MCP server install for Claude Code / Cursor integration |
+
+**MCP (Claude Code / Cursor):**
+```json
+{
+  "mcpServers": {
+    "citepay": {
+      "command": "npx",
+      "args": ["-y", "mcp-remote", "https://citepay-markets.vercel.app/api/mcp"]
+    }
+  }
+}
+```
 
 **Contracts:** Arc Testnet (chainId 5042002)  
 · [`CitePayMarket`](https://testnet.arcscan.app/address/0x396cf1646EbAeF85ee8428C2d9239C46Ae956085) `0x396cf164…6085`  
@@ -71,7 +87,7 @@ A query run against all three agents simultaneously — FactAgent (conservative)
 
 One query. Five source agents. Five different outcomes. All decisions signed by the veracity agent and anchored on Arc Testnet via `CitePayMarket.sol`.
 
-**Tx:** [0xc02c70ab…](https://testnet.arcscan.app/tx/0xc02c70abadf076c326e4fe393edc6bf0634816b82cf1402127cb96e6116269b0) · **Block:** 48070337 · **292+ total `CitationPaid` events** on-chain
+**Tx:** [0xc02c70ab…](https://testnet.arcscan.app/tx/0xc02c70abadf076c326e4fe393edc6bf0634816b82cf1402127cb96e6116269b0) · **Block:** 48070337 · **385 total `CitationPaid` events** on-chain
 
 ---
 
@@ -91,16 +107,16 @@ CitePay Markets is a live agentic citation economy where:
 - **Public creator registration** — `/register` lets anyone register their content in 60 seconds, no approval, no API key required.
 
 ### Live Traction (Arc Testnet)
-- **292+ `CitationPaid` events** on CitePayMarket.sol (verifiable: [0x396c…6085](https://testnet.arcscan.app/address/0x396cf1646EbAeF85ee8428C2d9239C46Ae956085))
-- **700+ agent decisions** — PAY / REFUSE / SKIP / BLOCKED_BY_POLICY — all with public receipts
-- **292+ on-chain citation receipts** anchored via CitePayMarket.sol across 90+ unique queries; creator USDC payout is a separate Arc transaction per receipt
-- **9 of 10 creators** received USDC transfers to their registered payout wallets
-
-> Production metrics count only confirmed payout transactions. Simulated receipts (zero-balance fallback, dev/zero-balance mode only) are excluded from confirmed stats at `/api/proof`.
+- **385 `CitationPaid` events** on CitePayMarket.sol (verifiable: [0x396c…6085](https://testnet.arcscan.app/address/0x396cf1646EbAeF85ee8428C2d9239C46Ae956085))
+- **827 agent decisions** — PAY / REFUSE / SKIP / BLOCKED_BY_POLICY — all with public receipts
+- **136 total queries** processed; creator USDC payout is a separate Arc transaction per receipt
+- **$0.87 USDC routed** to creators across 11 unique creator wallets
 - **10 sources** registered onchain across 3 source agents
 - **3 source agent identities** with distinct wallets, specialties, and reputation scores
 - **1 Pilot Agent** attesting allocation decisions onchain before paying
 - **Citation memory** — source reputation persists across cold starts via Edge Config
+
+> Production metrics count only confirmed payout transactions. Simulated receipts (zero-balance fallback) are excluded from confirmed stats at `/api/proof`.
 
 ---
 
@@ -630,6 +646,34 @@ REGISTER_API_KEY=...                # Protects POST /api/sources/register (spam 
 CitePay Markets is registered as a creator source on [Tollgate](https://tollgate.gudman.xyz) — when Tollgate's agent answers questions about AI payments, MCP tools, or on-chain auditing, it may cite CitePay and pay `0x5389…f105` directly.
 
 CitePay also participates in the [Shadow Float](https://shadow-arc.vercel.app/float) credit line — agent `0x5389…f105` signed a `FloatSpendIntent` (EIP-712) giving Shadow's treasury-fronted x402 credit access. Verify: `shadow-arc.vercel.app/api/float-tools?action=verify&hash=0x81f48871477fdb4efb1d77362dd42312c7d0caef27a260a071ede5b8ef627d22`
+
+---
+
+## 21. Shadow × CitePay — Cross-Project Paid Provider Proof
+
+**Date:** June 29, 2026  
+**Flow:** Shadow → CitePay via DirectTransfer (real USDC, Arc Testnet)
+
+Shadow ran 5 autonomous paid queries into CitePay using the DirectTransfer payment scheme — a raw Arc USDC transfer + `X-Arc-Tx-Hash` header, no Circle Gateway required. This is a live cross-project agent-to-agent payment flow between two independent Lepton builders.
+
+**Shadow operator wallet:** `0xBDb1e0718EC6f6e2817c9cd4e5c5ed25Ac191Fb8`  
+**CitePay recipient:** `0x5389688243328c26a92b301faEEAb5fbf9AFf105`  
+**Amount per query:** 1,000 µUSDC (0.001 USDC)  
+**Token:** USDC precompile `0x3600000000000000000000000000000000000000`  
+**Chain:** Arc Testnet, chainId 5042002
+
+| # | Tx Hash | Block | Status |
+|---|---|---|---|
+| 1 | [`0x3c74ba90…9929`](https://testnet.arcscan.app/tx/0x3c74ba902d9494c7762f440affa0065ef4a2478b6e9cb4cb228e11cd689a9929) | 49317407 | ✅ Confirmed |
+| 2 | [`0xc8ee30e0…532a`](https://testnet.arcscan.app/tx/0xc8ee30e0c2ab5943f472baf819fb17af8b39571665ba4ac408b9fe8d9343532a) | 49317640 | ✅ Confirmed |
+| 3 | [`0xb1b67271…48bd`](https://testnet.arcscan.app/tx/0xb1b6727138218b79ec829cd221db65bd4abe47b5a9b7afee8bdd42b14e1f48bd) | 49317729 | ✅ Confirmed |
+| 4 | [`0x88ef62f2…def8`](https://testnet.arcscan.app/tx/0x88ef62f2ab2b13cbea658ca9f4d26ebd38c6e86aa8e0704dd7e51a676beadef8) | 49317818 | ✅ Confirmed |
+| 5 | [`0x85aea6df…1311`](https://testnet.arcscan.app/tx/0x85aea6dfce5b589fa5a1e5526889d31ca9126385217614b42d0ad34656261311) | 49317933 | ✅ Confirmed |
+
+**Total received:** 5,000 µUSDC (0.005 USDC) across 5 sequential blocks  
+**CitePay confirmed:** all 5 queries received, scored, answered, creators paid, receipts anchored on `CitePayMarket.sol`.
+
+This is a verifiable autonomous agent-to-agent payment flow — no human intermediary, no mock data, settled on-chain.
 
 ---
 
