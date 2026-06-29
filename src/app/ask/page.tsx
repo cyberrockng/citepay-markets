@@ -1,5 +1,5 @@
 "use client";
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { useAccount, useConnect, useDisconnect, useSignMessage } from "wagmi";
@@ -162,6 +162,10 @@ function formatPolicyRule(rule: string): string {
 }
 
 export default function AskPage() {
+  return <Suspense><AskPageContent /></Suspense>;
+}
+
+function AskPageContent() {
   const searchParams = useSearchParams();
   const [query, setQuery]         = useState(() => searchParams.get("query") ?? "");
   const [budget, setBudget]       = useState("0.05");
