@@ -36,7 +36,9 @@ export default function ReceiptPage({ params }: { params: Promise<{ id: string }
 
   function getShareText() {
     if (!receipt) return "";
-    return `An AI cited my work and paid me USDC!\n\nSource: ${receipt.sourceTitle}\nPaid: $${(receipt.amountPaid / 1_000_000).toFixed(4)} USDC\nReason: ${receipt.reason}\nReceipt: ${window.location.href}\n\nPowered by CitePay Markets`;
+    const amount = `$${(receipt.amountPaid / 1_000_000).toFixed(4)} USDC`;
+    const vcs = receipt.contributionWeight != null ? ` (${Math.round(receipt.contributionWeight * 100)}% of the answer)` : "";
+    return `An AI agent just cited my work and paid me ${amount}${vcs}.\n\nSource: ${receipt.sourceTitle}\nVerified on-chain: ${window.location.href}\n\n→ Register your content at citepay-markets.vercel.app/join`;
   }
 
   async function handleShare(target: "copy" | "x" | "farcaster" | "discord") {
@@ -377,43 +379,51 @@ ethers.verifyMessage(
 
       {/* Share Card (PAY only) */}
       {isPay && (
-        <div className="bg-[#111118] rounded-xl p-6 border border-[#6366f1]/30 mb-4">
-          <h2 className="font-semibold mb-4 text-[#f0f0f5]">Creator Share Card</h2>
-          <div className="bg-[#0a0a0f] rounded-lg p-4 font-mono text-sm text-[#f0f0f5] mb-4 whitespace-pre-wrap border border-[#1e1e2e]">
-{`An AI cited my work and paid me USDC.
-
-Source: ${receipt.sourceTitle}
-Paid: $${(receipt.amountPaid / 1_000_000).toFixed(4)} USDC
-Reason: ${receipt.reason}
-Receipt: /receipt/${receipt.id}
-
-Powered by CitePay Markets`}
+        <div className="bg-gradient-to-br from-[#111118] to-[#0d0d14] rounded-2xl border border-[#00ff88]/20 mb-4 overflow-hidden">
+          {/* Card preview image */}
+          <div className="relative">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={`/api/og/receipt/${receipt.id}`}
+              alt="Share card preview"
+              className="w-full rounded-t-2xl"
+              style={{ aspectRatio: "1200/630", objectFit: "cover" }}
+            />
+            <div className="absolute inset-0 rounded-t-2xl ring-1 ring-inset ring-white/5" />
           </div>
-          <div className="flex flex-wrap gap-2">
-            <button
-              onClick={() => handleShare("copy")}
-              className="bg-[#6366f1] hover:bg-indigo-500 text-white font-semibold px-4 py-2 rounded-lg transition-colors text-sm"
-            >
-              {shared ? "✓ Copied" : "Copy Link"}
-            </button>
-            <button
-              onClick={() => handleShare("x")}
-              className="bg-[#0a0a0f] hover:bg-[#111118] border border-[#1e1e2e] text-[#f0f0f5] font-semibold px-4 py-2 rounded-lg transition-colors text-sm"
-            >
-              Share on X
-            </button>
-            <button
-              onClick={() => handleShare("farcaster")}
-              className="bg-purple-700 hover:bg-purple-600 text-white font-semibold px-4 py-2 rounded-lg transition-colors text-sm"
-            >
-              Farcaster
-            </button>
-            <button
-              onClick={() => handleShare("discord")}
-              className="bg-indigo-800 hover:bg-indigo-700 text-white font-semibold px-4 py-2 rounded-lg transition-colors text-sm"
-            >
-              Discord
-            </button>
+
+          {/* Share actions */}
+          <div className="p-6">
+            <p className="text-[#f0f0f5] font-semibold mb-1">Share your citation receipt</p>
+            <p className="text-[#8b8b9e] text-sm mb-5">
+              Every share drives new creators to register — and more registered sources means more citations for you.
+            </p>
+            <div className="flex flex-wrap gap-2">
+              <button
+                onClick={() => handleShare("x")}
+                className="flex items-center gap-2 bg-[#f0f0f5] hover:bg-white text-black font-bold px-5 py-2.5 rounded-xl transition-colors text-sm"
+              >
+                <span>𝕏</span> Post on X
+              </button>
+              <button
+                onClick={() => handleShare("farcaster")}
+                className="flex items-center gap-2 bg-purple-600 hover:bg-purple-500 text-white font-bold px-5 py-2.5 rounded-xl transition-colors text-sm"
+              >
+                ↗ Farcaster
+              </button>
+              <button
+                onClick={() => handleShare("discord")}
+                className="flex items-center gap-2 bg-[#5865f2] hover:bg-[#4752c4] text-white font-bold px-5 py-2.5 rounded-xl transition-colors text-sm"
+              >
+                Discord
+              </button>
+              <button
+                onClick={() => handleShare("copy")}
+                className="flex items-center gap-2 bg-[#1e1e2e] hover:bg-[#2a2a3e] border border-[#2e2e3e] text-[#f0f0f5] font-semibold px-5 py-2.5 rounded-xl transition-colors text-sm ml-auto"
+              >
+                {shared ? "✓ Copied" : "Copy text"}
+              </button>
+            </div>
           </div>
         </div>
       )}

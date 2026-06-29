@@ -12,6 +12,8 @@ import { resolvePolicy } from "@/lib/policy";
 import { signReceiptHash } from "@/lib/signature";
 import { agentEvents } from "@/lib/events";
 import { redisIncrQuery, redisIncrDecision } from "@/lib/redis-stats";
+import { runExternalOutreachAsync } from "@/lib/outreach";
+import { waitUntil } from "@vercel/functions";
 import {
   getAllSources,
   insertQuery,
@@ -148,6 +150,11 @@ export async function POST(req: NextRequest) {
     updateQuery(queryId, { status: "failed" });
     return NextResponse.json({ error: "Agent error", detail: String(err) }, { status: 500 });
   }
+
+  // ── Step 5.5: External citation outreach (kept alive via waitUntil) ──────────
+  // Discover external URLs that would have been paid, log them, email creators.
+  const _outreachClient = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+  waitUntil(runExternalOutreachAsync(query, _outreachClient));
 
   // ── Step 6: Synthesise answer FIRST so contribution weights use real output ─
   const paidDecisionsForSynth = decisions.filter((d) => d.decision === "PAY");

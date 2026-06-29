@@ -7,11 +7,10 @@ interface Props {
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { id } = await params;
+  const base = "https://citepay-markets.vercel.app";
 
   try {
-    const res = await fetch(`https://citepay-markets.vercel.app/api/receipt/${id}`, {
-      next: { revalidate: 60 },
-    });
+    const res = await fetch(`${base}/api/receipt/${id}`, { next: { revalidate: 60 } });
     if (!res.ok) throw new Error("not found");
     const data = await res.json() as {
       receipt?: {
@@ -19,8 +18,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
         decision?: string;
         amountPaid?: number;
         reason?: string;
-        creatorName?: string;
-      }
+        query?: string;
+      };
     };
     const r = data.receipt;
     if (!r) throw new Error("no receipt");
@@ -28,9 +27,13 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     const isPay = r.decision === "PAY";
     const amount = r.amountPaid ? `$${(r.amountPaid / 1_000_000).toFixed(4)} USDC` : "";
     const title = isPay
-      ? `AI paid ${amount} to cite "${r.sourceTitle}" — CitePay Receipt`
-      : `AI ${r.decision?.toLowerCase()} citing "${r.sourceTitle}" — CitePay Receipt`;
-    const description = `${r.reason ?? ""} · Creator: ${r.creatorName ?? "unknown"} · Verified on Arc via Circle Gateway.`;
+      ? `AI paid ${amount} to cite "${r.sourceTitle}"`
+      : `AI skipped citing "${r.sourceTitle}"`;
+    const description = isPay
+      ? `${r.reason ?? "High relevance source"}. Verified on Arc Testnet via CitePay Markets.`
+      : `${r.reason ?? "Source did not meet citation threshold."}`;
+
+    const ogImage = `${base}/api/og/receipt/${id}`;
 
     return {
       title,
@@ -38,19 +41,21 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       openGraph: {
         title,
         description,
-        url: `https://citepay-markets.vercel.app/receipt/${id}`,
+        url: `${base}/receipt/${id}`,
         type: "article",
+        images: [{ url: ogImage, width: 1200, height: 630, alt: title }],
       },
       twitter: {
-        card: "summary",
+        card: "summary_large_image",
         title,
         description,
+        images: [ogImage],
       },
     };
   } catch {
     return {
-      title: "CitePay Policy Receipt",
-      description: "Public tamper-evident receipt for an AI citation decision settled on Arc via Circle Gateway.",
+      title: "CitePay Receipt",
+      description: "Public tamper-evident receipt for an AI citation decision on Arc Testnet.",
     };
   }
 }

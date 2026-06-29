@@ -66,11 +66,19 @@ export default function DemoPage() {
   const [seedMsg, setSeedMsg] = useState("");
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [policyComparison, setPolicyComparison] = useState<any[] | null>(null);
+  const [missedCitations, setMissedCitations] = useState<{
+    id: string; url: string; domain: string; title: string; query: string;
+    score: number; estEarning: number; contactEmail: string | null; emailSent: boolean; createdAt: string;
+  }[]>([]);
 
   useEffect(() => {
     fetch("/api/wallet/balance")
       .then(r => r.json())
       .then(d => { if (typeof d.balanceUsdc === "number") setWalletBalance(d.balanceUsdc); })
+      .catch(() => {});
+    fetch("/api/missed-citations")
+      .then(r => r.json())
+      .then(d => { if (Array.isArray(d.citations)) setMissedCitations(d.citations); })
       .catch(() => {});
   }, []);
 
@@ -405,6 +413,80 @@ export default function DemoPage() {
             </p>
           </div>
         )}
+
+        {/* Unclaimed Citations Feed */}
+        <div className="mt-10">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h2 className="text-lg font-bold text-[#f0f0f5]">Unclaimed Citations</h2>
+              <p className="text-[#8b8b9e] text-xs mt-0.5">
+                External content that scored ≥70 on real queries — creators notified to register
+              </p>
+            </div>
+            {missedCitations.length > 0 && (
+              <span className="text-xs font-mono bg-orange-500/10 text-orange-400 border border-orange-500/20 px-3 py-1 rounded-full">
+                {missedCitations.length} unclaimed
+              </span>
+            )}
+          </div>
+
+          {missedCitations.length === 0 ? (
+            <div className="bg-[#111118] border border-[#1e1e2e] rounded-xl p-8 text-center">
+              <p className="text-[#4a4a5e] text-sm">
+                No unclaimed citations yet — run a query above and the agent will discover external sources automatically.
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {missedCitations.map((c) => (
+                <div key={c.id} className="bg-[#111118] border border-[#1e1e2e] rounded-xl p-4 flex items-start gap-4">
+                  <div className="flex-shrink-0 w-12 h-12 rounded-lg bg-orange-500/10 border border-orange-500/20 flex items-center justify-center">
+                    <span className="text-orange-400 font-bold text-sm font-mono">{c.score}</span>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap mb-1">
+                      <span className="font-semibold text-[#f0f0f5] text-sm truncate">{c.title}</span>
+                      {c.emailSent && (
+                        <span className="text-[10px] font-mono bg-[#00ff88]/10 text-[#00ff88] border border-[#00ff88]/20 px-2 py-0.5 rounded-full flex-shrink-0">
+                          ✓ Notified
+                        </span>
+                      )}
+                      {!c.emailSent && c.contactEmail && (
+                        <span className="text-[10px] font-mono bg-yellow-500/10 text-yellow-400 border border-yellow-500/20 px-2 py-0.5 rounded-full flex-shrink-0">
+                          Email found
+                        </span>
+                      )}
+                      {!c.contactEmail && (
+                        <span className="text-[10px] font-mono bg-[#1e1e2e] text-[#4a4a5e] px-2 py-0.5 rounded-full flex-shrink-0">
+                          No email
+                        </span>
+                      )}
+                    </div>
+                    <a href={c.url} target="_blank" rel="noopener noreferrer"
+                      className="text-xs text-[#6366f1] hover:text-indigo-300 font-mono truncate block mb-1.5 transition-colors">
+                      {c.domain}
+                    </a>
+                    <p className="text-xs text-[#8b8b9e] truncate">
+                      Query: &ldquo;{c.query.slice(0, 80)}{c.query.length > 80 ? "…" : ""}&rdquo;
+                    </p>
+                  </div>
+                  <div className="flex-shrink-0 text-right">
+                    <div className="text-[#00ff88] font-bold font-mono text-sm">
+                      ${(c.estEarning / 1_000_000).toFixed(4)}
+                    </div>
+                    <div className="text-[#4a4a5e] text-[10px]">missed</div>
+                    <a
+                      href={`/join?url=${encodeURIComponent(c.url)}`}
+                      className="inline-block mt-2 text-[10px] bg-[#6366f1] hover:bg-indigo-500 text-white font-semibold px-3 py-1 rounded-lg transition-colors"
+                    >
+                      Register →
+                    </a>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
     </main>
   );
