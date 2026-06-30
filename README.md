@@ -643,9 +643,38 @@ REGISTER_API_KEY=...                # Protects POST /api/sources/register (spam 
 
 ## 20. Cross-Project Integration
 
-CitePay Markets is registered as a creator source on [Tollgate](https://tollgate.gudman.xyz) — when Tollgate's agent answers questions about AI payments, MCP tools, or on-chain auditing, it may cite CitePay and pay `0x5389…f105` directly.
+CitePay Markets is registered as a creator source on [Tollgate](https://tollgate.gudman.xyz) — when Tollgate's agent answers questions about AI payments, MCP tools, or on-chain auditing, it cites CitePay and pays `0x5389…f105` directly via real USDC on Arc Testnet.
 
 CitePay also participates in the [Shadow Float](https://shadow-arc.vercel.app/float) credit line — agent `0x5389…f105` signed a `FloatSpendIntent` (EIP-712) giving Shadow's treasury-fronted x402 credit access. Verify: `shadow-arc.vercel.app/api/float-tools?action=verify&hash=0x81f48871477fdb4efb1d77362dd42312c7d0caef27a260a071ede5b8ef627d22`
+
+---
+
+## 20a. Tollgate × CitePay — Cross-Project Paid Provider Proof
+
+**Date:** June 30, 2026  
+**Flow:** Tollgate → CitePay via DirectTransfer (real USDC, Arc Testnet)
+
+Tollgate ran 5 autonomous paid queries into CitePay — every `/api/ask` returned HTTP 200 with a real answer, a `queryHash`, and `decisions: [{decision: "PAY"…}]`. CitePay received the payment, scored the sources, served the answer, and paid its own creators. This is a live cross-project agent-to-agent payment flow between two independent Lepton builders.
+
+**Tollgate payer wallet:** `0x12F25B721Cc21c38495e33A4c8524dd0B647ba03`  
+**CitePay recipient:** `0x5389688243328c26a92b301faEEAb5fbf9AFf105`  
+**Amount per query:** 1,000 µUSDC (0.001 USDC)  
+**Total paid:** 5,000 µUSDC (0.005 USDC)  
+**Token:** USDC precompile `0x3600000000000000000000000000000000000000`  
+**Chain:** Arc Testnet, chainId 5042002  
+**Method:** `transfer(address, uint256)` — standard ERC-20 via Circle FiatTokenProxy
+
+| # | Tx Hash | Status |
+|---|---|---|
+| 1 | [`0xeb98b6e5…0121`](https://testnet.arcscan.app/tx/0xeb98b6e5c02cb023b358daf138dd6a0901cf2ced66a246e2ef25f13c26980121) | ✅ Confirmed |
+| 2 | [`0x37013780…d19f`](https://testnet.arcscan.app/tx/0x370137802b9e2b324b5a60e46b860d4acccb739fb4270a7b1af02e818e93d19f) | ✅ Confirmed |
+| 3 | [`0x5f54c3b2…f12f`](https://testnet.arcscan.app/tx/0x5f54c3b24e64ed462ae9a7403567bb1836f4b62ca478f0ec7ef80c71e182f12f) | ✅ Confirmed |
+| 4 | [`0x3f94b8b5…55d0`](https://testnet.arcscan.app/tx/0x3f94b8b5a5556f434f4342a83377e5434464c2c1f726332808978aab02f55fd0) | ✅ Confirmed |
+| 5 | [`0xd8c51327…c829`](https://testnet.arcscan.app/tx/0xd8c51327a899483affce7a5cf6720c00af6043579f69446a2f3ffdad3d16c829) | ✅ Confirmed |
+
+Tx 1 verified via Arc Testnet API: block 49509135, timestamp 2026-06-30T18:09:35Z, status OK.
+
+CitePay now has **two confirmed cross-project integrations** — Shadow (June 29) and Tollgate (June 30) — both with verifiable on-chain payment trails.
 
 ---
 
