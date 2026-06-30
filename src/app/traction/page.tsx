@@ -50,6 +50,81 @@ export default function TractionPage() {
         )}
       </div>
 
+      {/* Cross-Project Integrations */}
+      <div className="mb-8 rounded-xl border border-[#6366f1]/20 bg-[#6366f1]/5 p-5">
+        <div className="mb-4">
+          <h2 className="text-sm font-semibold text-[#6366f1] uppercase tracking-widest">Cross-Project Integrations</h2>
+          <p className="text-[#8b8b9e] text-xs mt-0.5">Independent Lepton builders paying CitePay as a live creator source</p>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          {/* Shadow */}
+          <div className="rounded-lg border border-[#1e1e2e] bg-[#0d0d14] p-4">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-[#f0f0f5] font-semibold text-sm">Shadow Float</span>
+              <span className="text-[10px] font-mono bg-[#00ff88]/10 text-[#00ff88] px-2 py-0.5 rounded-full border border-[#00ff88]/20">VERIFIED</span>
+            </div>
+            <p className="text-[#8b8b9e] text-xs mb-3">Shadow ran 5 autonomous paid queries into CitePay via DirectTransfer · Jun 29, 2026</p>
+            <div className="grid grid-cols-3 gap-2 mb-3 text-center">
+              <div>
+                <div className="text-[#00ff88] font-bold text-lg">5</div>
+                <div className="text-[#4a4a5e] text-[10px]">Txs Confirmed</div>
+              </div>
+              <div>
+                <div className="text-[#00ff88] font-bold text-lg">$0.005</div>
+                <div className="text-[#4a4a5e] text-[10px]">USDC Paid</div>
+              </div>
+              <div>
+                <div className="text-[#00ff88] font-bold text-lg">5</div>
+                <div className="text-[#4a4a5e] text-[10px]">Answers Served</div>
+              </div>
+            </div>
+            <a
+              href="https://testnet.arcscan.app/tx/0x3c74ba902d9494c7762f440affa0065ef4a2478b6e9cb4cb228e11cd689a9929"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-[10px] font-mono text-[#6366f1] hover:text-indigo-300 transition-colors"
+            >
+              0x3c74ba90…9929 →
+            </a>
+          </div>
+
+          {/* Tollgate */}
+          <div className="rounded-lg border border-[#1e1e2e] bg-[#0d0d14] p-4">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-[#f0f0f5] font-semibold text-sm">Tollgate</span>
+              <span className="text-[10px] font-mono bg-[#00ff88]/10 text-[#00ff88] px-2 py-0.5 rounded-full border border-[#00ff88]/20">VERIFIED</span>
+            </div>
+            <p className="text-[#8b8b9e] text-xs mb-3">Tollgate ran 5 autonomous paid queries into CitePay via ERC-20 transfer · Jun 30, 2026</p>
+            <div className="grid grid-cols-3 gap-2 mb-3 text-center">
+              <div>
+                <div className="text-[#00ff88] font-bold text-lg">5</div>
+                <div className="text-[#4a4a5e] text-[10px]">Txs Confirmed</div>
+              </div>
+              <div>
+                <div className="text-[#00ff88] font-bold text-lg">$0.005</div>
+                <div className="text-[#4a4a5e] text-[10px]">USDC Paid</div>
+              </div>
+              <div>
+                <div className="text-[#00ff88] font-bold text-lg">5</div>
+                <div className="text-[#4a4a5e] text-[10px]">Answers Served</div>
+              </div>
+            </div>
+            <a
+              href="https://testnet.arcscan.app/tx/0xeb98b6e5c02cb023b358daf138dd6a0901cf2ced66a246e2ef25f13c26980121"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-[10px] font-mono text-[#6366f1] hover:text-indigo-300 transition-colors"
+            >
+              0xeb98b6e5…0121 →
+            </a>
+          </div>
+        </div>
+
+        <div className="mt-3 text-[10px] text-[#4a4a5e] font-mono text-center">
+          2 cross-project integrations · 10 total confirmed txs · $0.010 USDC routed from external agents
+        </div>
+      </div>
+
       {/* On-chain persistent record */}
       {onChain && (
         <div className="mb-8 rounded-xl border border-[#00ff88]/20 bg-[#00ff88]/5 p-5">

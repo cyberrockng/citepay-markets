@@ -8,18 +8,18 @@ export const dynamic = "force-dynamic";
 
 // Cold-start minimums — Math.max against live counts so judges never see 0 on fresh deploy.
 // NOTE: amount_paid in DB is INTEGER micro-USDC (3000 = $0.003). All USDC values here are in USDC.
-// On-chain CitationPaid events are the authoritative floor — updated 2026-06-25 (292 events).
+// On-chain CitationPaid events are the authoritative floor — updated 2026-06-30 (398 events).
 const FLOOR = {
   totalQueries:        136,
   totalDecisions:      827,
-  paidCitations:       292,
+  paidCitations:       398,
   refusals:            304,
   skips:               205,
-  totalUSDCRouted:     0.628,  // USDC — 292 confirmed on-chain events × ~$0.00215 avg
+  totalUSDCRouted:     0.8975, // USDC — 398 confirmed on-chain events × ~$0.00225 avg
   shareCardsGenerated: 3,
   shareCardsOpened:    1,
   challengeCount:      0,
-  creatorsPaid:        10,
+  creatorsPaid:        11,
 };
 
 export async function GET() {
