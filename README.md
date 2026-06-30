@@ -107,10 +107,10 @@ CitePay Markets is a live agentic citation economy where:
 - **Public creator registration** — `/register` lets anyone register their content in 60 seconds, no approval, no API key required.
 
 ### Live Traction (Arc Testnet)
-- **385 `CitationPaid` events** on CitePayMarket.sol (verifiable: [0x396c…6085](https://testnet.arcscan.app/address/0x396cf1646EbAeF85ee8428C2d9239C46Ae956085))
+- **398 `CitationPaid` events** on CitePayMarket.sol (verifiable: [0x396c…6085](https://testnet.arcscan.app/address/0x396cf1646EbAeF85ee8428C2d9239C46Ae956085))
 - **827 agent decisions** — PAY / REFUSE / SKIP / BLOCKED_BY_POLICY — all with public receipts
 - **136 total queries** processed; creator USDC payout is a separate Arc transaction per receipt
-- **$0.87 USDC routed** to creators across 11 unique creator wallets
+- **$0.8975 USDC routed** to creators across 11 unique creator wallets
 - **10 sources** registered onchain across 3 source agents
 - **3 source agent identities** with distinct wallets, specialties, and reputation scores
 - **1 Pilot Agent** attesting allocation decisions onchain before paying
@@ -162,7 +162,7 @@ CitePay Markets solves all three:
 | Configurable Agent Spend Policies (conservative/balanced/aggressive) | ✓ | ✗ |
 | SHA-256 evidence hash per decision | ✓ | ✗ |
 | Objective content-integrity challenge | ✓ | ✗ |
-| 292+ CitationPaid events verifiable on Arc Testnet | ✓ | ✗ |
+| 398+ CitationPaid events verifiable on Arc Testnet | ✓ | ✗ |
 | Purpose taxonomy: CITE / QUERY_FEE / AGENT_REWARD / BOND_SLASH | ✓ | ✗ |
 | Citation memory: reputation persists across cold starts (Edge Config) | ✓ | ✗ |
 | Public creator registration — no API key, no approval | ✓ | ✗ |
