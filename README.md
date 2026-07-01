@@ -643,7 +643,7 @@ REGISTER_API_KEY=...                # Protects POST /api/sources/register (spam 
 
 ## 20. Cross-Project Integration
 
-CitePay Markets is registered as a creator source on [Tollgate](https://tollgate.gudman.xyz) — when Tollgate's agent answers questions about AI payments, MCP tools, or on-chain auditing, it cites CitePay and pays `0x5389…f105` directly via real USDC on Arc Testnet.
+CitePay Markets is registered as a creator source on [Tollgate](https://tollgate.gudman.xyz) with **10 verified sources** — when Tollgate's agent answers questions about AI payments, MCP tools, on-chain auditing, or agent commerce, it cites CitePay and pays `0x5389…f105` directly via real USDC on Arc Testnet. CitePay has earned and claimed **0.099 USDC** in creator fees from Tollgate (claimed Jul 2, 2026 — tx [`0x4290f75a…f98d5`](https://testnet.arcscan.app/tx/0x4290f75a0c49357b6067b95f95b06fa19426ecc473e3d9f84b2d2d1282bf98d5)).
 
 CitePay also participates in the [Shadow Float](https://shadow-arc.vercel.app/float) credit line — agent `0x5389…f105` signed a `FloatSpendIntent` (EIP-712) giving Shadow's treasury-fronted x402 credit access. Verify: `shadow-arc.vercel.app/api/float-tools?action=verify&hash=0x81f48871477fdb4efb1d77362dd42312c7d0caef27a260a071ede5b8ef627d22`
 
@@ -675,6 +675,36 @@ Tollgate ran 5 autonomous paid queries into CitePay — every `/api/ask` returne
 Tx 1 verified via Arc Testnet API: block 49509135, timestamp 2026-06-30T18:09:35Z, status OK.
 
 CitePay now has **two confirmed cross-project integrations** — Shadow (June 29) and Tollgate (June 30) — both with verifiable on-chain payment trails.
+
+---
+
+## 20b. Tollgate → CitePay Earnings Claim + 10th Source Registration
+
+**Date:** July 2, 2026
+
+### Earnings Claim
+CitePay claimed accumulated creator earnings from Tollgate's FeeRouter contract.
+
+| Field | Value |
+|---|---|
+| Amount claimed | **0.099 USDC** |
+| FeeRouter | `0xeff9bc359e8f2a5eabce55af3f1bb24f98eabf59` |
+| Claim tx | [`0x4290f75a…f98d5`](https://testnet.arcscan.app/tx/0x4290f75a0c49357b6067b95f95b06fa19426ecc473e3d9f84b2d2d1282bf98d5) |
+| Wallet | `0x5389688243328c26a92b301faEEAb5fbf9AFf105` |
+
+### 10th Source Registered
+CitePay registered its 10th verified source on Tollgate — the Agent Commerce Network page, covering agent-to-agent hiring with on-chain USDC payments.
+
+| Field | Value |
+|---|---|
+| Source ID | `citepay-agent-commerce-network-hire-specialized-ai-agents-with-u` |
+| Title | CitePay Agent Commerce Network — Hire Specialized AI Agents with USDC |
+| URL | `https://citepay-markets.vercel.app/agent-exchange` |
+| Price | 1,000 µUSDC per citation |
+| Ownership proof | Wallet-signature (`0x769a5bb8…f7da`) verified on Tollgate Jul 2, 2026 |
+| Verified creator | ✅ `true` |
+
+CitePay now has **10 verified sources** on Tollgate covering: on-chain audit, citation marketplace, MCP server, policy builder, research sessions, economic dashboard, knowledge bounties, autonomous knowledge-gap agent, live auction, and agent commerce network.
 
 ---
 

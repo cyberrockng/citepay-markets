@@ -94,34 +94,44 @@ export default function TractionPage() {
               <span className="text-[#f0f0f5] font-semibold text-sm">Tollgate</span>
               <span className="text-[10px] font-mono bg-[#00ff88]/10 text-[#00ff88] px-2 py-0.5 rounded-full border border-[#00ff88]/20">VERIFIED</span>
             </div>
-            <p className="text-[#8b8b9e] text-xs mb-3">Tollgate ran 5 autonomous paid queries into CitePay via ERC-20 transfer · Jun 30, 2026</p>
+            <p className="text-[#8b8b9e] text-xs mb-3">Tollgate ran 5 autonomous paid queries into CitePay · 10 sources registered · 0.099 USDC earned &amp; claimed · Jun 30–Jul 2, 2026</p>
             <div className="grid grid-cols-3 gap-2 mb-3 text-center">
               <div>
                 <div className="text-[#00ff88] font-bold text-lg">5</div>
                 <div className="text-[#4a4a5e] text-[10px]">Txs Confirmed</div>
               </div>
               <div>
-                <div className="text-[#00ff88] font-bold text-lg">$0.005</div>
-                <div className="text-[#4a4a5e] text-[10px]">USDC Paid</div>
+                <div className="text-[#00ff88] font-bold text-lg">$0.099</div>
+                <div className="text-[#4a4a5e] text-[10px]">USDC Earned</div>
               </div>
               <div>
-                <div className="text-[#00ff88] font-bold text-lg">5</div>
-                <div className="text-[#4a4a5e] text-[10px]">Answers Served</div>
+                <div className="text-[#00ff88] font-bold text-lg">10</div>
+                <div className="text-[#4a4a5e] text-[10px]">Sources Listed</div>
               </div>
             </div>
-            <a
-              href="https://testnet.arcscan.app/tx/0xeb98b6e5c02cb023b358daf138dd6a0901cf2ced66a246e2ef25f13c26980121"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-[10px] font-mono text-[#6366f1] hover:text-indigo-300 transition-colors"
-            >
-              0xeb98b6e5…0121 →
-            </a>
+            <div className="flex flex-col gap-1">
+              <a
+                href="https://testnet.arcscan.app/tx/0xeb98b6e5c02cb023b358daf138dd6a0901cf2ced66a246e2ef25f13c26980121"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-[10px] font-mono text-[#6366f1] hover:text-indigo-300 transition-colors"
+              >
+                0xeb98b6e5…0121 (query tx) →
+              </a>
+              <a
+                href="https://testnet.arcscan.app/tx/0x4290f75a0c49357b6067b95f95b06fa19426ecc473e3d9f84b2d2d1282bf98d5"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-[10px] font-mono text-[#6366f1] hover:text-indigo-300 transition-colors"
+              >
+                0x4290f75a…f98d5 (claim tx) →
+              </a>
+            </div>
           </div>
         </div>
 
         <div className="mt-3 text-[10px] text-[#4a4a5e] font-mono text-center">
-          2 cross-project integrations · 10 total confirmed txs · $0.010 USDC routed from external agents
+          2 cross-project integrations · 10 total confirmed txs · $0.099 USDC earned from Tollgate · 10 verified sources on Tollgate
         </div>
       </div>
 
