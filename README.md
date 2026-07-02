@@ -649,6 +649,8 @@ CitePay Markets is registered as a creator source on [Tollgate](https://tollgate
 
 CitePay also participates in the [Shadow Float](https://shadow-arc.vercel.app/float) credit line — agent `0x5389…f105` signed a `FloatSpendIntent` (EIP-712) giving Shadow's treasury-fronted x402 credit access. Verify: `shadow-arc.vercel.app/api/float-tools?action=verify&hash=0x81f48871477fdb4efb1d77362dd42312c7d0caef27a260a071ede5b8ef627d22`
 
+CitePay is also the **first non-operator sponsor on Shadow Float V2** — see §20c for the full on-chain proof.
+
 ---
 
 ## 20a. Tollgate × CitePay — Cross-Project Paid Provider Proof
@@ -707,6 +709,31 @@ CitePay registered its 10th verified source on Tollgate — the Agent Commerce N
 | Verified creator | ✅ `true` |
 
 CitePay now has **10 verified sources** on Tollgate covering: on-chain audit, citation marketplace, MCP server, policy builder, research sessions, economic dashboard, knowledge bounties, autonomous knowledge-gap agent, live auction, and agent commerce network.
+
+---
+
+## 20c. CitePay × Shadow Float V2 — First External Sponsor Proof
+
+**Date:** July 2, 2026  
+**Role:** CitePay as **sponsor** (not agent, not provider) — first non-operator sponsor on Shadow Float V2
+
+CitePay put 0.05 testnet USDC behind a fresh agent line on Shadow Float V2, ran a signed EIP-712 spend intent, repaid the debt, and closed the borrow-spend-repay loop entirely on-chain. Shadow confirmed: CitePay's wallet (`0x5389…f105`) is not the Shadow operator wallet, making CitePay the first external capital sponsor on the V2 contract. The reserve remains live in the contract through judging so the Shadow board shows a live external sponsor — it will be reclaimed after judging ends.
+
+**Sponsor:** `0x5389688243328c26a92b301faEEAb5fbf9AFf105` (CitePay)  
+**Agent:** `0xdfDEA2015f0b176e89a79cb8b4D5ef22bE6e044f` (fresh, external)  
+**ShadowFloat V2:** `0x20dcA96B0C487D94De885c726c956ffaF38b12C2`  
+**Reserve:** 0.05 USDC · **Score after repay:** 8250 · **Status:** REPAID · **Active debt:** 0
+
+| Step | Tx Hash | Status |
+|---|---|---|
+| Approve reserve | [`0xa23a69aa…d2af`](https://testnet.arcscan.app/tx/0xa23a69aa34d4d3532ad1cc15718ca9a8537a9d085a9312937a2596ba319ad2af) | ✅ Confirmed |
+| **openSponsoredLine** | [`0xf2dabb1c…3540`](https://testnet.arcscan.app/tx/0xf2dabb1ce651330a389acd4d6cacee1a859dc4fc12f18459143dc0f60ee53540) | ✅ Confirmed |
+| Bind spend intent | [`0xeeb2f3b3…6dae`](https://testnet.arcscan.app/tx/0xeeb2f3b31215a00ef5becbd7c0388f28ec943efc383af5cc7f83f86c044d6dae) | ✅ Confirmed |
+| Repay | [`0x2e2ecb06…06fe`](https://testnet.arcscan.app/tx/0x2e2ecb060340f04173d945bd45dc64119309c7e692ec7ad8d4e295413a8d06fe) | ✅ Confirmed |
+
+Shadow verified `SponsoredLineOpened.sponsor !== 0xBDb1e0718EC6f6e2817c9cd4e5c5ed25Ac191Fb8` (the operator wallet), confirming CitePay as the first external capital sponsor on Shadow Float V2.
+
+**What this proves for CitePay:** CitePay operates in three roles simultaneously — paid provider (Tollgate and Shadow pay CitePay for citations), credit user (CitePay's agent holds a Float line), and now capital sponsor (CitePay backs an external agent line). Full agent commerce loop, all on-chain.
 
 ---
 

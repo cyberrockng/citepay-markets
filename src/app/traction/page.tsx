@@ -63,29 +63,39 @@ export default function TractionPage() {
               <span className="text-[#f0f0f5] font-semibold text-sm">Shadow Float</span>
               <span className="text-[10px] font-mono bg-[#00ff88]/10 text-[#00ff88] px-2 py-0.5 rounded-full border border-[#00ff88]/20">VERIFIED</span>
             </div>
-            <p className="text-[#8b8b9e] text-xs mb-3">Shadow ran 5 autonomous paid queries into CitePay via DirectTransfer · Jun 29, 2026</p>
+            <p className="text-[#8b8b9e] text-xs mb-3">Shadow paid CitePay 5 queries (Jun 29) · CitePay became first external sponsor on Shadow Float V2 (Jul 2)</p>
             <div className="grid grid-cols-3 gap-2 mb-3 text-center">
               <div>
                 <div className="text-[#00ff88] font-bold text-lg">5</div>
-                <div className="text-[#4a4a5e] text-[10px]">Txs Confirmed</div>
+                <div className="text-[#4a4a5e] text-[10px]">Queries Paid</div>
               </div>
               <div>
-                <div className="text-[#00ff88] font-bold text-lg">$0.005</div>
-                <div className="text-[#4a4a5e] text-[10px]">USDC Paid</div>
+                <div className="text-[#00ff88] font-bold text-lg">$0.05</div>
+                <div className="text-[#4a4a5e] text-[10px]">Reserve Sponsored</div>
               </div>
               <div>
-                <div className="text-[#00ff88] font-bold text-lg">5</div>
-                <div className="text-[#4a4a5e] text-[10px]">Answers Served</div>
+                <div className="text-[#00ff88] font-bold text-lg">#1</div>
+                <div className="text-[#4a4a5e] text-[10px]">Ext. Sponsor V2</div>
               </div>
             </div>
-            <a
-              href="https://testnet.arcscan.app/tx/0x3c74ba902d9494c7762f440affa0065ef4a2478b6e9cb4cb228e11cd689a9929"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-[10px] font-mono text-[#6366f1] hover:text-indigo-300 transition-colors"
-            >
-              0x3c74ba90…9929 →
-            </a>
+            <div className="flex flex-col gap-1">
+              <a
+                href="https://testnet.arcscan.app/tx/0x3c74ba902d9494c7762f440affa0065ef4a2478b6e9cb4cb228e11cd689a9929"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-[10px] font-mono text-[#6366f1] hover:text-indigo-300 transition-colors"
+              >
+                0x3c74ba90…9929 (query tx) →
+              </a>
+              <a
+                href="https://testnet.arcscan.app/tx/0xf2dabb1ce651330a389acd4d6cacee1a859dc4fc12f18459143dc0f60ee53540"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-[10px] font-mono text-[#6366f1] hover:text-indigo-300 transition-colors"
+              >
+                0xf2dabb1c…3540 (openSponsoredLine) →
+              </a>
+            </div>
           </div>
 
           {/* Tollgate */}
@@ -131,7 +141,7 @@ export default function TractionPage() {
         </div>
 
         <div className="mt-3 text-[10px] text-[#4a4a5e] font-mono text-center">
-          2 cross-project integrations · 10 total confirmed txs · $0.099 USDC earned from Tollgate · 10 verified sources on Tollgate
+          2 cross-project integrations · first external sponsor on Shadow Float V2 · $0.099 USDC earned from Tollgate · 10 verified sources on Tollgate
         </div>
       </div>
 
