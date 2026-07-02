@@ -647,9 +647,7 @@ REGISTER_API_KEY=...                # Protects POST /api/sources/register (spam 
 
 CitePay Markets is registered as a creator source on [Tollgate](https://tollgate.gudman.xyz) with **10 verified sources** — when Tollgate's agent answers questions about AI payments, MCP tools, on-chain auditing, or agent commerce, it cites CitePay and pays `0x5389…f105` directly via real USDC on Arc Testnet. CitePay has earned and claimed **0.099 USDC** in creator fees from Tollgate (claimed Jul 2, 2026 — tx [`0x4290f75a…f98d5`](https://testnet.arcscan.app/tx/0x4290f75a0c49357b6067b95f95b06fa19426ecc473e3d9f84b2d2d1282bf98d5)).
 
-CitePay also participates in the [Shadow Float](https://shadow-arc.vercel.app/float) credit line — agent `0x5389…f105` signed a `FloatSpendIntent` (EIP-712) giving Shadow's treasury-fronted x402 credit access. Verify: `shadow-arc.vercel.app/api/float-tools?action=verify&hash=0x81f48871477fdb4efb1d77362dd42312c7d0caef27a260a071ede5b8ef627d22`
-
-CitePay is also the **first non-operator sponsor on Shadow Float V2** — see §20c for the full on-chain proof.
+CitePay holds three roles on Shadow Float V2: **paid provider** (Shadow paid CitePay for queries), **credit user** (CitePay agent used the V2 signed EIP-712 intent flow — verify: `shadow-arc.vercel.app/api/float-tools?action=verify&hash=0x81f48871477fdb4efb1d77362dd42312c7d0caef27a260a071ede5b8ef627d22`), and **capital sponsor** (first non-operator sponsor on Shadow Float V2 — see §20c).
 
 ---
 
@@ -733,7 +731,7 @@ CitePay put 0.05 testnet USDC behind a fresh agent line on Shadow Float V2, ran 
 
 Shadow verified `SponsoredLineOpened.sponsor !== 0xBDb1e0718EC6f6e2817c9cd4e5c5ed25Ac191Fb8` (the operator wallet), confirming CitePay as the first external capital sponsor on Shadow Float V2.
 
-**What this proves for CitePay:** CitePay operates in three roles simultaneously — paid provider (Tollgate and Shadow pay CitePay for citations), credit user (CitePay's agent holds a Float line), and now capital sponsor (CitePay backs an external agent line). Full agent commerce loop, all on-chain.
+**What this proves for CitePay:** CitePay operates in three roles simultaneously — paid provider (Shadow and Tollgate pay CitePay for citations), credit user (CitePay agent used the Shadow Float V2 signed EIP-712 intent flow), and capital sponsor (CitePay backs an external agent line as the first non-operator sponsor on Shadow Float V2). Full agent commerce loop, all on-chain.
 
 ---
 
