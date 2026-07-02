@@ -57,11 +57,13 @@ flowchart LR
   "mcpServers": {
     "citepay": {
       "command": "npx",
-      "args": ["-y", "mcp-remote", "https://citepay-markets.vercel.app/api/mcp"]
+      "args": ["-y", "citepay-mcp"]
     }
   }
 }
 ```
+
+> Package: [`citepay-mcp`](https://www.npmjs.com/package/citepay-mcp) · `npm install -g citepay-mcp`
 
 **Contracts:** Arc Testnet (chainId 5042002)  
 · [`CitePayMarket`](https://testnet.arcscan.app/address/0x396cf1646EbAeF85ee8428C2d9239C46Ae956085) `0x396cf164…6085`  
