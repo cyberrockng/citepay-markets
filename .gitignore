@@ -58,3 +58,13 @@ creator-wallets.json
 *.deb
 float-sign.mjs
 .claude/
+
+# dev wallet scripts with embedded keys - NEVER commit (Claude, 2026-07-04)
+fund-agent.mjs
+fund-agent2.mjs
+float-sign.mjs
+gen-agent.mjs
+check-agent-bal.mjs
+check-balance.mjs
+creator-wallets.json
+*.deb
