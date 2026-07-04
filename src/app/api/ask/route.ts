@@ -202,6 +202,10 @@ Provide a concise answer with inline citations.`,
   let totalPaid = 0;
   let budgetRemaining = budgetMicro;
   const receiptsOut = [];
+  // On-chain PAY anchoring is collected here and run in the background via waitUntil
+  // (see after the loop) so blockchain writes don't block the response — the ~30s
+  // wait was crashing mobile browsers. Citations still anchor; /proof reads them live.
+  const anchorJobs: Array<() => Promise<void>> = [];
   const stoppedEarly = decisions.some((d) => d.sufficiencyStop);
 
   for (const d of decisions) {
@@ -331,22 +335,30 @@ Provide a concise answer with inline citations.`,
       });
     }
 
-    // Anchor PAY decision on-chain after receipt row exists — only for confirmed payments
+    // Collect PAY anchoring to run in the background (see waitUntil after the loop).
+    // Only for confirmed payments. Capture per-iteration values for the closure.
     if (d.decision === "PAY" && isConfirmedPay && d.source.onChainId) {
-      const anchor = await anchorPAY({
-        onChainSourceId: d.source.onChainId,
-        queryHash,
-        evidenceHash,
-        // Mandate integration — records CitationAllowed/Blocked on CitationMandate.sol
-        mandateId:      mandateId ?? undefined,
-        amountMicro:    d.weightedAmount ?? d.source.price,
-        relevanceScore: d.scores.relevance,
-        creatorBonded:  d.source.bonded,
+      const onChainSourceId = d.source.onChainId;
+      const amountMicro     = d.weightedAmount ?? d.source.price;
+      const relevanceScore  = d.scores.relevance;
+      const creatorBonded   = d.source.bonded;
+      const anchorReceiptId = receiptId;
+      const anchorEvidence  = evidenceHash;
+      anchorJobs.push(async () => {
+        const anchor = await anchorPAY({
+          onChainSourceId,
+          queryHash,
+          evidenceHash:   anchorEvidence,
+          mandateId:      mandateId ?? undefined,
+          amountMicro,
+          relevanceScore,
+          creatorBonded,
+        });
+        if (anchor) {
+          updateReceiptOnChain(anchorReceiptId, anchor.onChainReceiptId, anchor.txHash);
+          console.log(`[anchor] PAY receipt ${anchorReceiptId} → on-chain #${anchor.onChainReceiptId} (${anchor.txHash})`);
+        }
       });
-      if (anchor) {
-        updateReceiptOnChain(receiptId, anchor.onChainReceiptId, anchor.txHash);
-        console.log(`[anchor] PAY receipt ${receiptId} → on-chain #${anchor.onChainReceiptId} (${anchor.txHash})`);
-      }
     }
     updateSourceStats(d.source.id, d.decision, d.contributionWeight ?? undefined);
     void redisIncrDecision(d.decision, d.decision === "PAY" ? (d.weightedAmount ?? d.source.price) : 0);
@@ -386,8 +398,16 @@ Provide a concise answer with inline citations.`,
     });
   }
 
-  // Close session mandate — records final tally (fire-and-forget, don't block response)
-  if (mandateId) void closeMandateOnChain(mandateId);
+  // Run all PAY anchors sequentially in the background (nonce-safe), then close the
+  // mandate — kept alive by waitUntil so it completes after the response is sent.
+  if (anchorJobs.length > 0 || mandateId) {
+    waitUntil((async () => {
+      for (const job of anchorJobs) {
+        try { await job(); } catch (e) { console.error("[anchor] background PAY anchor failed", e); }
+      }
+      if (mandateId) { try { await closeMandateOnChain(mandateId); } catch (e) { console.error("[anchor] closeMandate failed", e); } }
+    })());
+  }
 
   // ── Step 8: Update query record ───────────────────────────────────────────
   updateQuery(queryId, { status: "completed", answer, receiptIds, totalPaid });
