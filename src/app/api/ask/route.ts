@@ -366,6 +366,12 @@ Provide a concise answer with inline citations.`,
       txHash,
       paymentStatus,
       evidenceHash,
+      // Inline receipt fields so clients (e.g. the /demo flow) don't need a second
+      // /api/receipt fetch, which can 404 across serverless instances (ephemeral SQLite).
+      sourceId:              d.source.id,
+      sourceTitle:           d.source.title,
+      evidencePreimage:      preimage,
+      contentHashAtDecision: d.source.contentHash,
       receiptUrl: `/receipt/${receiptId}`,
       policyProfile:     d.policyProfile,
       policyRulesPassed: d.policyRulesPassed,
