@@ -69,10 +69,18 @@ Measurement: watch `/traction` (on-chain counter climbs with real demo runs) + V
 
 ---
 
+## ⚠️ DEPLOY RULE — "verify live, not just pushed"
+**Vercel git auto-deploy is BROKEN as of 2026-07-04** (pushes stopped triggering deploys ~2 days prior; discovered because a fix looked pushed but wasn't live). Until reconnected in Vercel dashboard → Settings → Git:
+- **"committed and pushed" ≠ "live."** After ANY code change, deploy manually: `vercel --prod --yes` from the repo root.
+- Then VERIFY the change is actually on `citepay-markets.vercel.app` (not just a preview URL) before calling it done — curl/open the affected page and confirm the new behavior.
+- Before submitting: hard-refresh the live site and confirm it reflects the latest commit (check the demo runs end-to-end, mobile layout is clean, README numbers match).
+- Near-miss on 2026-07-04: without this catch, submission would have shipped a 2-day-old site missing every improvement (README, mobile fixes, analytics, demo stall fix).
+
 ## FINAL CHECKLIST (Jul 6, before submitting)
 - [ ] Video recorded (single guide: `docs/VIDEO_RECORDING_GUIDE.md`), uploaded, link ready
 - [ ] Outreach fired; screenshot real-user reactions for the traction answer
 - [ ] Update traction numbers in the form to live `/traction` values
+- [ ] Ran `vercel --prod --yes` AFTER the last commit and confirmed it's LIVE (see Deploy Rule above)
 - [ ] Confirm live site + `/demo` + `/proof` all green (they were, Jul 4)
 - [ ] Fill Arc OSS checkbox + rationale
 - [ ] Submit before 11:59 PM ET Jul 6 — then resubmit an improved version if time allows
