@@ -229,8 +229,8 @@ export default function DemoPage() {
   const proofsDone = PROOFS.filter(k => steps[k]?.status === "done");
 
   return (
-    <main className="min-h-screen bg-[#0a0a0f] text-[#f0f0f5]">
-      <div className="max-w-3xl mx-auto px-6 py-12">
+    <main className="min-h-screen bg-[#0a0a0f] text-[#f0f0f5] overflow-x-hidden">
+      <div className="max-w-3xl mx-auto px-4 sm:px-6 py-12">
 
         {/* Header */}
         <div className="mb-8">
@@ -621,19 +621,19 @@ function Row({ label, value, link, plain, trunc }: {
 }) {
   const display = trunc ? trunc(value, 48) : value;
   return (
-    <div className="flex gap-2">
-      <span className="text-[#4a4a5e] shrink-0 w-36">{label}:</span>
+    <div className="flex gap-2 min-w-0">
+      <span className="text-[#4a4a5e] shrink-0 w-24 sm:w-36">{label}:</span>
       {link ? (
         <a
           href={link}
           target={link.startsWith("http") ? "_blank" : "_self"}
           rel="noopener noreferrer"
-          className="text-[#6366f1] hover:text-indigo-300 break-all transition-colors"
+          className="text-[#6366f1] hover:text-indigo-300 break-all min-w-0 transition-colors"
         >
           {display}
         </a>
       ) : (
-        <span className={plain ? "text-[#f0f0f5] break-all" : "text-[#8b8b9e]"}>{display}</span>
+        <span className={`break-all min-w-0 ${plain ? "text-[#f0f0f5]" : "text-[#8b8b9e]"}`}>{display}</span>
       )}
     </div>
   );
