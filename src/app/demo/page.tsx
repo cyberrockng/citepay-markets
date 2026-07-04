@@ -313,8 +313,8 @@ export default function DemoPage() {
       if (cData) {
         set("challenge", "done", {
           message:    cData.message,
-          hashBefore: cData.hashAtPayment,
-          hashAfter:  cData.currentHash,
+          hashBefore: cData.hashAtDecision ?? cData.hashAtPayment,
+          hashAfter:  cData.liveHash ?? cData.currentHash,
           receiptId:  r.id,
         });
       } else {
