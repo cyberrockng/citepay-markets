@@ -22,12 +22,24 @@ const FLOOR = {
   creatorsPaid:        11,
 };
 
+// On a cold cache-miss the Arc chain scan can take ~12s and time the page out.
+// Cap it: if it doesn't return in 3.5s, fall back to empty — the Math.max against
+// FLOOR/Neon below yields the correct current numbers, and the scan still warms
+// the 60s cache for the next request. Page always loads fast.
+const ARC_EMPTY = { citationCount: 0, totalAmountMicro: 0n, uniqueAgents: 0, uniqueCreators: 0 };
+function arcStatsFast(): Promise<Awaited<ReturnType<typeof getArcCitationStats>>> {
+  return Promise.race([
+    getArcCitationStats(),
+    new Promise<typeof ARC_EMPTY>((resolve) => setTimeout(() => resolve(ARC_EMPTY), 3500)),
+  ]);
+}
+
 export async function GET() {
   // Fetch all four sources in parallel
   const [sqlite, redis, arcStats, neon] = await Promise.all([
     Promise.resolve(getFullTractionStats()),
     getRedisTotals(),
-    getArcCitationStats(),
+    arcStatsFast(),
     getNeonTotals(),
   ]);
 
