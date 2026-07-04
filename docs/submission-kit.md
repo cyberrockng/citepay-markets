@@ -32,12 +32,14 @@ Measurement: watch `/traction` (on-chain counter climbs with real demo runs) + V
 
 ## OUTREACH MESSAGES (fire before recording — drives real-user traction)
 
+> NOTE: /demo is INTERACTIVE — visitors must click the **Run** button to trigger the live pay→cite→receipt flow (~30s). Every message MUST say "click Run" or people bounce on an idle page.
+
 ### Discord (Lepton hackathon channel)
 > 🔨 **CitePay Markets is live — would love 30 seconds of your time**
 >
 > It's a payment + policy layer for AI citations: an agent asks a question, hits HTTP 402, pays USDC via Circle Gateway on Arc, then Claude Haiku scores sources and pays creators per citation — every decision a hash-verifiable, on-chain receipt.
 >
-> Try it, no wallet needed → **citepay-markets.vercel.app/demo** (auto-runs the full pay→cite→receipt flow in one click)
+> Try it, no wallet needed → **citepay-markets.vercel.app/demo** — **hit the Run button** and watch it pay a creator live in ~30s.
 >
 > It's all real: 400+ confirmed on-chain citations, verifiable at `/proof`. This week we also closed a two-way settlement loop with @Tollgate — agents from two teams paying each other on-chain.
 >
@@ -48,7 +50,7 @@ Measurement: watch `/traction` (on-chain counter climbs with real demo runs) + V
 >
 > CitePay fixes that: every citation becomes a real USDC payment with a tamper-proof, on-chain receipt. ⛓️
 >
-> Try it live (no wallet, 30s) 👉 citepay-markets.vercel.app/demo
+> Try it live (no wallet, 30s) 👉 citepay-markets.vercel.app/demo — **hit Run and watch it pay a creator.**
 >
 > 400+ paid citations, all verifiable on-chain. Built on @arc + @circle x402.
 >
@@ -57,9 +59,11 @@ Measurement: watch `/traction` (on-chain counter climbs with real demo runs) + V
 ### Friend DM
 > Hey! I built something for a hackathon and I need 30 seconds of real feedback 🙏
 >
-> It's a system where AI agents actually *pay* the creators they cite — with a public receipt for every payment. No wallet needed, just click and watch it run:
+> AI agents that actually *pay* the creators they cite — with a public receipt for every payment. No wallet needed:
 >
-> citepay-markets.vercel.app/demo
+> 1. Open citepay-markets.vercel.app/demo
+> 2. Click the **Run** button
+> 3. Watch it pay a creator live (~30s)
 >
 > Then hit me with one honest reaction — cool / confusing / meh. Means a lot 🙏
 
