@@ -1,0 +1,22 @@
+name: Keep Warm
+
+# Pings the key judge-facing routes every 5 minutes so Vercel serverless
+# functions never idle-spin-down. Prevents cold-start "couldn't load" errors
+# for sporadic judging traffic. Free — runs on GitHub-hosted runners.
+
+on:
+  schedule:
+    - cron: "*/5 * * * *"
+  workflow_dispatch: {}
+
+jobs:
+  warm:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping routes
+        run: |
+          BASE="https://citepay-markets.vercel.app"
+          for path in "/" "/demo" "/traction" "/proof" "/market" "/api/traction" "/api/proof"; do
+            code=$(curl -s -o /dev/null -m 25 -w "%{http_code}" "$BASE$path" || echo "ERR")
+            echo "warm $path -> $code"
+          done
