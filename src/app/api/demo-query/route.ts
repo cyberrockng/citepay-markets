@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { GatewayClient } from "@circle-fin/x402-batching/client";
 
 export const dynamic = "force-dynamic";
+export const maxDuration = 60;
 
 // Simple in-memory rate limit: 1 request per 8s per IP, max 20 per IP per instance lifetime
 const _ipTimestamps = new Map<string, number>();
@@ -57,14 +58,18 @@ export async function POST(req: NextRequest) {
   const buyerClient = new GatewayClient({ chain: "arcTestnet", privateKey: DEMO_BUYER_KEY });
 
   // Auto-refill if demo buyer balance is low
-  const balances = await buyerClient.getBalances();
-  if (balances.gateway.available < MIN_BALANCE_MICRO && AGENT_KEY) {
-    try {
+  try {
+    const balances = await buyerClient.getBalances();
+    if (balances.gateway.available < MIN_BALANCE_MICRO && AGENT_KEY) {
       const agentClient = new GatewayClient({ chain: "arcTestnet", privateKey: AGENT_KEY });
       await agentClient.depositFor(REFILL_AMOUNT, buyerClient.address);
-    } catch (e) {
-      console.error("[demo-query] auto-refill failed:", e);
     }
+  } catch (e) {
+    console.error("[demo-query] balance/refill check failed:", e);
+    return NextResponse.json(
+      { error: "Demo wallet check failed", detail: e instanceof Error ? e.message : String(e) },
+      { status: 502 }
+    );
   }
 
   // Determine the absolute URL for /api/ask

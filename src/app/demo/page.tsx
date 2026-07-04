@@ -54,6 +54,49 @@ function microToUsdc(v: number) {
   return (v / 1_000_000).toFixed(6);
 }
 
+type ApiPayload = Record<string, unknown>;
+
+async function readJsonBody(res: Response): Promise<ApiPayload | null> {
+  const text = await res.text();
+  if (!text) return null;
+  try {
+    return JSON.parse(text) as ApiPayload;
+  } catch {
+    return {
+      error: "Unexpected server response",
+      detail: text.slice(0, 240),
+    };
+  }
+}
+
+async function fetchJson(
+  url: string,
+  init?: RequestInit,
+  timeoutMs = 75_000
+): Promise<{ res: Response; data: ApiPayload | null }> {
+  const controller = new AbortController();
+  const timeout = window.setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const res = await fetch(url, { ...init, signal: controller.signal });
+    return { res, data: await readJsonBody(res) };
+  } finally {
+    window.clearTimeout(timeout);
+  }
+}
+
+function apiError(label: string, res: Response, data: ApiPayload | null) {
+  const detail = [data?.detail, data?.error, data?.message]
+    .find((value): value is string => typeof value === "string" && value.trim().length > 0);
+  return `${label} failed (${res.status}). ${detail ?? "Please retry in a few seconds."}`;
+}
+
+function unexpectedError(err: unknown) {
+  if (err instanceof DOMException && err.name === "AbortError") {
+    return "The live settlement step timed out on this connection. Please retry once; no payment was consumed in the browser.";
+  }
+  return err instanceof Error ? err.message : "Unexpected browser error. Please reload and try again.";
+}
+
 // ── Component ─────────────────────────────────────────────────────────────────
 
 const INIT: Steps = Object.fromEntries(STEPS.map(k => [k, { status: "idle" }]));
@@ -108,13 +151,19 @@ export default function DemoPage() {
     setDone(false);
     setSteps(INIT);
     setPolicyComparison(null);
+    let activeStep: (typeof STEPS)[number] = "sources";
 
     try {
       // ── 1. Check sources ──────────────────────────────────────────────────
+      activeStep = "sources";
       set("sources", "running");
-      const trRes  = await fetch("/api/traction");
-      const trData = await trRes.json();
-      const count  = trData.stats?.sourcesRegistered ?? 0;
+      const { res: trRes, data: trData } = await fetchJson("/api/traction", undefined, 20_000);
+      if (!trRes.ok) {
+        set("sources", "error", undefined, apiError("Source loading", trRes, trData));
+        return;
+      }
+      const stats = trData?.stats as { sourcesRegistered?: number } | undefined;
+      const count = stats?.sourcesRegistered ?? 0;
       if (!count) {
         set("sources", "error", undefined, "No sources — run: npm run seed");
         return;
@@ -122,20 +171,33 @@ export default function DemoPage() {
       set("sources", "done", { count });
 
       // ── 2. Send query via Circle Gateway (real USDC payment) ─────────────
+      activeStep = "query";
       set("query", "running");
-      const askRes = await fetch("/api/demo-query", {
+      const { res: askRes, data: ask } = await fetchJson("/api/demo-query", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           query: "What is x402 and how does it enable micropayments for AI agents?",
           budget: 0.05,
         }),
-      });
-      const ask = await askRes.json();
+      }, 75_000);
+      if (!askRes.ok) {
+        set("query", "error", undefined, apiError("Agent payment query", askRes, ask));
+        return;
+      }
+      if (!ask || !Array.isArray(ask.decisions)) {
+        set("query", "error", undefined, "Agent payment query returned an incomplete response. Please retry.");
+        return;
+      }
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const decisions: any[]  = ask.decisions ?? [];
       const payDecisions = decisions.filter(d => d.decision === "PAY");
       const first = payDecisions[0];
+      const demoMeta = ask._demo as {
+        settleTx?: string | null;
+        formattedAmount?: string | null;
+        buyerAddress?: string | null;
+      } | undefined;
 
       set("query", "done", {
         queryId:        ask.queryId,
@@ -145,9 +207,9 @@ export default function DemoPage() {
         skip:           decisions.filter((d: { decision: string }) => d.decision === "SKIP").length,
         totalPaid:      ask.totalPaid,
         payDecision:    first,
-        gatewayTx:      ask._demo?.settleTx ?? null,
-        gatewayAmount:  ask._demo?.formattedAmount ?? null,
-        buyerAddress:   ask._demo?.buyerAddress ?? null,
+        gatewayTx:      demoMeta?.settleTx ?? null,
+        gatewayAmount:  demoMeta?.formattedAmount ?? null,
+        buyerAddress:   demoMeta?.buyerAddress ?? null,
       });
 
       // Build policy comparison from scored decisions (client-side, no extra API calls)
@@ -179,8 +241,8 @@ export default function DemoPage() {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       let r: any = null;
       try {
-        const rRes = await fetch(`/api/receipt/${first.receiptId}`);
-        if (rRes.ok) r = (await rRes.json()).receipt;
+        const { res: rRes, data: rData } = await fetchJson(`/api/receipt/${first.receiptId}`, undefined, 12_000);
+        if (rRes.ok) r = rData?.receipt;
       } catch { /* fall through to inline receipt */ }
       if (!r || !r.evidencePreimage) {
         r = {
@@ -197,6 +259,10 @@ export default function DemoPage() {
           contentHashAtDecision: first.contentHashAtDecision,
         };
       }
+      if (!r.evidencePreimage || !r.evidenceHash || !r.sourceId) {
+        set("receipt", "error", undefined, "Receipt evidence was incomplete. Please retry the live demo.");
+        return;
+      }
       set("receipt", "done", {
         receiptId:             r.id,
         sourceTitle:           r.sourceTitle,
@@ -212,19 +278,24 @@ export default function DemoPage() {
       });
 
       // ── 4. Verify evidence hash client-side ───────────────────────────────
+      activeStep = "verify";
       set("verify", "running");
       const recomputed = await clientSHA256(JSON.stringify(r.evidencePreimage, null, 2));
       const valid = recomputed === r.evidenceHash;
       set("verify", valid ? "done" : "error", { valid, recomputed, stored: r.evidenceHash });
 
       // ── 5. Tamper: simulate creator editing content after payment ─────────
+      activeStep = "tamper";
       set("tamper", "running");
-      const tRes  = await fetch("/api/demo/tamper", {
+      const { res: tRes, data: tData } = await fetchJson("/api/demo/tamper", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ sourceId: r.sourceId }),
-      });
-      const tData = await tRes.json();
+      }, 20_000);
+      if (!tRes.ok || !tData) {
+        set("tamper", "error", undefined, apiError("Tamper simulation", tRes, tData));
+        return;
+      }
       set("tamper", "done", { oldHash: tData.oldHash, newHash: tData.newHash, sourceTitle: tData.sourceTitle });
 
       // ── 6. Challenge ──────────────────────────────────────────────────────
@@ -236,8 +307,8 @@ export default function DemoPage() {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       let cData: any = null;
       try {
-        const cRes = await fetch(`/api/challenge/${r.id}`, { method: "POST" });
-        if (cRes.ok) cData = await cRes.json();
+        const { res: cRes, data: challengeData } = await fetchJson(`/api/challenge/${r.id}`, { method: "POST" }, 20_000);
+        if (cRes.ok) cData = challengeData;
       } catch { /* fall through to client-side comparison */ }
       if (cData) {
         set("challenge", "done", {
@@ -256,6 +327,8 @@ export default function DemoPage() {
       }
 
       setDone(true);
+    } catch (err) {
+      set(activeStep, "error", undefined, unexpectedError(err));
     } finally {
       setRunning(false);
     }
