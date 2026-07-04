@@ -45,7 +45,8 @@ async function clientSHA256(text: string): Promise<string> {
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-function trunc(s: string, n = 20) {
+function trunc(s: string | undefined | null, n = 20) {
+  if (!s) return "";
   return s.length > n ? s.slice(0, n) + "…" : s;
 }
 
