@@ -62,8 +62,8 @@ export default function ProofPage() {
   const CONTRACT = "0x396cf1646EbAeF85ee8428C2d9239C46Ae956085";
 
   return (
-    <main className="min-h-screen bg-[#0a0a0f] text-[#f0f0f5] pb-20">
-      <div className="max-w-5xl mx-auto px-6 pt-10">
+    <main className="min-h-screen bg-[#0a0a0f] text-[#f0f0f5] pb-20 overflow-x-hidden">
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 pt-10">
         <BackButton />
 
         {/* Header */}

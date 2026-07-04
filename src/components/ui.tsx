@@ -18,7 +18,7 @@ export function PageShell({
   className?: string;
 }) {
   return (
-    <main className={`min-h-screen bg-[#0a0a0f] text-[#f0f0f5] ${className}`}>
+    <main className={`min-h-screen bg-[#0a0a0f] text-[#f0f0f5] overflow-x-hidden ${className}`}>
       <div className={`${maxWidth} mx-auto px-4 sm:px-6 py-10 pb-28 sm:pb-12`}>{children}</div>
     </main>
   );
