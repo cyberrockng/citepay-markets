@@ -152,11 +152,11 @@ export default function DemoPage() {
       // Build policy comparison from scored decisions (client-side, no extra API calls)
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const decisionInputs = decisions.map((d: any) => ({
-        source: d.source,
-        sourcePrice: d.sourcePrice ?? d.amountPaid,
+        source: d.source ?? d.sourceTitle ?? "Unknown source",
+        sourcePrice: d.sourcePrice ?? d.amountPaid ?? 0,
         sourceBonded: d.sourceBonded ?? false,
         sourceOnChainId: d.sourceOnChainId ?? null,
-        scores: d.scores,
+        scores: d.scores ?? { relevance: 0, quality: 0, trust: 0 },
         originalDecision: d.decision,
       }));
       setPolicyComparison([
@@ -399,9 +399,10 @@ export default function DemoPage() {
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               {policyComparison.map((col) => {
-                const paid = col.results.filter((r: { decision: string }) => r.decision === "PAY").length;
-                const blocked = col.results.filter((r: { decision: string }) => r.decision === "BLOCKED_BY_POLICY").length;
-                const refused = col.results.filter((r: { decision: string }) => r.decision === "REFUSE").length;
+                const results = col.results ?? [];
+                const paid = results.filter((r: { decision: string }) => r.decision === "PAY").length;
+                const blocked = results.filter((r: { decision: string }) => r.decision === "BLOCKED_BY_POLICY").length;
+                const refused = results.filter((r: { decision: string }) => r.decision === "REFUSE").length;
                 const colors: Record<string, string> = {
                   conservative: "border-yellow-600/40",
                   balanced: "border-[#6366f1]/40",
@@ -421,15 +422,16 @@ export default function DemoPage() {
                       <span className="text-red-400">{refused} REFUSE</span>
                     </div>
                     <div className="space-y-1.5">
-                      {col.results.map((r: { source: string; decision: string; reason: string }, i: number) => {
+                      {results.map((r: { source: string; decision: string; reason: string }, i: number) => {
+                        const src = r.source ?? "";
                         const dc =
                           r.decision === "PAY" ? "text-[#00ff88]" :
                           r.decision === "BLOCKED_BY_POLICY" ? "text-orange-400" :
                           r.decision === "REFUSE" ? "text-red-400" : "text-[#4a4a5e]";
                         return (
                           <div key={i} className="flex items-center justify-between gap-2">
-                            <span className="text-[#8b8b9e] text-xs truncate flex-1" title={r.source}>
-                              {r.source.length > 28 ? r.source.slice(0, 28) + "…" : r.source}
+                            <span className="text-[#8b8b9e] text-xs truncate flex-1" title={src}>
+                              {src.length > 28 ? src.slice(0, 28) + "…" : src}
                             </span>
                             <span className={`text-xs font-mono shrink-0 ${dc}`}>
                               {r.decision === "BLOCKED_BY_POLICY" ? "BLOCKED" : r.decision}
@@ -502,7 +504,7 @@ export default function DemoPage() {
                       {c.domain}
                     </a>
                     <p className="text-xs text-[#8b8b9e] truncate">
-                      Query: &ldquo;{c.query.slice(0, 80)}{c.query.length > 80 ? "…" : ""}&rdquo;
+                      Query: &ldquo;{(c.query ?? "").slice(0, 80)}{(c.query ?? "").length > 80 ? "…" : ""}&rdquo;
                     </p>
                   </div>
                   <div className="flex-shrink-0 text-right">
