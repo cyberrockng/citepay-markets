@@ -9,6 +9,28 @@
 
 ---
 
+## ⏱️ If You Only Have 5 Minutes
+
+1. **[/demo](https://citepay-markets.vercel.app/demo)** — auto-runs 4 live proofs: tamper detection → x402 payment → paid query → objective challenge. No wallet needed.
+2. **[/ask](https://citepay-markets.vercel.app/ask)** — run one real paid query and watch PAY / REFUSE / SKIP decisions settle in USDC.
+3. **Click any PAY receipt** — hash-recomputable evidence, Arcscan-anchored.
+4. **[/proof](https://citepay-markets.vercel.app/proof)** — 401 `CitationPaid` events read straight from Arc RPC. No database to trust.
+5. **[/traction](https://citepay-markets.vercel.app/traction)** — the live economy: 136 queries, 827 agent decisions, $0.90+ routed to 11 creators.
+
+**One sentence:** every AI citation becomes a real USDC payment with a tamper-evident receipt — and this week, money completed a full loop between two independent agent networks in three blocks (proof directly below).
+
+---
+
+## Cross-Network Proof — Two Agent Networks Paying Each Other
+
+CitePay and Tollgate completed a **two-way agent settlement loop**: Tollgate had already paid CitePay as a cited creator (0.10 USDC across 69 receipts), and on Jul 4, 2026 CitePay paid Tollgate as **its first external paying reader** — queryId `0x44dee3a04a09ac6c`, 0.01 USDC, x402-settled, creator payouts confirmed on Arc in blocks 50147160–50147177 ([live answer page](https://tollgate.gudman.xyz/answers/0x44dee3a04a09ac6c)). One CitePay wallet (`0x5389…f105`) both **earned and paid** through agent-mediated citation settlement — and Tollgate's answer cited CitePay itself, so part of the payment looped straight back to us as a creator payout.
+
+> Tollgate's confirmation, verbatim: *"Confirmed on our side — all on-chain: reader 0x5389… (you, not our wallet), x402-settled, 0.01 USDC, and all three payouts (CitePay / qdee / Indie Researcher) are success on Arc, blocks 50147160–50147177. This is Tollgate's first external paying reader."*
+
+Payout txs: [CitePay](https://testnet.arcscan.app/tx/0xcb617e0eda3bb4124abc41a06c2c313f42b8ea0aad2f90a6e7c4c73246a73629) · [qdee](https://testnet.arcscan.app/tx/0x97753f78df917b5175014e1323cc3b46435b8abb9f77ff213724af0d299c38b4) · [Indie Researcher](https://testnet.arcscan.app/tx/0x9d002cdb3735c023096065d6a5ee88892e00e00548538f9bd08a3282a68c8b28) · Full evidence: [`docs/evidence-tollgate-reader-2026-07-04.md`](docs/evidence-tollgate-reader-2026-07-04.md) · Plus: first external capital sponsor on Shadow Float V2 (section 20c below).
+
+---
+
 ## Architecture
 
 ```mermaid
@@ -31,6 +53,9 @@ flowchart LR
 
 **Live app:** [citepay-markets.vercel.app](https://citepay-markets.vercel.app)
 
+> **Start here:** `/demo` → `/ask` → any receipt → `/proof` → `/traction`. Everything below is deep-dive material.
+> The demo database is deliberately **stateless** (resets on cold start) — the canonical record lives on-chain and is always readable at `/proof` and `/audit`, straight from Arc RPC.
+
 | Path | What to show |
 |---|---|
 | `/demo` | Best first stop — auto-runs 4 proofs: tamper → x402 pay → query → challenge. No wallet needed. |
@@ -47,7 +72,7 @@ flowchart LR
 | `/audit` | On-chain audit — reads Arc RPC directly, no database; verify wallet balance + every tx |
 | `/live` | Real-time SSE agent decision feed (auto-reconnects) |
 | `/receipt/:id` | Receipt with OG share card, evidence preimage viewer + hash recomputation |
-| `/traction` | Live on-chain stats: 827+ agent decisions, 385+ paid citations from CitePayMarket.sol |
+| `/traction` | Live on-chain stats: 827+ agent decisions, 401+ paid citations from CitePayMarket.sol |
 | `/proof` | On-chain proof explorer — reads CitationPaid events directly from Arc Testnet, no database |
 | `/mcp` | MCP server install for Claude Code / Cursor integration |
 
@@ -108,11 +133,11 @@ CitePay Markets is a live agentic citation economy where:
 - **Citation memory** — source `paidCount` / `refusedCount` persists across serverless cold starts via Vercel Edge Config. Frequently cited sources earn a pre-trust bonus (+8 to +12 score).
 - **Public creator registration** — `/register` lets anyone register their content in 60 seconds, no approval, no API key required.
 
-### Live Traction (Arc Testnet)
-- **398 `CitationPaid` events** on CitePayMarket.sol (verifiable: [0x396c…6085](https://testnet.arcscan.app/address/0x396cf1646EbAeF85ee8428C2d9239C46Ae956085))
+### Live Traction (Arc Testnet) — as of Jul 4, 2026 · [live numbers →](https://citepay-markets.vercel.app/traction)
+- **401 confirmed `CitationPaid` events** on CitePayMarket.sol (verifiable: [0x396c…6085](https://testnet.arcscan.app/address/0x396cf1646EbAeF85ee8428C2d9239C46Ae956085))
 - **827 agent decisions** — PAY / REFUSE / SKIP / BLOCKED_BY_POLICY — all with public receipts
 - **136 total queries** processed; creator USDC payout is a separate Arc transaction per receipt
-- **$0.8975 USDC routed** to creators across 11 unique creator wallets
+- **$0.9035 USDC routed** to creators across 11 unique creator wallets
 - **10 sources** registered onchain across 3 source agents
 - **3 source agent identities** with distinct wallets, specialties, and reputation scores
 - **1 Pilot Agent** attesting allocation decisions onchain before paying
