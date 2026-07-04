@@ -19,9 +19,9 @@ type Steps = Record<string, Step>;
 
 const STEPS = ["sources", "query", "receipt", "verify", "tamper", "challenge"] as const;
 
-const STEP_META: Record<string, { title: string; proof?: string }> = {
+const STEP_META: Record<string, { title: string; proof?: string; hint?: string }> = {
   sources:   { title: "Load sources" },
-  query:     { title: "Agent pays & queries via Circle Gateway", proof: "Agent used creator content" },
+  query:     { title: "Agent pays & queries via Circle Gateway", proof: "Agent used creator content", hint: "Making a real USDC payment on Arc + scoring sources with Claude — this takes ~30s." },
   receipt:   { title: "Creator payout confirmed",          proof: "Creator paid in USDC" },
   verify:    { title: "Evidence hash verified",            proof: "Citation decision is verifiable" },
   tamper:    { title: "Creator edits content (simulated)" },
@@ -319,6 +319,7 @@ export default function DemoPage() {
                 number={i + 1}
                 title={STEP_META[key].title}
                 proof={STEP_META[key].proof}
+                hint={STEP_META[key].hint}
                 step={step}
                 microToUsdc={microToUsdc}
                 trunc={trunc}
@@ -495,11 +496,12 @@ export default function DemoPage() {
 // ── Step Card ─────────────────────────────────────────────────────────────────
 
 function StepCard({
-  number, title, proof, step, microToUsdc, trunc,
+  number, title, proof, hint, step, microToUsdc, trunc,
 }: {
   number: number;
   title: string;
   proof?: string;
+  hint?: string;
   step: Step;
   microToUsdc: (v: number) => string;
   trunc: (s: string, n?: number) => string;
@@ -530,7 +532,7 @@ function StepCard({
       </div>
 
       {status === "running" && (
-        <p className="text-[#8b8b9e] text-xs animate-pulse">Processing…</p>
+        <p className="text-[#8b8b9e] text-xs animate-pulse">{hint ?? "Processing…"}</p>
       )}
 
       {status === "error" && (
