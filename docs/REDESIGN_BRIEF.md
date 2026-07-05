@@ -132,3 +132,10 @@ Section eyebrows (THE PROBLEM / LIVE PROOF STRIP) + h2s currently compete at sim
 - Zero conflicting numbers anywhere on the landing (spot-check against /api/traction live).
 - Wordmark=home, "Back"=back everywhere.
 - Playwright demo sanity still ok; build clean; `vercel --prod --yes`; verify LIVE on the domain (auto-deploy still broken).
+
+## 8. /ask page — UX trap fix (added Jul 5, user hit it live)
+The `/ask` "Circle Pay & Ask" button is clickable before the wallet flow (Connect → SIWE → Fund) is complete, producing a raw red error: "Circle DCW signing failed: Error: siweAddress required — complete SIWE first." A judge can hit this. Fixes (presentation/guard only, NO payment-logic changes):
+- **Disable** the "Circle Pay & Ask" button until walletStep is `funded`/`circle_ready` (paid path ready). Show it visibly disabled with helper text: "Connect your wallet and sign in to pay" / point to the wallet bar.
+- Replace the raw error string with a friendly inline message ("Please complete wallet sign-in above first — no payment was attempted.").
+- Add a prominent note/link at the top of /ask: "No wallet? Try the one-click demo → /demo" so non-wallet visitors are redirected to the frictionless path instead of getting stuck.
+- Keep /ask's real-wallet flow fully intact for power users; this is guard + copy only.
