@@ -7,9 +7,8 @@ import { BackButton } from "@/components/back-button";
 
 interface OnChainStats {
   citationPaidEvents: number;
-  totalUSDCMicro: number;
+  totalUSDCMicro?: number;
   uniqueCreators: number;
-  agentWallet: string;
   explorerUrl: string;
   lastUpdated: string;
 }
@@ -18,6 +17,10 @@ export default function TractionPage() {
   const [stats, setStats] = useState<TractionStats | null>(null);
   const [ts, setTs] = useState("");
   const [onChain, setOnChain] = useState<OnChainStats | null>(null);
+
+  const onChainUsdcRouted = onChain?.totalUSDCMicro != null
+    ? onChain.totalUSDCMicro / 1_000_000
+    : stats?.totalUSDCRouted;
 
   useEffect(() => {
     function load() {
@@ -171,7 +174,7 @@ export default function TractionPage() {
             />
             <StatCard
               label="USDC Routed (All Time)"
-              value={`$${(onChain.totalUSDCMicro / 1_000_000).toFixed(4)}`}
+              value={onChainUsdcRouted != null ? `$${onChainUsdcRouted.toFixed(4)}` : "Loading"}
               accent="text-[#34D399]"
               sub="to creator wallets"
             />
