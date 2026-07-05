@@ -94,7 +94,7 @@ function DemoTerminal() {
   const roleStyle: Record<string, string> = {
     human:       "text-[#f0f0f5]",
     tool_call:   "text-[#6366f1]",
-    tool_result: "text-[#00ff88]",
+    tool_result: "text-[#34D399]",
     assistant:   "text-[#a78bfa]",
   };
 
@@ -158,24 +158,24 @@ export default function McpPage() {
 
         <div className="mt-6 mb-10">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#111118] border border-[#1e1e2e] text-[#8b8b9e] text-xs font-mono mb-4">
-            <span className="w-1.5 h-1.5 rounded-full bg-[#00ff88] inline-block" />
+            <span className="w-1.5 h-1.5 rounded-full bg-[#34D399] inline-block" />
             Model Context Protocol · HTTP Transport · No API key required
           </div>
           <h1 className="text-3xl font-bold text-[#f0f0f5]">Add CitePay to Claude</h1>
           <p className="text-[#8b8b9e] mt-2">
-            Install CitePay as an MCP server. Your AI gets a <code className="text-[#00ff88] bg-[#00ff88]/10 px-1 rounded">cite_query</code> tool that pays creators in real USDC on every citation — on-chain, verifiable, permanent.
+            Install CitePay as an MCP server. Your AI gets a <code className="text-[#34D399] bg-[#34D399]/10 px-1 rounded">cite_query</code> tool that pays creators in real USDC on every citation — on-chain, verifiable, permanent.
           </p>
         </div>
 
         {/* Live stats */}
         {stats && (
-          <div className="bg-[#111118] rounded-xl border border-[#00ff88]/20 p-4 mb-8 grid grid-cols-3 gap-4 text-center">
+          <div className="bg-[#111118] rounded-xl border border-[#34D399]/20 p-4 mb-8 grid grid-cols-3 gap-4 text-center">
             <div>
-              <div className="text-xl font-bold font-mono text-[#00ff88]">{stats.paidCitations}</div>
+              <div className="text-xl font-bold font-mono text-[#34D399]">{stats.paidCitations}</div>
               <div className="text-[10px] text-[#4a4a5e] font-mono mt-0.5">citations paid</div>
             </div>
             <div>
-              <div className="text-xl font-bold font-mono text-[#00ff88]">${(stats.totalUSDCRouted).toFixed(4)}</div>
+              <div className="text-xl font-bold font-mono text-[#34D399]">${(stats.totalUSDCRouted).toFixed(4)}</div>
               <div className="text-[10px] text-[#4a4a5e] font-mono mt-0.5">USDC routed</div>
             </div>
             <div>
@@ -194,7 +194,7 @@ export default function McpPage() {
         {/* Tools overview */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-8">
           {[
-            { name: "cite_query", desc: "Research a question. Agent pays creators in USDC, returns cited answer + public receipts.", color: "text-[#00ff88]", border: "border-[#00ff88]/20 bg-[#00ff88]/5" },
+            { name: "cite_query", desc: "Research a question. Agent pays creators in USDC, returns cited answer + public receipts.", color: "text-[#34D399]", border: "border-[#34D399]/20 bg-[#34D399]/5" },
             { name: "get_receipt", desc: "Fetch any Policy Receipt by ID. Verify evidence hash and on-chain anchor.", color: "text-indigo-400", border: "border-indigo-500/20 bg-indigo-900/10" },
             { name: "check_policy", desc: "Inspect agent spend policies. Conservative, Balanced, or Aggressive preset rules.", color: "text-violet-400", border: "border-violet-500/20 bg-violet-900/10" },
           ].map((t) => (
@@ -273,7 +273,7 @@ export default function McpPage() {
               </div>
               <CopyButton text={CURL_TEST} label="Copy curl" />
             </div>
-            <pre className="p-5 text-xs text-[#00ff88] font-mono overflow-x-auto bg-[#0a0a0f] leading-relaxed">
+            <pre className="p-5 text-xs text-[#34D399] font-mono overflow-x-auto bg-[#0a0a0f] leading-relaxed">
               <code>{CURL_TEST}</code>
             </pre>
             <div className="px-5 py-3 border-t border-[#1e1e2e] flex items-center gap-2">

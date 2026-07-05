@@ -63,13 +63,13 @@ export default function AgentPage({ params }: { params: Promise<{ address: strin
         <StatCard
           label="Total USDC Paid"
           value={`$${((data?.totalPaid ?? 0) / 1_000_000).toFixed(4)}`}
-          accent="text-[#00ff88]"
+          accent="text-[#34D399]"
         />
         <StatCard label="Policy Blocks" value={policyBlockedCount} accent="text-orange-400" sub="blocked by policy" />
         <StatCard
           label="Reputation"
           value={`${reputation >= 0 ? "+" : ""}${reputation}`}
-          accent={reputation >= 0 ? "text-[#00ff88]" : "text-red-400"}
+          accent={reputation >= 0 ? "text-[#34D399]" : "text-red-400"}
         />
       </div>
 
@@ -78,7 +78,7 @@ export default function AgentPage({ params }: { params: Promise<{ address: strin
         <h2 className="font-semibold mb-5 text-[#f0f0f5]">Decision Breakdown</h2>
         <div className="grid grid-cols-4 gap-4 text-center mb-5">
           <div>
-            <div className="text-2xl font-bold text-[#00ff88]">{data?.paidCount ?? 0}</div>
+            <div className="text-2xl font-bold text-[#34D399]">{data?.paidCount ?? 0}</div>
             <div className="text-[#8b8b9e] text-xs mt-1">Paid</div>
           </div>
           <div>
@@ -97,7 +97,7 @@ export default function AgentPage({ params }: { params: Promise<{ address: strin
         {data && data.totalDecisions > 0 && (
           <>
             <div className="flex rounded-full overflow-hidden h-2 mb-2">
-              <div className="bg-[#00ff88]" style={{ width: `${payRatio}%` }} />
+              <div className="bg-[#34D399]" style={{ width: `${payRatio}%` }} />
               <div className="bg-red-500" style={{ width: `${refuseRatio}%` }} />
               <div className="bg-[#4a4a5e]" style={{ width: `${skipRatio}%` }} />
             </div>
@@ -152,7 +152,7 @@ export default function AgentPage({ params }: { params: Promise<{ address: strin
                   {r.decision}
                 </span>
                 {r.decision === "PAY" && (
-                  <span className="text-[#00ff88] font-mono text-xs">${(r.amountPaid / 1_000_000).toFixed(4)}</span>
+                  <span className="text-[#34D399] font-mono text-xs">${(r.amountPaid / 1_000_000).toFixed(4)}</span>
                 )}
                 <Link href={`/receipt/${r.id}`} className="text-[#6366f1] text-xs hover:text-indigo-300 transition-colors">
                   Receipt →

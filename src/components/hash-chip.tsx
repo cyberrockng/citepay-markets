@@ -26,7 +26,7 @@ export function HashChip({ hash, valid, label }: HashChipProps) {
         {label && <div className="text-[#8b8b9e] text-xs mb-1">{label}</div>}
         <div className="flex items-center gap-2">
           <code className="font-mono text-xs text-[#f0f0f5]">{short}</code>
-          {valid === true  && <span className="text-[#00ff88] text-xs font-mono shrink-0">✓ verified</span>}
+          {valid === true  && <span className="text-[#34D399] text-xs font-mono shrink-0">✓ verified</span>}
           {valid === false && <span className="text-red-400 text-xs font-mono shrink-0">✗ mismatch</span>}
         </div>
       </div>

@@ -27,7 +27,7 @@ export const SOURCE_AGENTS: SourceAgent[] = [
     specialty: "General knowledge, protocol docs, research papers",
     policyProfile: "conservative",
     sourceIds: [1, 4, 8, 10],
-    color: "#00ff88",
+    color: "#34D399",
     badge: "◈ FactAgent",
     description:
       "Publishes verified protocol documentation and research papers. Conservative pricing, high accuracy, strict evidence standards. Earns reputation through consistent PAY decisions from the veracity agent.",

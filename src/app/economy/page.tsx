@@ -90,7 +90,7 @@ function Ticker({ label, value, sub, accent = false }: {
   return (
     <div className="bg-[#0a0a0f] border border-[#1e1e2e] rounded-xl p-4 flex flex-col justify-between">
       <div className="text-[10px] font-mono text-[#4a4a5e] tracking-widest mb-2">{label}</div>
-      <div className={`text-2xl font-bold font-mono ${accent ? "text-[#00ff88]" : "text-[#f0f0f5]"}`}>
+      <div className={`text-2xl font-bold font-mono ${accent ? "text-[#34D399]" : "text-[#f0f0f5]"}`}>
         {value}
       </div>
       {sub && <div className="text-[10px] text-[#4a4a5e] mt-1">{sub}</div>}
@@ -127,7 +127,7 @@ function Bar({ pct, color = "bg-[#6366f1]" }: { pct: number; color?: string }) {
 
 const CATEGORY_COLOR: Record<string, string> = {
   Protocol:       "text-[#6366f1]",
-  Research:       "text-[#00ff88]",
+  Research:       "text-[#34D399]",
   Infrastructure: "text-yellow-400",
   "AI/Agents":    "text-purple-400",
 };
@@ -160,11 +160,11 @@ function TopSources({ sources }: { sources: Source[] }) {
                 <div className="flex items-center gap-3 mt-0.5 flex-wrap">
                   <span className="text-[10px] font-mono text-[#4a4a5e]">{s.creatorName}</span>
                   {s.onChainId && (
-                    <span className="text-[10px] font-mono text-[#00ff88]">on-chain ✓</span>
+                    <span className="text-[10px] font-mono text-[#34D399]">on-chain ✓</span>
                   )}
                   {(s.totalContributionQueries ?? 0) > 0 && (
                     <span className={`text-[10px] font-mono font-bold ${
-                      (s.avgContributionWeight ?? 0) >= 0.5 ? "text-[#00ff88]"
+                      (s.avgContributionWeight ?? 0) >= 0.5 ? "text-[#34D399]"
                       : (s.avgContributionWeight ?? 0) >= 0.2 ? "text-[#a78bfa]"
                       : "text-[#4a4a5e]"
                     }`}>
@@ -175,11 +175,11 @@ function TopSources({ sources }: { sources: Source[] }) {
                 <Bar pct={(s.paidCount / maxCite) * 100} color="bg-[#6366f1]" />
               </div>
               <div className="text-right flex-shrink-0">
-                <div className="text-xs font-bold font-mono text-[#00ff88]">
+                <div className="text-xs font-bold font-mono text-[#34D399]">
                   ${(earned / 1e6).toFixed(4)}
                 </div>
                 <div className="text-[10px] font-mono text-[#4a4a5e]">{s.paidCount} cites</div>
-                <Bar pct={(earned / maxEarn) * 100} color="bg-[#00ff88]" />
+                <Bar pct={(earned / maxEarn) * 100} color="bg-[#34D399]" />
               </div>
             </div>
           );
@@ -215,10 +215,10 @@ function TopCreators({ sources }: { sources: Source[] }) {
                 {c.name}
               </Link>
               <div className="text-[10px] font-mono text-[#4a4a5e]">{c.handle} · {c.sources} source{c.sources !== 1 ? "s" : ""}</div>
-              <Bar pct={(c.totalEarned / maxEarn) * 100} color="bg-[#00ff88]" />
+              <Bar pct={(c.totalEarned / maxEarn) * 100} color="bg-[#34D399]" />
             </div>
             <div className="text-right flex-shrink-0">
-              <div className="text-xs font-bold font-mono text-[#00ff88]">${(c.totalEarned / 1e6).toFixed(4)}</div>
+              <div className="text-xs font-bold font-mono text-[#34D399]">${(c.totalEarned / 1e6).toFixed(4)}</div>
               <div className="text-[10px] font-mono text-[#4a4a5e]">{c.citations} cites</div>
             </div>
           </div>
@@ -274,11 +274,11 @@ function RecentCitations({ payments }: { payments: Payment[] }) {
     <div className="bg-[#111118] border border-[#1e1e2e] rounded-2xl p-5">
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
-          <span className="w-1 h-4 rounded-full bg-[#00ff88] inline-block" />
+          <span className="w-1 h-4 rounded-full bg-[#34D399] inline-block" />
           <span className="text-xs font-semibold text-[#f0f0f5] tracking-wide">Recent Citations</span>
         </div>
         <div className="flex items-center gap-1.5 text-[10px] font-mono text-[#4a4a5e]">
-          <span className="w-1.5 h-1.5 rounded-full bg-[#00ff88] inline-block animate-pulse" />
+          <span className="w-1.5 h-1.5 rounded-full bg-[#34D399] inline-block animate-pulse" />
           live
         </div>
       </div>
@@ -290,9 +290,9 @@ function RecentCitations({ payments }: { payments: Payment[] }) {
         <div className="space-y-1.5 max-h-72 overflow-y-auto">
           {payments.map((p, i) => (
             <div key={`${p.createdAt}-${i}`} className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg hover:bg-[#0a0a0f] transition-colors group">
-              <span className="w-1.5 h-1.5 rounded-full bg-[#00ff88] flex-shrink-0" />
+              <span className="w-1.5 h-1.5 rounded-full bg-[#34D399] flex-shrink-0" />
               <span className="text-xs text-[#f0f0f5] truncate flex-1">{p.sourceTitle}</span>
-              <span className="text-xs font-bold font-mono text-[#00ff88] flex-shrink-0">+${(p.amountMicro / 1e6).toFixed(4)}</span>
+              <span className="text-xs font-bold font-mono text-[#34D399] flex-shrink-0">+${(p.amountMicro / 1e6).toFixed(4)}</span>
               {p.txHash ? (
                 <a href={`${ARCSCAN}/tx/${p.txHash}`} target="_blank" rel="noopener noreferrer"
                    className="text-[10px] font-mono text-[#6366f1] hover:text-indigo-300 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -391,16 +391,16 @@ function DecisionBar({ t }: { t: TractionStats }) {
     <div className="bg-[#111118] border border-[#1e1e2e] rounded-2xl p-5">
       <SectionHead title="Decision Breakdown" />
       <div className="flex h-3 rounded-full overflow-hidden gap-0.5 mb-3">
-        <div className="bg-[#00ff88] transition-all" style={{ width: `${payPct}%` }} title={`PAY ${payPct.toFixed(1)}%`} />
+        <div className="bg-[#34D399] transition-all" style={{ width: `${payPct}%` }} title={`PAY ${payPct.toFixed(1)}%`} />
         <div className="bg-red-500 transition-all"   style={{ width: `${refPct}%` }} title={`REFUSE ${refPct.toFixed(1)}%`} />
         <div className="bg-[#2e2e3e] transition-all" style={{ width: `${skipPct}%` }} title={`SKIP ${skipPct.toFixed(1)}%`} />
       </div>
       <div className="flex gap-4 flex-wrap text-[10px] font-mono">
-        <span><span className="text-[#00ff88]">■</span> PAY {payPct.toFixed(1)}% ({t.paidCitations})</span>
+        <span><span className="text-[#34D399]">■</span> PAY {payPct.toFixed(1)}% ({t.paidCitations})</span>
         <span><span className="text-red-500">■</span> REFUSE {refPct.toFixed(1)}% ({t.refusals})</span>
         <span><span className="text-[#4a4a5e]">■</span> SKIP {skipPct.toFixed(1)}% ({t.skips})</span>
         {t.onChainCitationEvents > 0 && (
-          <span className="ml-auto text-[#00ff88]">{t.onChainCitationEvents} on-chain events ✓</span>
+          <span className="ml-auto text-[#34D399]">{t.onChainCitationEvents} on-chain events ✓</span>
         )}
       </div>
     </div>
@@ -471,7 +471,7 @@ export default function EconomyPage() {
                 </span>
               )}
               <div className="flex items-center gap-1.5 text-[10px] font-mono text-[#4a4a5e]">
-                <span className="w-1.5 h-1.5 rounded-full bg-[#00ff88] animate-pulse inline-block" />
+                <span className="w-1.5 h-1.5 rounded-full bg-[#34D399] animate-pulse inline-block" />
                 15s refresh
               </div>
             </div>

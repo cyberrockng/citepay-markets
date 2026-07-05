@@ -12,7 +12,7 @@ export default function AgentsPage() {
 
         {/* Header */}
         <div className="mt-6 mb-12">
-          <div className="text-[10px] font-mono text-[#00ff88] tracking-widest mb-3">FOR AGENT DEVELOPERS</div>
+          <div className="text-[10px] font-mono text-[#34D399] tracking-widest mb-3">FOR AGENT DEVELOPERS</div>
           <h1 className="text-3xl font-bold mb-3">
             Connect your agent to CitePay
           </h1>
@@ -34,7 +34,7 @@ export default function AgentsPage() {
               <div className="text-xs text-[#4a4a5e]">One command — works in Claude Code, Claude Desktop, Cursor</div>
             </div>
           </div>
-          <div className="bg-[#0a0a0f] rounded-lg p-4 font-mono text-xs text-[#00ff88] mb-4 border border-[#1e1e2e]">
+          <div className="bg-[#0a0a0f] rounded-lg p-4 font-mono text-xs text-[#34D399] mb-4 border border-[#1e1e2e]">
             {`npx -y citepay-mcp`}
           </div>
           <p className="text-sm text-[#8b8b9e] mb-4">
@@ -62,10 +62,10 @@ export default function AgentsPage() {
         </div>
 
         {/* Option 2: x402 REST */}
-        <div className="bg-[#111118] border border-[#00ff88]/20 rounded-2xl p-7 mb-6">
+        <div className="bg-[#111118] border border-[#34D399]/20 rounded-2xl p-7 mb-6">
           <div className="flex items-center gap-3 mb-4">
-            <div className="w-8 h-8 rounded-lg bg-[#00ff88]/10 border border-[#00ff88]/20 flex items-center justify-center">
-              <span className="text-[#00ff88] text-xs font-mono font-bold">02</span>
+            <div className="w-8 h-8 rounded-lg bg-[#34D399]/10 border border-[#34D399]/20 flex items-center justify-center">
+              <span className="text-[#34D399] text-xs font-mono font-bold">02</span>
             </div>
             <div>
               <div className="font-semibold text-[#f0f0f5]">x402 REST (Circle Gateway)</div>
@@ -75,11 +75,11 @@ export default function AgentsPage() {
           <div className="bg-[#0a0a0f] rounded-lg p-4 font-mono text-xs border border-[#1e1e2e] mb-4 overflow-x-auto text-[#8b8b9e]">
             <div className="text-[#4a4a5e] mb-2">// Circle Gateway (JavaScript)</div>
             <div><span className="text-[#6366f1]">const</span>{" client = new GatewayClient({"}</div>
-            <div className="pl-4">{"chain: "}<span className="text-[#00ff88]">{"\"arcTestnet\""}</span>{","}</div>
-            <div className="pl-4">{"privateKey: "}<span className="text-[#00ff88]">{"process.env.AGENT_KEY"}</span></div>
+            <div className="pl-4">{"chain: "}<span className="text-[#34D399]">{"\"arcTestnet\""}</span>{","}</div>
+            <div className="pl-4">{"privateKey: "}<span className="text-[#34D399]">{"process.env.AGENT_KEY"}</span></div>
             <div>{"});"}</div>
             <div className="mt-2"><span className="text-[#6366f1]">const</span>{" { data } = await client.pay("}</div>
-            <div className="pl-4"><span className="text-[#00ff88]">{`"${BASE}/api/ask"`}</span>{","}</div>
+            <div className="pl-4"><span className="text-[#34D399]">{`"${BASE}/api/ask"`}</span>{","}</div>
             <div className="pl-4">{"{ method: \"POST\", body: JSON.stringify({"}</div>
             <div className="pl-8">{"query: \"What is x402?\", policy: \"balanced\""}</div>
             <div className="pl-4">{"}) }"}</div>
@@ -123,7 +123,7 @@ export default function AgentsPage() {
               <div className="text-xs text-[#4a4a5e]">Test CitePay instantly — server signs payment on your behalf</div>
             </div>
           </div>
-          <div className="bg-[#0a0a0f] rounded-lg p-4 font-mono text-xs text-[#00ff88] mb-3 border border-[#1e1e2e]">
+          <div className="bg-[#0a0a0f] rounded-lg p-4 font-mono text-xs text-[#34D399] mb-3 border border-[#1e1e2e]">
             {`curl -X POST ${BASE}/api/demo-query \\
   -H "Content-Type: application/json" \\
   -d '{"query": "What is x402?", "policy": "balanced"}'`}

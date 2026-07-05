@@ -263,7 +263,7 @@ export async function sendOutreachEmail(
 <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f9f9f9; margin: 0; padding: 40px 20px;">
   <div style="max-width: 560px; margin: 0 auto; background: white; border-radius: 12px; overflow: hidden; border: 1px solid #e5e5e5;">
     <div style="background: #0a0a0f; padding: 32px; text-align: center;">
-      <p style="color: #00ff88; font-family: monospace; font-size: 11px; letter-spacing: 0.1em; margin: 0 0 8px;">CITEPAY MARKETS</p>
+      <p style="color: #34D399; font-family: monospace; font-size: 11px; letter-spacing: 0.1em; margin: 0 0 8px;">CITEPAY MARKETS</p>
       <h1 style="color: #f0f0f5; font-size: 22px; margin: 0; line-height: 1.3;">An AI agent cited your work.<br>You could have earned USDC.</h1>
     </div>
     <div style="padding: 32px;">

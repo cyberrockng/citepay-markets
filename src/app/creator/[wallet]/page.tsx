@@ -10,12 +10,12 @@ const ARCSCAN = "https://testnet.arcscan.app";
 
 function ReputationBar({ rep, max = 10 }: { rep: number; max?: number }) {
   const pct = Math.max(0, Math.min(100, ((rep + max) / (max * 2)) * 100));
-  const color = rep >= 3 ? "bg-[#00ff88]" : rep >= 0 ? "bg-yellow-400" : "bg-red-500";
+  const color = rep >= 3 ? "bg-[#34D399]" : rep >= 0 ? "bg-yellow-400" : "bg-red-500";
   return (
     <div className="mt-2">
       <div className="flex justify-between text-[10px] font-mono text-[#4a4a5e] mb-1">
         <span>Reputation</span>
-        <span className={rep >= 0 ? "text-[#00ff88]" : "text-red-400"}>{rep >= 0 ? "+" : ""}{rep}</span>
+        <span className={rep >= 0 ? "text-[#34D399]" : "text-red-400"}>{rep >= 0 ? "+" : ""}{rep}</span>
       </div>
       <div className="h-1.5 bg-[#1e1e2e] rounded-full overflow-hidden">
         <div className={`h-full rounded-full transition-all ${color}`} style={{ width: `${pct}%` }} />
@@ -139,10 +139,10 @@ export default function CreatorPage({ params }: { params: Promise<{ wallet: stri
 
         {/* Hero */}
         <div className="mt-6 mb-8 bg-gradient-to-br from-[#111118] to-[#0d0d15] rounded-2xl border border-[#1e1e2e] p-8 relative overflow-hidden">
-          <div className="absolute inset-0 opacity-5" style={{ backgroundImage: "radial-gradient(circle, #00ff88 1px, transparent 1px)", backgroundSize: "24px 24px" }} />
+          <div className="absolute inset-0 opacity-5" style={{ backgroundImage: "radial-gradient(circle, #34D399 1px, transparent 1px)", backgroundSize: "24px 24px" }} />
           <div className="relative z-10">
             <div className="text-[10px] font-mono text-[#4a4a5e] tracking-widest mb-2">CREATOR EARNINGS DASHBOARD</div>
-            <div className="text-5xl font-bold font-mono text-[#00ff88] mb-1">
+            <div className="text-5xl font-bold font-mono text-[#34D399] mb-1">
               ${(totalEarned / 1e6).toFixed(4)}
             </div>
             <div className="text-sm text-[#8b8b9e] mb-4">
@@ -170,10 +170,10 @@ export default function CreatorPage({ params }: { params: Promise<{ wallet: stri
         {/* Stats row */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
           {[
-            { label: "Total Earned", value: `$${(totalEarned / 1e6).toFixed(4)}`, accent: "text-[#00ff88]" },
-            { label: "Citations Paid", value: paidReceipts.length, accent: "text-[#00ff88]" },
+            { label: "Total Earned", value: `$${(totalEarned / 1e6).toFixed(4)}`, accent: "text-[#34D399]" },
+            { label: "Citations Paid", value: paidReceipts.length, accent: "text-[#34D399]" },
             { label: "Sources", value: data?.sources.length ?? 0, accent: "text-[#6366f1]" },
-            { label: "Avg Reputation", value: `${avgRep >= 0 ? "+" : ""}${avgRep.toFixed(1)}`, accent: avgRep >= 0 ? "text-[#00ff88]" : "text-red-400" },
+            { label: "Avg Reputation", value: `${avgRep >= 0 ? "+" : ""}${avgRep.toFixed(1)}`, accent: avgRep >= 0 ? "text-[#34D399]" : "text-red-400" },
           ].map(({ label, value, accent }) => (
             <div key={label} className="bg-[#111118] rounded-xl p-5 border border-[#1e1e2e] text-center">
               <div className={`text-2xl font-bold font-mono ${accent}`}>{value}</div>
@@ -209,13 +209,13 @@ export default function CreatorPage({ params }: { params: Promise<{ wallet: stri
                     </a>
                     <div className="flex gap-4 mt-2 text-xs text-[#8b8b9e]">
                       <span>Price: <span className="text-[#f0f0f5] font-mono">${(s.price / 1_000_000).toFixed(4)}</span></span>
-                      <span>Paid: <span className="text-[#00ff88]">{s.paidCount}</span></span>
+                      <span>Paid: <span className="text-[#34D399]">{s.paidCount}</span></span>
                       <span>Refused: <span className="text-red-400">{s.refusedCount}</span></span>
                     </div>
                     <ReputationBar rep={s.reputation} />
                   </div>
                   <div className="text-right shrink-0">
-                    <div className="text-[#00ff88] font-mono text-lg font-bold">${((sourceEarnings[s.id] ?? 0) / 1e6).toFixed(4)}</div>
+                    <div className="text-[#34D399] font-mono text-lg font-bold">${((sourceEarnings[s.id] ?? 0) / 1e6).toFixed(4)}</div>
                     <div className="text-[10px] text-[#4a4a5e]">earned</div>
                   </div>
                 </div>
@@ -259,7 +259,7 @@ export default function CreatorPage({ params }: { params: Promise<{ wallet: stri
                   </div>
                 </div>
                 <div className="text-right shrink-0">
-                  <div className="text-[#00ff88] font-mono text-sm">${(r.amountPaid / 1_000_000).toFixed(4)}</div>
+                  <div className="text-[#34D399] font-mono text-sm">${(r.amountPaid / 1_000_000).toFixed(4)}</div>
                   <Link href={`/receipt/${r.id}`} className="text-[#6366f1] text-xs hover:text-indigo-300 transition-colors">
                     Receipt →
                   </Link>
@@ -270,7 +270,7 @@ export default function CreatorPage({ params }: { params: Promise<{ wallet: stri
         )}
 
         {/* On-Chain Earnings (Arc Testnet direct) */}
-        <div className="bg-[#111118] rounded-xl border border-[#00ff88]/20 overflow-hidden mb-6">
+        <div className="bg-[#111118] rounded-xl border border-[#34D399]/20 overflow-hidden mb-6">
           <div className="px-6 py-4 border-b border-[#1e1e2e] flex items-center justify-between">
             <div>
               <h2 className="font-semibold text-[#f0f0f5]">On-Chain Earnings</h2>
@@ -286,11 +286,11 @@ export default function CreatorPage({ params }: { params: Promise<{ wallet: stri
             <div>
               <div className="grid grid-cols-2 gap-4 px-6 py-4 border-b border-[#1e1e2e]">
                 <div>
-                  <div className="text-2xl font-bold font-mono text-[#00ff88]">${onChainStats.totalUSDC.toFixed(4)}</div>
+                  <div className="text-2xl font-bold font-mono text-[#34D399]">${onChainStats.totalUSDC.toFixed(4)}</div>
                   <div className="text-xs text-[#8b8b9e] mt-1">USDC earned on-chain</div>
                 </div>
                 <div>
-                  <div className="text-2xl font-bold font-mono text-[#00ff88]">{onChainStats.citations}</div>
+                  <div className="text-2xl font-bold font-mono text-[#34D399]">{onChainStats.citations}</div>
                   <div className="text-xs text-[#8b8b9e] mt-1">CitationPaid events</div>
                 </div>
               </div>
@@ -298,7 +298,7 @@ export default function CreatorPage({ params }: { params: Promise<{ wallet: stri
                 {onChainStats.events.map((e) => (
                   <div key={e.receiptId} className="flex items-center justify-between text-xs font-mono py-1">
                     <span className="text-[#4a4a5e]">Receipt #{e.receiptId}</span>
-                    <span className="text-[#00ff88]">${e.amountPaid.toFixed(4)}</span>
+                    <span className="text-[#34D399]">${e.amountPaid.toFixed(4)}</span>
                     {e.txHash && (
                       <a href={e.arcScanUrl} target="_blank" rel="noopener noreferrer" className="text-[#6366f1] hover:text-indigo-300">
                         {e.txHash.slice(0, 10)}… ↗

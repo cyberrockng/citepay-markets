@@ -42,13 +42,13 @@ function shortAddr(addr: string) { return `${addr.slice(0, 6)}…${addr.slice(-4
 function fmtUsdc(micro: number)  { return `$${(micro / 1_000_000).toFixed(4)}`; }
 
 const POLICY_BADGE: Record<string, string> = {
-  conservative: "text-[#00ff88] bg-[#00ff88]/10 border-[#00ff88]/30",
+  conservative: "text-[#34D399] bg-[#34D399]/10 border-[#34D399]/30",
   balanced:     "text-indigo-300 bg-indigo-900/20 border-indigo-700/40",
   aggressive:   "text-orange-300 bg-orange-900/20 border-orange-700/40",
 };
 
 const STATUS_BADGE: Record<string, string> = {
-  APPROVED:      "text-[#00ff88] bg-[#00ff88]/10 border-[#00ff88]/30",
+  APPROVED:      "text-[#34D399] bg-[#34D399]/10 border-[#34D399]/30",
   BLOCKED:       "text-red-400 bg-red-900/20 border-red-800/40",
   WARNING:       "text-amber-400 bg-amber-900/20 border-amber-700/40",
   FALLBACK_USED: "text-[#8b8b9e] bg-[#111118] border-[#1e1e2e]",
@@ -239,7 +239,7 @@ export default function AgentExchangePage() {
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                 {[
                   { label: "Discovered", value: runResult.discovered.length, color: "text-[#f0f0f5]" },
-                  { label: "Selected",   value: runResult.selected.length,   color: "text-[#00ff88]" },
+                  { label: "Selected",   value: runResult.selected.length,   color: "text-[#34D399]" },
                   { label: "Warned",     value: runResult.warned.length,     color: "text-amber-400" },
                   { label: "Blocked",    value: runResult.blocked.length,    color: "text-red-400"   },
                 ].map(s => (
@@ -254,14 +254,14 @@ export default function AgentExchangePage() {
               <div className="space-y-2">
                 <h3 className="text-xs font-semibold text-[#8b8b9e] uppercase tracking-widest">Hired Agents</h3>
                 {runResult.hireResults.map(hr => (
-                  <div key={hr.receipt.id} className="rounded-lg border border-[#00ff88]/20 bg-[#00ff88]/5 px-4 py-3 space-y-1">
+                  <div key={hr.receipt.id} className="rounded-lg border border-[#34D399]/20 bg-[#34D399]/5 px-4 py-3 space-y-1">
                     <div className="flex items-center gap-2 text-sm">
-                      <span className="font-semibold text-[#00ff88]">{hr.receipt.agentName}</span>
+                      <span className="font-semibold text-[#34D399]">{hr.receipt.agentName}</span>
                       <span className="text-[#8b8b9e]">·</span>
                       <span className="text-[#8b8b9e] font-mono text-xs">{fmtUsdc(hr.receipt.amountMicro)}</span>
                       <span className="text-[#8b8b9e]">·</span>
                       <span className="text-xs text-[#8b8b9e]">quality: {hr.qualityScore}/100</span>
-                      <span className={`ml-auto text-xs px-2 py-0.5 rounded border font-mono ${hr.receipt.paymentMode === "simulated" ? "text-amber-400 border-amber-700/40 bg-amber-900/10" : "text-[#00ff88] border-[#00ff88]/30 bg-[#00ff88]/10"}`}>
+                      <span className={`ml-auto text-xs px-2 py-0.5 rounded border font-mono ${hr.receipt.paymentMode === "simulated" ? "text-amber-400 border-amber-700/40 bg-amber-900/10" : "text-[#34D399] border-[#34D399]/30 bg-[#34D399]/10"}`}>
                         {hr.receipt.paymentMode}
                       </span>
                     </div>
@@ -375,7 +375,7 @@ export default function AgentExchangePage() {
               >
                 Register Agent
               </button>
-              {regMsg && <p className="text-xs text-[#00ff88]">{regMsg}</p>}
+              {regMsg && <p className="text-xs text-[#34D399]">{regMsg}</p>}
             </div>
           )}
 
@@ -406,14 +406,14 @@ export default function AgentExchangePage() {
                       </td>
                       <td className="px-4 py-3 font-mono text-xs">{fmtUsdc(a.priceMicro)}</td>
                       <td className="px-4 py-3">
-                        <span className={`font-mono text-xs font-semibold ${a.trustScore >= 75 ? "text-[#00ff88]" : a.trustScore >= 50 ? "text-amber-400" : "text-red-400"}`}>
+                        <span className={`font-mono text-xs font-semibold ${a.trustScore >= 75 ? "text-[#34D399]" : a.trustScore >= 50 ? "text-amber-400" : "text-red-400"}`}>
                           {a.trustScore}%
                         </span>
                       </td>
                       <td className="px-4 py-3 font-mono text-xs text-[#8b8b9e]">{a.totalHired}</td>
-                      <td className="px-4 py-3 font-mono text-xs text-[#00ff88]">{fmtUsdc(a.totalEarnedMicro)}</td>
+                      <td className="px-4 py-3 font-mono text-xs text-[#34D399]">{fmtUsdc(a.totalEarnedMicro)}</td>
                       <td className="px-4 py-3">
-                        <span className={`text-xs px-2 py-0.5 rounded border ${a.status === "active" ? "text-[#00ff88] border-[#00ff88]/30 bg-[#00ff88]/10" : "text-[#8b8b9e] border-[#1e1e2e]"}`}>
+                        <span className={`text-xs px-2 py-0.5 rounded border ${a.status === "active" ? "text-[#34D399] border-[#34D399]/30 bg-[#34D399]/10" : "text-[#8b8b9e] border-[#1e1e2e]"}`}>
                           {a.status}
                         </span>
                       </td>
@@ -438,7 +438,7 @@ export default function AgentExchangePage() {
                 <div className="space-y-1 text-xs text-[#8b8b9e]">
                   <div className="flex justify-between">
                     <span>Earned</span>
-                    <span className="text-[#00ff88] font-mono">{fmtUsdc(a.totalEarnedMicro)}</span>
+                    <span className="text-[#34D399] font-mono">{fmtUsdc(a.totalEarnedMicro)}</span>
                   </div>
                   <div className="flex justify-between">
                     <span>Hired</span>
@@ -450,7 +450,7 @@ export default function AgentExchangePage() {
                   </div>
                   <div className="flex justify-between">
                     <span>Trust</span>
-                    <span className={`font-mono ${a.trustScore >= 75 ? "text-[#00ff88]" : a.trustScore >= 50 ? "text-amber-400" : "text-red-400"}`}>
+                    <span className={`font-mono ${a.trustScore >= 75 ? "text-[#34D399]" : a.trustScore >= 50 ? "text-amber-400" : "text-red-400"}`}>
                       {a.trustScore}%
                     </span>
                   </div>
@@ -478,7 +478,7 @@ export default function AgentExchangePage() {
                   <span className="font-semibold text-sm">{r.agentName}</span>
                   <span className="text-[#8b8b9e] font-mono">{fmtUsdc(r.amountMicro)}</span>
                   <span className="text-[#8b8b9e]">quality: {r.qualityScore}/100</span>
-                  <span className={`px-2 py-0.5 rounded border ${r.paymentMode === "simulated" ? "text-amber-400 border-amber-700/40" : "text-[#00ff88] border-[#00ff88]/30"}`}>
+                  <span className={`px-2 py-0.5 rounded border ${r.paymentMode === "simulated" ? "text-amber-400 border-amber-700/40" : "text-[#34D399] border-[#34D399]/30"}`}>
                     {r.paymentMode}
                   </span>
                   {r.policyReason && <span className="text-red-300/60 text-xs">{r.policyReason}</span>}

@@ -149,7 +149,7 @@ curl -X POST https://citepay-markets.vercel.app/api/ask \\
               <span className="text-xs text-[#8b8b9e]">Status</span>
               <span className={`text-xs font-semibold px-2 py-0.5 rounded border font-mono ${
                 status.valid
-                  ? "text-[#00ff88] border-[#00ff88]/30 bg-[#00ff88]/10"
+                  ? "text-[#34D399] border-[#34D399]/30 bg-[#34D399]/10"
                   : "text-red-400 border-red-800 bg-red-900/20"
               }`}>
                 {status.valid ? "VALID" : status.expired ? "EXPIRED" : "EXHAUSTED"}

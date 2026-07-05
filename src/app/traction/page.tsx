@@ -61,20 +61,20 @@ export default function TractionPage() {
           <div className="rounded-lg border border-[#1e1e2e] bg-[#0d0d14] p-4">
             <div className="flex items-center justify-between mb-2">
               <span className="text-[#f0f0f5] font-semibold text-sm">Shadow Float</span>
-              <span className="text-[10px] font-mono bg-[#00ff88]/10 text-[#00ff88] px-2 py-0.5 rounded-full border border-[#00ff88]/20">VERIFIED</span>
+              <span className="text-[10px] font-mono bg-[#34D399]/10 text-[#34D399] px-2 py-0.5 rounded-full border border-[#34D399]/20">VERIFIED</span>
             </div>
             <p className="text-[#8b8b9e] text-xs mb-3">Shadow paid CitePay 5 queries (Jun 29) · CitePay became first external sponsor on Shadow Float V2 (Jul 2)</p>
             <div className="grid grid-cols-3 gap-2 mb-3 text-center">
               <div>
-                <div className="text-[#00ff88] font-bold text-lg">5</div>
+                <div className="text-[#34D399] font-bold text-lg">5</div>
                 <div className="text-[#4a4a5e] text-[10px]">Queries Paid</div>
               </div>
               <div>
-                <div className="text-[#00ff88] font-bold text-lg">$0.05</div>
+                <div className="text-[#34D399] font-bold text-lg">$0.05</div>
                 <div className="text-[#4a4a5e] text-[10px]">Reserve Sponsored</div>
               </div>
               <div>
-                <div className="text-[#00ff88] font-bold text-lg">#1</div>
+                <div className="text-[#34D399] font-bold text-lg">#1</div>
                 <div className="text-[#4a4a5e] text-[10px]">Ext. Sponsor V2</div>
               </div>
             </div>
@@ -102,20 +102,20 @@ export default function TractionPage() {
           <div className="rounded-lg border border-[#1e1e2e] bg-[#0d0d14] p-4">
             <div className="flex items-center justify-between mb-2">
               <span className="text-[#f0f0f5] font-semibold text-sm">Tollgate</span>
-              <span className="text-[10px] font-mono bg-[#00ff88]/10 text-[#00ff88] px-2 py-0.5 rounded-full border border-[#00ff88]/20">VERIFIED</span>
+              <span className="text-[10px] font-mono bg-[#34D399]/10 text-[#34D399] px-2 py-0.5 rounded-full border border-[#34D399]/20">VERIFIED</span>
             </div>
             <p className="text-[#8b8b9e] text-xs mb-3">Tollgate ran 5 autonomous paid queries into CitePay · 10 sources registered · 0.099 USDC earned &amp; claimed · Jun 30–Jul 2, 2026</p>
             <div className="grid grid-cols-3 gap-2 mb-3 text-center">
               <div>
-                <div className="text-[#00ff88] font-bold text-lg">5</div>
+                <div className="text-[#34D399] font-bold text-lg">5</div>
                 <div className="text-[#4a4a5e] text-[10px]">Txs Confirmed</div>
               </div>
               <div>
-                <div className="text-[#00ff88] font-bold text-lg">$0.099</div>
+                <div className="text-[#34D399] font-bold text-lg">$0.099</div>
                 <div className="text-[#4a4a5e] text-[10px]">USDC Earned</div>
               </div>
               <div>
-                <div className="text-[#00ff88] font-bold text-lg">10</div>
+                <div className="text-[#34D399] font-bold text-lg">10</div>
                 <div className="text-[#4a4a5e] text-[10px]">Sources Listed</div>
               </div>
             </div>
@@ -147,10 +147,10 @@ export default function TractionPage() {
 
       {/* On-chain persistent record */}
       {onChain && (
-        <div className="mb-8 rounded-xl border border-[#00ff88]/20 bg-[#00ff88]/5 p-5">
+        <div className="mb-8 rounded-xl border border-[#34D399]/20 bg-[#34D399]/5 p-5">
           <div className="flex items-center justify-between mb-4">
             <div>
-              <h2 className="text-sm font-semibold text-[#00ff88] uppercase tracking-widest">On-Chain Record · Arc Testnet</h2>
+              <h2 className="text-sm font-semibold text-[#34D399] uppercase tracking-widest">On-Chain Record · Arc Testnet</h2>
               <p className="text-[#8b8b9e] text-xs mt-0.5">Permanent · verified on arcscan · survives cold starts</p>
             </div>
             <a
@@ -166,19 +166,19 @@ export default function TractionPage() {
             <StatCard
               label="Citations Paid (All Time)"
               value={onChain.citationPaidEvents}
-              accent="text-[#00ff88]"
+              accent="text-[#34D399]"
               sub="USDC transfers on Arc"
             />
             <StatCard
               label="USDC Routed (All Time)"
               value={`$${(onChain.totalUSDCMicro / 1_000_000).toFixed(4)}`}
-              accent="text-[#00ff88]"
+              accent="text-[#34D399]"
               sub="to creator wallets"
             />
             <StatCard
               label="Creators Paid (All Time)"
               value={onChain.uniqueCreators}
-              accent="text-[#00ff88]"
+              accent="text-[#34D399]"
               sub="unique recipients"
             />
           </div>
@@ -208,7 +208,7 @@ export default function TractionPage() {
             <h2 className="text-xs font-semibold text-[#8b8b9e] uppercase tracking-widest mb-4">Creator Economy</h2>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
               <StatCard label="Creators Indexed" value={stats.creatorsIndexed} accent="text-[#6366f1]" />
-              <StatCard label="Creators Paid" value={stats.creatorsPaid} accent="text-[#00ff88]" />
+              <StatCard label="Creators Paid" value={stats.creatorsPaid} accent="text-[#34D399]" />
               <StatCard label="Sources Registered" value={stats.sourcesRegistered} accent="text-[#6366f1]" />
               <StatCard label="Bonded Sources" value={stats.bondedSources} accent="text-yellow-400" />
             </div>
@@ -221,7 +221,7 @@ export default function TractionPage() {
               <StatCard
                 label="Total USDC Routed"
                 value={`$${stats.totalUSDCRouted.toFixed(4)}`}
-                accent="text-[#00ff88]"
+                accent="text-[#34D399]"
                 sub="to creator wallets"
               />
               <StatCard
@@ -229,7 +229,7 @@ export default function TractionPage() {
                 value={`$${stats.avgPaymentPerCitation.toFixed(4)}`}
                 accent="text-[#6366f1]"
               />
-              <StatCard label="Paid Citations" value={stats.paidCitations} accent="text-[#00ff88]" />
+              <StatCard label="Paid Citations" value={stats.paidCitations} accent="text-[#34D399]" />
             </div>
           </section>
 
@@ -254,7 +254,7 @@ export default function TractionPage() {
               <StatCard
                 label="Agent Reputation"
                 value={`${stats.agentReputation >= 0 ? "+" : ""}${stats.agentReputation}`}
-                accent={stats.agentReputation >= 0 ? "text-[#00ff88]" : "text-red-400"}
+                accent={stats.agentReputation >= 0 ? "text-[#34D399]" : "text-red-400"}
               />
             </div>
           </section>

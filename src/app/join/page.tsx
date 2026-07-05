@@ -55,7 +55,7 @@ export default function JoinPage() {
 
         {/* Header */}
         <div className="text-center mb-8">
-          <div className="text-[10px] font-mono text-[#00ff88] tracking-widest mb-3">CITEPAY MARKETS</div>
+          <div className="text-[10px] font-mono text-[#34D399] tracking-widest mb-3">CITEPAY MARKETS</div>
           <h1 className="text-2xl font-bold mb-2">Get paid when AI cites your work</h1>
           <p className="text-sm text-[#8b8b9e]">
             Paste your URL. AI agents pay you USDC every time they cite it.
@@ -63,9 +63,9 @@ export default function JoinPage() {
         </div>
 
         {step === "done" && result ? (
-          <div className="bg-[#111118] border border-[#00ff88]/30 rounded-2xl p-7 text-center space-y-5">
-            <div className="w-14 h-14 rounded-full bg-[#00ff88]/10 border border-[#00ff88]/30 flex items-center justify-center mx-auto">
-              <span className="text-[#00ff88] text-2xl">✓</span>
+          <div className="bg-[#111118] border border-[#34D399]/30 rounded-2xl p-7 text-center space-y-5">
+            <div className="w-14 h-14 rounded-full bg-[#34D399]/10 border border-[#34D399]/30 flex items-center justify-center mx-auto">
+              <span className="text-[#34D399] text-2xl">✓</span>
             </div>
             <div>
               <div className="font-semibold text-[#f0f0f5] mb-1">{result.title}</div>
@@ -81,13 +81,13 @@ export default function JoinPage() {
               </div>
               <div className="flex justify-between">
                 <span className="text-[#4a4a5e]">Status</span>
-                <span className="text-[#00ff88]">active · earning</span>
+                <span className="text-[#34D399]">active · earning</span>
               </div>
             </div>
             <div className="flex flex-col gap-2">
               <a
                 href={result.marketUrl}
-                className="bg-[#00ff88] hover:bg-[#00e87a] text-black font-bold py-3 rounded-xl transition-colors text-sm"
+                className="bg-[#34D399] hover:bg-[#6EE7B7] text-black font-bold py-3 rounded-xl transition-colors text-sm"
               >
                 View your source page →
               </a>

@@ -93,7 +93,7 @@ export default function RevenuePage() {
           )}
           {data?.sources && (
             <div className="flex gap-1.5">
-              {data.sources.arc    && <span className="text-[10px] font-mono px-1.5 py-0.5 rounded border border-[#00ff88]/30 text-[#00ff88] bg-[#00ff88]/5">arc</span>}
+              {data.sources.arc    && <span className="text-[10px] font-mono px-1.5 py-0.5 rounded border border-[#34D399]/30 text-[#34D399] bg-[#34D399]/5">arc</span>}
               {data.sources.neon   && <span className="text-[10px] font-mono px-1.5 py-0.5 rounded border border-[#6366f1]/30 text-[#6366f1] bg-[#6366f1]/5">neon</span>}
               {data.sources.sqlite && <span className="text-[10px] font-mono px-1.5 py-0.5 rounded border border-[#1e1e2e] text-[#8b8b9e]">sqlite</span>}
             </div>
@@ -106,13 +106,13 @@ export default function RevenuePage() {
         <StatCard
           label="Total USDC Earned"
           value={h ? `$${h.totalUSDC.toFixed(4)}` : "—"}
-          accent="text-[#00ff88]"
+          accent="text-[#34D399]"
           sub="across all sources"
         />
         <StatCard
           label="Paid Citations"
           value={h?.paidCitations ?? "—"}
-          accent="text-[#00ff88]"
+          accent="text-[#34D399]"
           sub={`${h?.payRate ?? "—"}% pay rate`}
         />
         <StatCard
@@ -138,7 +138,7 @@ export default function RevenuePage() {
           </div>
           <div className="flex h-3 rounded-full overflow-hidden gap-0.5 mb-3">
             <div
-              className="bg-[#00ff88] transition-all"
+              className="bg-[#34D399] transition-all"
               style={{ width: `${(h.paidCitations / h.totalDecisions) * 100}%` }}
             />
             <div
@@ -151,7 +151,7 @@ export default function RevenuePage() {
             />
           </div>
           <div className="flex gap-6 text-xs text-[#8b8b9e]">
-            <span><span className="inline-block w-2 h-2 rounded-full bg-[#00ff88] mr-1.5" />{h.paidCitations.toLocaleString()} PAY</span>
+            <span><span className="inline-block w-2 h-2 rounded-full bg-[#34D399] mr-1.5" />{h.paidCitations.toLocaleString()} PAY</span>
             <span><span className="inline-block w-2 h-2 rounded-full bg-red-500/60 mr-1.5" />{h.refusals.toLocaleString()} REFUSE</span>
             <span><span className="inline-block w-2 h-2 rounded-full bg-[#2a2a3e] mr-1.5" />{h.skips.toLocaleString()} SKIP</span>
           </div>
@@ -176,11 +176,11 @@ export default function RevenuePage() {
                     <span className="text-xs text-[#f0f0f5] truncate max-w-[60%]">{s.sourceTitle}</span>
                     <div className="flex items-center gap-2">
                       <span className="text-xs text-[#8b8b9e] font-mono">{s.citations}×</span>
-                      <span className="text-xs text-[#00ff88] font-mono font-semibold">{usd(s.earnedMicro)}</span>
+                      <span className="text-xs text-[#34D399] font-mono font-semibold">{usd(s.earnedMicro)}</span>
                     </div>
                   </div>
                   <div className="h-1.5 rounded-full bg-[#1e1e2e]">
-                    <div className="h-1.5 rounded-full bg-[#00ff88]/50 transition-all" style={{ width: `${pct}%` }} />
+                    <div className="h-1.5 rounded-full bg-[#34D399]/50 transition-all" style={{ width: `${pct}%` }} />
                   </div>
                   <div className="text-[10px] text-[#4a4a5e] font-mono mt-0.5">{shortAddr(s.creatorWallet)}</div>
                 </div>
@@ -255,7 +255,7 @@ export default function RevenuePage() {
               </div>
               <div className="flex items-center gap-3 shrink-0">
                 <Badge type="PAY" label="PAY" />
-                <span className="text-sm font-mono font-semibold text-[#00ff88]">{usd(p.amountMicro)}</span>
+                <span className="text-sm font-mono font-semibold text-[#34D399]">{usd(p.amountMicro)}</span>
                 {p.txHash ? (
                   <a
                     href={`https://testnet.arcscan.app/tx/${p.txHash}`}

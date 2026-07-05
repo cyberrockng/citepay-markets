@@ -130,7 +130,7 @@ function RegisterForm({ onRegistered }: { onRegistered: (wallet: string) => void
 
       {step === "done" && result ? (
         <div className="space-y-4">
-          <div className="flex items-center gap-2 text-[#00ff88] font-semibold">
+          <div className="flex items-center gap-2 text-[#34D399] font-semibold">
             <span className="text-lg">✓</span>
             <span>You&apos;re in the CitePay market</span>
           </div>
@@ -149,7 +149,7 @@ function RegisterForm({ onRegistered }: { onRegistered: (wallet: string) => void
             </div>
             <div className="flex justify-between">
               <span className="text-[#4a4a5e]">Fetch method</span>
-              <span className={result.fetchSource === "fetch" ? "text-[#00ff88]" : "text-yellow-400"}>
+              <span className={result.fetchSource === "fetch" ? "text-[#34D399]" : "text-yellow-400"}>
                 {result.fetchSource === "fetch" ? "live URL fetch ✓" : "fallback hash ⚠"}
               </span>
             </div>
@@ -264,7 +264,7 @@ function RegisterForm({ onRegistered }: { onRegistered: (wallet: string) => void
 
           <div>
             <label className="block text-xs font-mono text-[#8b8b9e] mb-2">
-              Citation price: <span className="text-[#00ff88]">${(form.price / 1_000_000).toFixed(4)} USDC</span>
+              Citation price: <span className="text-[#34D399]">${(form.price / 1_000_000).toFixed(4)} USDC</span>
               <span className="text-[#4a4a5e] ml-2">per citation</span>
             </label>
             <input
@@ -377,12 +377,12 @@ function EarningsDashboard({ wallet }: { wallet: string }) {
                       ${(s.price / 1e6).toFixed(4)}/cite
                     </span>
                     {s.onChainId && (
-                      <span className="text-[10px] font-mono text-[#00ff88]">on-chain #{s.onChainId}</span>
+                      <span className="text-[10px] font-mono text-[#34D399]">on-chain #{s.onChainId}</span>
                     )}
                   </div>
                 </div>
                 <div className="text-right flex-shrink-0">
-                  <div className="text-sm font-bold text-[#00ff88] font-mono">
+                  <div className="text-sm font-bold text-[#34D399] font-mono">
                     {s.paidCount} <span className="text-[10px] text-[#4a4a5e]">citations</span>
                   </div>
                   <Link href={`/source/${s.id}`} className="text-[10px] font-mono text-[#6366f1] hover:text-indigo-300">
@@ -400,7 +400,7 @@ function EarningsDashboard({ wallet }: { wallet: string }) {
         <div className="flex items-center justify-between mb-3">
           <div className="text-[10px] font-mono text-[#4a4a5e] tracking-widest">CITATION FEED</div>
           <div className="flex items-center gap-1.5 text-[10px] font-mono text-[#4a4a5e]">
-            <span className="w-1.5 h-1.5 rounded-full bg-[#00ff88] animate-pulse inline-block" />
+            <span className="w-1.5 h-1.5 rounded-full bg-[#34D399] animate-pulse inline-block" />
             live · 8s refresh
           </div>
         </div>
@@ -418,11 +418,11 @@ function EarningsDashboard({ wallet }: { wallet: string }) {
           <div className="space-y-2 max-h-80 overflow-y-auto">
             {citations.map((r) => (
               <div key={r.id} className="flex items-start gap-3 px-3 py-2.5 rounded-lg bg-[#0a0a0f] border border-[#1e1e2e]">
-                <div className="w-1.5 h-1.5 rounded-full bg-[#00ff88] mt-1.5 flex-shrink-0" />
+                <div className="w-1.5 h-1.5 rounded-full bg-[#34D399] mt-1.5 flex-shrink-0" />
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
                     <span className="text-xs font-semibold text-[#f0f0f5] truncate">{r.sourceTitle}</span>
-                    <span className="text-[10px] font-mono text-[#00ff88] font-bold">
+                    <span className="text-[10px] font-mono text-[#34D399] font-bold">
                       +${(r.amountPaid / 1e6).toFixed(4)}
                     </span>
                   </div>
@@ -524,14 +524,14 @@ function RssForm({ onRegistered }: { onRegistered: (wallet: string) => void }) {
 
       {step === "done" && result ? (
         <div className="space-y-4">
-          <div className="flex items-center gap-2 text-[#00ff88] font-semibold">
+          <div className="flex items-center gap-2 text-[#34D399] font-semibold">
             <span className="text-lg">✓</span>
             <span>{result.message}</span>
           </div>
           <div className="space-y-2 max-h-64 overflow-y-auto">
             {result.sources.filter((s) => !s.error).map((s) => (
               <div key={s.id} className="flex items-center gap-2 px-3 py-2 bg-[#0a0a0f] border border-[#1e1e2e] rounded-lg text-xs font-mono">
-                <span className="text-[#00ff88]">✓</span>
+                <span className="text-[#34D399]">✓</span>
                 <span className="text-[#f0f0f5] flex-1 truncate">{s.title}</span>
                 <a href={`/source/${s.id}`} className="text-[#6366f1] hover:text-indigo-300 shrink-0">view →</a>
               </div>
@@ -727,7 +727,7 @@ export default function CreatorPage() {
                 : "text-[#4a4a5e] hover:text-[#8b8b9e]"
             }`}
           >
-            RSS Feed <span className="ml-1 text-[9px] px-1.5 py-0.5 rounded bg-[#00ff88]/20 text-[#00ff88] font-mono">NEW</span>
+            RSS Feed <span className="ml-1 text-[9px] px-1.5 py-0.5 rounded bg-[#34D399]/20 text-[#34D399] font-mono">NEW</span>
           </button>
         </div>
 

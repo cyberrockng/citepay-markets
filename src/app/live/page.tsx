@@ -16,7 +16,7 @@ interface FeedEvent {
 type ConnState = "connecting" | "live" | "reconnecting";
 
 const DECISION_STYLE: Record<string, string> = {
-  PAY:               "text-[#00ff88] border-[#00ff88]/40 bg-[#00ff88]/10",
+  PAY:               "text-[#34D399] border-[#34D399]/40 bg-[#34D399]/10",
   REFUSE:            "text-red-400 border-red-700/40 bg-red-900/10",
   SKIP:              "text-[#8b8b9e] border-[#1e1e2e] bg-[#0a0a0f]",
   BLOCKED_BY_POLICY: "text-orange-400 border-orange-700/40 bg-orange-900/10",
@@ -82,7 +82,7 @@ export default function LivePage() {
 
   const connColors: Record<ConnState, string> = {
     connecting:   "bg-yellow-400",
-    live:         "bg-[#00ff88]",
+    live:         "bg-[#34D399]",
     reconnecting: "bg-red-400",
   };
   const connLabels: Record<ConnState, string> = {
@@ -109,7 +109,7 @@ export default function LivePage() {
             <div className="flex items-center gap-3">
               <span className={`text-xs font-mono px-2 py-1 rounded border ${
                 connState === "live"
-                  ? "border-[#00ff88]/30 text-[#00ff88]"
+                  ? "border-[#34D399]/30 text-[#34D399]"
                   : "border-[#1e1e2e] text-[#4a4a5e]"
               }`}>
                 {connLabels[connState]}
@@ -117,7 +117,7 @@ export default function LivePage() {
               {sessionCount > 0 && (
                 <span className="text-xs font-mono text-[#8b8b9e]">
                   +{sessionCount} ·{" "}
-                  <span className="text-[#00ff88]">{sessionTotals.pay} PAY</span>{" · "}
+                  <span className="text-[#34D399]">{sessionTotals.pay} PAY</span>{" · "}
                   <span className="text-red-400">{sessionTotals.refuse} REFUSE</span>{" · "}
                   <span className="text-[#4a4a5e]">{sessionTotals.skip} other</span>
                 </span>
@@ -165,7 +165,7 @@ export default function LivePage() {
                     </div>
                     <div className="flex-shrink-0 flex items-center gap-3 text-xs font-mono text-[#4a4a5e]">
                       {ev.decision === "PAY" && ev.amountPaid > 0 && (
-                        <span className="text-[#00ff88]">+${(ev.amountPaid / 1e6).toFixed(4)}</span>
+                        <span className="text-[#34D399]">+${(ev.amountPaid / 1e6).toFixed(4)}</span>
                       )}
                       {ev.historical && <span className="text-[#2e2e3e]">hist</span>}
                       <span>{relativeTime(ev.timestamp)}</span>

@@ -109,18 +109,18 @@ export default function ReceiptPage({ params }: { params: Promise<{ id: string }
             <div key={step.label} className="flex items-center flex-1">
               <div className="flex flex-col items-center gap-1 flex-1">
                 <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center text-[10px] font-bold transition-colors ${
-                  step.done    ? "border-[#00ff88] bg-[#00ff88]/10 text-[#00ff88]"
+                  step.done    ? "border-[#34D399] bg-[#34D399]/10 text-[#34D399]"
                   : step.partial ? "border-yellow-400 bg-yellow-400/10 text-yellow-400"
                   : "border-[#1e1e2e] bg-[#0a0a0f] text-[#4a4a5e]"
                 }`}>
                   {step.done ? "✓" : step.partial ? "~" : i + 1}
                 </div>
                 <span className={`text-[10px] text-center leading-tight hidden sm:block ${
-                  step.done ? "text-[#00ff88]" : step.partial ? "text-yellow-400" : "text-[#4a4a5e]"
+                  step.done ? "text-[#34D399]" : step.partial ? "text-yellow-400" : "text-[#4a4a5e]"
                 }`}>{step.label}</span>
               </div>
               {i < STEPS.length - 1 && (
-                <div className={`h-px flex-1 -mt-4 sm:-mt-3 mx-1 ${step.done ? "bg-[#00ff88]/30" : "bg-[#1e1e2e]"}`} />
+                <div className={`h-px flex-1 -mt-4 sm:-mt-3 mx-1 ${step.done ? "bg-[#34D399]/30" : "bg-[#1e1e2e]"}`} />
               )}
             </div>
           ))}
@@ -128,7 +128,7 @@ export default function ReceiptPage({ params }: { params: Promise<{ id: string }
         {/* Mobile labels */}
         <div className="flex sm:hidden mt-2 text-[10px] text-[#4a4a5e]">
           {STEPS.map((step) => (
-            <span key={step.label} className={`flex-1 text-center ${step.done ? "text-[#00ff88]" : step.partial ? "text-yellow-400" : ""}`}>
+            <span key={step.label} className={`flex-1 text-center ${step.done ? "text-[#34D399]" : step.partial ? "text-yellow-400" : ""}`}>
               {step.label.split(" ")[0]}
             </span>
           ))}
@@ -144,10 +144,10 @@ export default function ReceiptPage({ params }: { params: Promise<{ id: string }
             const isPrimary  = pct >= 50;
             const isSupport  = pct >= 20 && pct < 50;
             const role       = isPrimary ? "Primary Source" : isSupport ? "Supporting Source" : "Peripheral Source";
-            const roleColor  = isPrimary ? "text-[#00ff88] border-[#00ff88]/40 bg-[#00ff88]/5"
+            const roleColor  = isPrimary ? "text-[#34D399] border-[#34D399]/40 bg-[#34D399]/5"
                              : isSupport ? "text-[#6366f1] border-[#6366f1]/40 bg-[#6366f1]/5"
                              : "text-[#4a4a5e] border-[#1e1e2e] bg-[#0a0a0f]";
-            const barColor   = isPrimary ? "bg-[#00ff88]" : isSupport ? "bg-[#6366f1]" : "bg-[#2e2e3e]";
+            const barColor   = isPrimary ? "bg-[#34D399]" : isSupport ? "bg-[#6366f1]" : "bg-[#2e2e3e]";
             return (
               <div className={`rounded-xl p-5 border ${roleColor}`}>
                 <div className="flex items-center justify-between mb-3">
@@ -185,7 +185,7 @@ export default function ReceiptPage({ params }: { params: Promise<{ id: string }
           <DataRow
             label="Amount Paid"
             value={isPay ? `$${(receipt.amountPaid / 1_000_000).toFixed(6)} USDC` : "—"}
-            accent={isPay ? "text-[#00ff88]" : "text-[#8b8b9e]"}
+            accent={isPay ? "text-[#34D399]" : "text-[#8b8b9e]"}
             mono={isPay}
           />
           {isPay && receipt.contributionWeight != null && (
@@ -207,11 +207,11 @@ export default function ReceiptPage({ params }: { params: Promise<{ id: string }
 
       {/* USDC Tx */}
       {isPay && (
-        <div className={`rounded-xl p-5 border mb-4 ${receipt.paymentStatus === "confirmed" ? "bg-[#00ff88]/5 border-[#00ff88]/30" : "bg-[#111118] border-[#1e1e2e]"}`}>
+        <div className={`rounded-xl p-5 border mb-4 ${receipt.paymentStatus === "confirmed" ? "bg-[#34D399]/5 border-[#34D399]/30" : "bg-[#111118] border-[#1e1e2e]"}`}>
           <div className="flex items-center gap-2 mb-3">
             <span className="text-xs font-semibold text-[#8b8b9e] uppercase tracking-widest">USDC Payout</span>
             {receipt.paymentStatus === "confirmed"
-              ? <span className="text-[#00ff88] text-xs font-mono">✓ confirmed on-chain</span>
+              ? <span className="text-[#34D399] text-xs font-mono">✓ confirmed on-chain</span>
               : <span className="text-yellow-400 text-xs font-mono">⚠ simulated fallback (no on-chain tx)</span>}
           </div>
           {receipt.paymentStatus === "confirmed" && receipt.txHash
@@ -230,7 +230,7 @@ export default function ReceiptPage({ params }: { params: Promise<{ id: string }
 
       {/* On-Chain Anchor */}
       {isPay && (
-        <div className={`bg-[#111118] rounded-xl p-6 border mb-4 ${receipt.onChainTxHash ? "border-[#00ff88]/30" : "border-[#1e1e2e]"}`}>
+        <div className={`bg-[#111118] rounded-xl p-6 border mb-4 ${receipt.onChainTxHash ? "border-[#34D399]/30" : "border-[#1e1e2e]"}`}>
           <div className="flex items-center gap-2 mb-4">
             <h2 className="font-semibold text-[#f0f0f5]">On-Chain Anchor</h2>
             {receipt.onChainTxHash && <Badge type="ANCHORED" label="Anchored ✓" />}
@@ -277,7 +277,7 @@ export default function ReceiptPage({ params }: { params: Promise<{ id: string }
                 <div className="text-[#8b8b9e] text-xs mb-1.5">Rules Passed</div>
                 <div className="flex flex-wrap gap-1.5">
                   {receipt.policyRulesPassed.map((r) => (
-                    <span key={r} className="text-xs font-mono px-2 py-0.5 rounded border border-[#00ff88]/30 text-[#00ff88] bg-[#00ff88]/5">
+                    <span key={r} className="text-xs font-mono px-2 py-0.5 rounded border border-[#34D399]/30 text-[#34D399] bg-[#34D399]/5">
                       ✓ {r}
                     </span>
                   ))}
@@ -302,7 +302,7 @@ export default function ReceiptPage({ params }: { params: Promise<{ id: string }
               </div>
             )}
             {!receipt.policyReason && (
-              <div className="mt-2 text-xs text-[#00ff88] font-mono">
+              <div className="mt-2 text-xs text-[#34D399] font-mono">
                 All policy rules passed — decision authorized by {receipt.policyProfile} policy.
               </div>
             )}
@@ -312,11 +312,11 @@ export default function ReceiptPage({ params }: { params: Promise<{ id: string }
 
       {/* Agent Signature (offline-verifiable) */}
       {receipt.agentSignature && (
-        <details className="bg-[#111118] rounded-xl border border-[#00ff88]/20 mb-4 overflow-hidden group">
+        <details className="bg-[#111118] rounded-xl border border-[#34D399]/20 mb-4 overflow-hidden group">
           <summary className="px-6 py-4 flex items-center justify-between cursor-pointer hover:bg-[#0a0a0f]/40 transition-colors list-none">
             <div className="flex items-center gap-2">
               <h2 className="font-semibold text-[#f0f0f5]">Agent Signature</h2>
-              <span className="text-[#00ff88] text-xs font-mono">✓ offline-verifiable</span>
+              <span className="text-[#34D399] text-xs font-mono">✓ offline-verifiable</span>
             </div>
             <span className="text-[#8b8b9e] text-xs font-mono group-open:hidden">Verify independently →</span>
             <span className="text-[#8b8b9e] text-xs font-mono hidden group-open:inline">▲ collapse</span>
@@ -326,7 +326,7 @@ export default function ReceiptPage({ params }: { params: Promise<{ id: string }
               EIP-191 personal_sign of the evidence hash, signed by agent wallet.
               Copy the snippet below and paste it into any ethers.js console to verify without trusting CitePay.
             </p>
-            <div className="bg-[#0a0a0f] rounded-lg p-4 font-mono text-xs text-[#00ff88] border border-[#1e1e2e] overflow-x-auto">
+            <div className="bg-[#0a0a0f] rounded-lg p-4 font-mono text-xs text-[#34D399] border border-[#1e1e2e] overflow-x-auto">
               <div className="text-[#4a4a5e] mb-1">{"// Paste in any Node.js / browser console"}</div>
               <div className="break-all whitespace-pre-wrap">{`const { ethers } = require("ethers");
 ethers.verifyMessage(
@@ -367,7 +367,7 @@ ethers.verifyMessage(
         </button>
         {preimageOpen && (
           <div className="px-6 pb-6">
-            <div className="bg-[#0a0a0f] rounded-lg p-4 font-mono text-xs text-[#00ff88] overflow-x-auto border border-[#1e1e2e]">
+            <div className="bg-[#0a0a0f] rounded-lg p-4 font-mono text-xs text-[#34D399] overflow-x-auto border border-[#1e1e2e]">
               <pre>{JSON.stringify(p, null, 2)}</pre>
             </div>
             <p className="mt-3 text-xs text-[#8b8b9e]">
@@ -379,7 +379,7 @@ ethers.verifyMessage(
 
       {/* Share Card (PAY only) */}
       {isPay && (
-        <div className="bg-gradient-to-br from-[#111118] to-[#0d0d14] rounded-2xl border border-[#00ff88]/20 mb-4 overflow-hidden">
+        <div className="bg-gradient-to-br from-[#111118] to-[#0d0d14] rounded-2xl border border-[#34D399]/20 mb-4 overflow-hidden">
           {/* Card preview image */}
           <div className="relative">
             {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -454,12 +454,12 @@ ethers.verifyMessage(
           <div className="space-y-2 text-xs font-mono">
             <div className="flex items-start justify-between gap-4">
               <span className="text-[#8b8b9e] flex-shrink-0">Hash at citation</span>
-              <span className="text-[#00ff88] break-all text-right">{receipt.contentHashAtDecision}</span>
+              <span className="text-[#34D399] break-all text-right">{receipt.contentHashAtDecision}</span>
             </div>
             {verifyResult && verifyResult.verdict !== "FETCH_FAILED" && (
               <div className="flex items-start justify-between gap-4">
                 <span className="text-[#8b8b9e] flex-shrink-0">Live hash</span>
-                <span className={`break-all text-right ${verifyResult.verdict === "VERIFIED" ? "text-[#00ff88]" : "text-orange-400"}`}>
+                <span className={`break-all text-right ${verifyResult.verdict === "VERIFIED" ? "text-[#34D399]" : "text-orange-400"}`}>
                   {verifyResult.liveHash}
                 </span>
               </div>
@@ -474,8 +474,8 @@ ethers.verifyMessage(
             </div>
           )}
           {!receipt.challenged && !verifyResult && (
-            <div className="mt-3 flex items-start gap-2 bg-[#00ff88]/5 border border-[#00ff88]/20 rounded-lg px-3 py-2 text-xs">
-              <span className="text-[#00ff88] flex-shrink-0">✓</span>
+            <div className="mt-3 flex items-start gap-2 bg-[#34D399]/5 border border-[#34D399]/20 rounded-lg px-3 py-2 text-xs">
+              <span className="text-[#34D399] flex-shrink-0">✓</span>
               <span className="text-[#8b8b9e]">Content hash recorded at citation time. Click verify to check current content.</span>
             </div>
           )}
@@ -484,13 +484,13 @@ ethers.verifyMessage(
           {verifyResult && (
             <div className={`mt-3 rounded-lg px-3 py-2 text-xs border ${
               verifyResult.verdict === "VERIFIED"
-                ? "bg-[#00ff88]/5 border-[#00ff88]/30"
+                ? "bg-[#34D399]/5 border-[#34D399]/30"
                 : verifyResult.verdict === "CHANGED"
                 ? "bg-orange-900/10 border-orange-700/30"
                 : "bg-yellow-900/10 border-yellow-700/30"
             }`}>
               <div className={`font-bold font-mono mb-1 ${
-                verifyResult.verdict === "VERIFIED" ? "text-[#00ff88]"
+                verifyResult.verdict === "VERIFIED" ? "text-[#34D399]"
                 : verifyResult.verdict === "CHANGED" ? "text-orange-400"
                 : "text-yellow-400"
               }`}>

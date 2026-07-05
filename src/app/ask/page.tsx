@@ -72,7 +72,7 @@ interface QueryResult {
 }
 
 const DECISION_BADGE: Record<string, string> = {
-  PAY:               "border-[#00ff88]/60 text-[#00ff88] bg-[#00ff88]/10",
+  PAY:               "border-[#34D399]/60 text-[#34D399] bg-[#34D399]/10",
   REFUSE:            "border-red-600/50 text-red-400 bg-red-900/10",
   SKIP:              "border-[#3e3e4e] text-[#8b8b9e]",
   BLOCKED_BY_POLICY: "border-orange-600/50 text-orange-400 bg-orange-900/10",
@@ -82,7 +82,7 @@ const DECISION_BADGE: Record<string, string> = {
 const POLICY_OPTIONS = [
   { key: "conservative", label: "Conservative", desc: "Bonded only · max $0.002 · relevance ≥ 70 · stops at 2 citations", color: "border-yellow-600/40 text-yellow-400", active: "border-yellow-500 bg-yellow-900/20" },
   { key: "balanced",     label: "Balanced",     desc: "Default · max $0.005 · relevance ≥ 40 · stops at 3 citations",    color: "border-[#6366f1]/40 text-[#6366f1]", active: "border-[#6366f1] bg-[#6366f1]/10" },
-  { key: "aggressive",   label: "Aggressive",   desc: "Higher spend · max $0.01 · relevance ≥ 20 · stops at 5 citations", color: "border-[#00ff88]/30 text-[#00ff88]", active: "border-[#00ff88] bg-[#00ff88]/10" },
+  { key: "aggressive",   label: "Aggressive",   desc: "Higher spend · max $0.01 · relevance ≥ 20 · stops at 5 citations", color: "border-[#34D399]/30 text-[#34D399]", active: "border-[#34D399] bg-[#34D399]/10" },
 ] as const;
 
 function PaymentFlowVisualizer({ step, traces, sourceGrid }: {
@@ -124,7 +124,7 @@ function PaymentFlowVisualizer({ step, traces, sourceGrid }: {
       <div className="flex items-start gap-0">
         {stages.map((s, i) => {
           const cls = s.done
-            ? "border-[#00ff88] text-[#00ff88] bg-[#00ff88]/10"
+            ? "border-[#34D399] text-[#34D399] bg-[#34D399]/10"
             : s.active
             ? "border-[#6366f1] text-[#6366f1] bg-[#6366f1]/10 animate-pulse"
             : "border-[#1e1e2e] text-[#4a4a5e] bg-[#0a0a0f]";
@@ -135,12 +135,12 @@ function PaymentFlowVisualizer({ step, traces, sourceGrid }: {
                   {s.done ? "✓" : s.id}
                 </div>
                 <div className="text-[9px] font-mono text-center mt-1 leading-tight px-0.5">
-                  <div className={s.done ? "text-[#00ff88]" : s.active ? "text-[#6366f1]" : "text-[#4a4a5e]"}>{s.label}</div>
+                  <div className={s.done ? "text-[#34D399]" : s.active ? "text-[#6366f1]" : "text-[#4a4a5e]"}>{s.label}</div>
                   <div className="text-[#2e2e3e]">{s.sub}</div>
                 </div>
               </div>
               {i < stages.length - 1 && (
-                <div className={`h-0.5 flex-1 mx-1 rounded transition-colors duration-700 ${s.done ? "bg-[#00ff88]" : "bg-[#1e1e2e]"}`} style={{ marginTop: "-14px" }} />
+                <div className={`h-0.5 flex-1 mx-1 rounded transition-colors duration-700 ${s.done ? "bg-[#34D399]" : "bg-[#1e1e2e]"}`} style={{ marginTop: "-14px" }} />
               )}
             </div>
           );
@@ -402,7 +402,7 @@ function AskPageContent() {
   function applyStreamEvent(event: Record<string, any>) {
     const { type } = event;
     if (type === "payment_accepted") {
-      addTrace({ icon: "✓", text: `Demo payment accepted · ${event.formatted} USDC via Circle Gateway`, badgeClass: "text-[#00ff88]" });
+      addTrace({ icon: "✓", text: `Demo payment accepted · ${event.formatted} USDC via Circle Gateway`, badgeClass: "text-[#34D399]" });
     } else if (type === "scoring_start") {
       addTrace({ icon: "🔍", text: `Scoring ${event.total} sources with Claude Haiku…`, sub: `${event.policy} policy active` });
     } else if (type === "scoring_complete") {
@@ -428,7 +428,7 @@ function AskPageContent() {
     } else if (type === "paying") {
       addTrace({ icon: "💸", text: `Paying ${event.sourceTitle}`, sub: `${event.formatted} USDC → creator wallet` });
     } else if (type === "paid") {
-      addTrace({ icon: "✓", text: `Paid ${event.sourceTitle} · ${event.formatted} USDC`, sub: `${event.status === "confirmed" ? "✓ on-chain" : "⚠ simulated"}  tx ${(event.txHash as string).slice(0, 22)}…`, badgeClass: "text-[#00ff88]" });
+      addTrace({ icon: "✓", text: `Paid ${event.sourceTitle} · ${event.formatted} USDC`, sub: `${event.status === "confirmed" ? "✓ on-chain" : "⚠ simulated"}  tx ${(event.txHash as string).slice(0, 22)}…`, badgeClass: "text-[#34D399]" });
     } else if (type === "anchoring") {
       addTrace({ icon: "⛓", text: `Anchoring ${event.sourceTitle} on-chain…` });
     } else if (type === "anchored") {
@@ -438,7 +438,7 @@ function AskPageContent() {
     } else if (type === "done") {
       const d = event.decisions as QueryDecision[];
       const paid = d.filter((x) => x.decision === "PAY").length;
-      addTrace({ icon: "✅", text: `Done · ${paid} cited · $${(event.totalPaid / 1_000_000).toFixed(4)} USDC routed`, sub: `PAY ${paid}  REFUSE ${d.filter((x) => x.decision === "REFUSE").length}  SKIP ${d.filter((x) => x.decision === "SKIP").length}${event.stoppedEarly ? "  ⚡ early stop" : ""}`, badgeClass: "text-[#00ff88]" });
+      addTrace({ icon: "✅", text: `Done · ${paid} cited · $${(event.totalPaid / 1_000_000).toFixed(4)} USDC routed`, sub: `PAY ${paid}  REFUSE ${d.filter((x) => x.decision === "REFUSE").length}  SKIP ${d.filter((x) => x.decision === "SKIP").length}${event.stoppedEarly ? "  ⚡ early stop" : ""}`, badgeClass: "text-[#34D399]" });
       setSourceGrid((prev) => prev.map((s) => s.state === "scoring" ? { ...s, state: "settled", title: "—" } : s));
       setResult(event as QueryResult);
       setStep("done");
@@ -493,7 +493,7 @@ function AskPageContent() {
       if (signRes.error) throw new Error(signRes.error);
       paymentSignature = signRes.paymentSignature;
     } catch (err) { setStep("error"); setError("Circle DCW signing failed: " + String(err)); return; }
-    addTrace({ icon: "✓", text: "EIP-3009 signed by Circle Programmable Wallet · sending to /api/ask…", sub: `Circle HSM · ${walletAddress.slice(0, 10)}… · no private key in browser`, badgeClass: "text-[#00ff88]" });
+    addTrace({ icon: "✓", text: "EIP-3009 signed by Circle Programmable Wallet · sending to /api/ask…", sub: `Circle HSM · ${walletAddress.slice(0, 10)}… · no private key in browser`, badgeClass: "text-[#34D399]" });
 
     // Step 3: Submit with Circle-signed payment
     setStep("running");
@@ -509,7 +509,7 @@ function AskPageContent() {
       addTrace({ icon: "✗", text: msg, badgeClass: "text-red-400" });
       setStep("error"); setError(msg); return;
     }
-    addTrace({ icon: "✓", text: "Circle Programmable Wallet payment settled · Circle Gateway · Arc Testnet", badgeClass: "text-[#00ff88]" });
+    addTrace({ icon: "✓", text: "Circle Programmable Wallet payment settled · Circle Gateway · Arc Testnet", badgeClass: "text-[#34D399]" });
     addTrace({ icon: "✍", text: "Agent scoring + generating answer…" });
 
     const data: QueryResult = await res2.json();
@@ -524,7 +524,7 @@ function AskPageContent() {
       addTrace({ icon: d.decision === "PAY" ? "→" : isSuffStop ? "⚡" : "·", text: d.source, sub: `rel ${d.scores.relevance}  score ${d.scores.total}  ${d.reason}${policyNote}`, badge, badgeClass });
     });
     const paid = data.decisions.filter((x) => x.decision === "PAY").length;
-    addTrace({ icon: "✅", text: `Done · ${paid} cited · $${(data.totalPaid / 1_000_000).toFixed(4)} USDC routed`, badgeClass: "text-[#00ff88]" });
+    addTrace({ icon: "✅", text: `Done · ${paid} cited · $${(data.totalPaid / 1_000_000).toFixed(4)} USDC routed`, badgeClass: "text-[#34D399]" });
     setResult(data);
     setStep("done");
   }
@@ -547,7 +547,7 @@ function AskPageContent() {
       const { signX402Payment } = await import("@/lib/x402-client");
       paymentSig = await signX402Payment(key);
     } catch (err) { setStep("error"); setError("Signing failed: " + String(err)); return; }
-    addTrace({ icon: "✓", text: "Payment signed · sending payment-signature to /api/ask…", badgeClass: "text-[#00ff88]" });
+    addTrace({ icon: "✓", text: "Payment signed · sending payment-signature to /api/ask…", badgeClass: "text-[#34D399]" });
 
     // Step 3: Real /api/ask with payment-signature header
     setStep("running");
@@ -564,7 +564,7 @@ function AskPageContent() {
       setStep("error"); setError(msg); return;
     }
 
-    addTrace({ icon: "✓", text: "Non-custodial payment settled · Circle Gateway · Arc Testnet", badgeClass: "text-[#00ff88]" });
+    addTrace({ icon: "✓", text: "Non-custodial payment settled · Circle Gateway · Arc Testnet", badgeClass: "text-[#34D399]" });
     addTrace({ icon: "✍", text: "Agent scoring + generating answer…" });
 
     const data: QueryResult = await res2.json();
@@ -580,7 +580,7 @@ function AskPageContent() {
       addTrace({ icon: d.decision === "PAY" ? "→" : isSuffStop ? "⚡" : "·", text: d.source, sub: `rel ${d.scores.relevance}  score ${d.scores.total}  ${d.reason}${policyNote}`, badge, badgeClass });
     });
     const paid = data.decisions.filter((x) => x.decision === "PAY").length;
-    addTrace({ icon: "✅", text: `Done · ${paid} cited · $${(data.totalPaid / 1_000_000).toFixed(4)} USDC routed`, badgeClass: "text-[#00ff88]" });
+    addTrace({ icon: "✅", text: `Done · ${paid} cited · $${(data.totalPaid / 1_000_000).toFixed(4)} USDC routed`, badgeClass: "text-[#34D399]" });
     setResult(data);
     setStep("done");
   }
@@ -645,7 +645,7 @@ function AskPageContent() {
     siwe_pending:    "border-[#4a4a5e] text-[#8b8b9e] cursor-not-allowed",
     authed:          "border-[#a78bfa]/40 text-[#a78bfa] hover:border-[#a78bfa]",
     funding:         "border-[#4a4a5e] text-[#8b8b9e] cursor-not-allowed",
-    funded:          "border-[#00ff88]/40 text-[#00ff88] bg-[#00ff88]/5 cursor-default",
+    funded:          "border-[#34D399]/40 text-[#34D399] bg-[#34D399]/5 cursor-default",
     circle_creating: "border-[#4a4a5e] text-[#8b8b9e] cursor-not-allowed",
     circle_ready:    "border-[#a78bfa]/40 text-[#a78bfa] bg-[#a78bfa]/5 cursor-default",
   };
@@ -772,7 +772,7 @@ function AskPageContent() {
           mode: {(circleReady || walletStep === "circle_ready")
             ? <span className="text-[#a78bfa]">Circle Programmable Wallet · DCW HSM signs EIP-3009 · no browser private key · Circle Gateway settles on-chain</span>
             : useWalletMode
-            ? <span className="text-[#00ff88]">non-custodial EOA · browser signs EIP-3009 · Circle Gateway verifies + settles on-chain</span>
+            ? <span className="text-[#34D399]">non-custodial EOA · browser signs EIP-3009 · Circle Gateway verifies + settles on-chain</span>
             : <span className="text-[#6366f1]">demo · server GatewayClient · streaming agent console</span>}
         </div>
 
@@ -803,7 +803,7 @@ function AskPageContent() {
         {(step === "running" || step === "done") && sourceGrid.length > 0 && (
           <div className="mb-6 bg-[#0a0a0f] rounded-xl border border-[#1e1e2e] p-4">
             <div className="text-[10px] font-mono text-[#4a4a5e] mb-3 flex items-center gap-2">
-              <span className="w-1.5 h-1.5 rounded-full bg-[#00ff88] inline-block animate-pulse" />
+              <span className="w-1.5 h-1.5 rounded-full bg-[#34D399] inline-block animate-pulse" />
               AGENT DECISION MATRIX — {sourceGrid.filter((s) => s.state === "settled").length}/{sourceGrid.length} evaluated
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
@@ -813,7 +813,7 @@ function AskPageContent() {
                   : s.decision === "PAY" ? "▰"
                   : s.decision === "REFUSE" || s.decision === "BLOCKED_BY_POLICY" ? "✗"
                   : "—";
-                const glyphColor = s.decision === "PAY" ? "text-[#00ff88]"
+                const glyphColor = s.decision === "PAY" ? "text-[#34D399]"
                   : s.decision === "REFUSE" ? "text-red-400"
                   : s.decision === "BLOCKED_BY_POLICY" ? "text-orange-400"
                   : s.state === "scoring" ? "text-yellow-400 animate-pulse"
@@ -826,7 +826,7 @@ function AskPageContent() {
                     )}
                     <span className="text-xs text-[#8b8b9e] truncate flex-1">{s.title || "Evaluating source…"}</span>
                     {s.decision === "PAY" && s.amountPaid != null && s.amountPaid > 0 && (
-                      <span className="text-[10px] font-mono text-[#00ff88] flex-shrink-0">${(s.amountPaid / 1e6).toFixed(4)}</span>
+                      <span className="text-[10px] font-mono text-[#34D399] flex-shrink-0">${(s.amountPaid / 1e6).toFixed(4)}</span>
                     )}
                     {s.score != null && s.state === "settled" && (
                       <span className="text-[10px] font-mono text-[#4a4a5e] flex-shrink-0">{s.score}</span>
@@ -870,7 +870,7 @@ function AskPageContent() {
             <button
               type="submit"
               disabled={!query.trim() || isActive}
-              className={`w-full font-semibold px-6 py-3 rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${(circleReady || walletStep === "circle_ready") ? "bg-[#a78bfa] hover:bg-violet-400 text-black" : useWalletMode ? "bg-[#00ff88] hover:bg-emerald-400 text-black" : "bg-[#6366f1] hover:bg-indigo-500 text-white"}`}
+              className={`w-full font-semibold px-6 py-3 rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${(circleReady || walletStep === "circle_ready") ? "bg-[#a78bfa] hover:bg-violet-400 text-black" : useWalletMode ? "bg-[#34D399] hover:bg-emerald-400 text-black" : "bg-[#6366f1] hover:bg-indigo-500 text-white"}`}
             >
               {isActive ? "Running…" : (circleReady || walletStep === "circle_ready") ? "Circle Pay & Ask →" : useWalletMode ? "Sign & Ask →" : "Ask →"}
             </button>
@@ -933,7 +933,7 @@ function AskPageContent() {
                 </div>
                 <div className="flex items-center gap-2">
                   {(circleReady || walletStep === "circle_ready") && <span className="px-2.5 py-1 rounded-full bg-[#a78bfa]/10 border border-[#a78bfa]/40 text-[#a78bfa] text-xs font-mono">Circle DCW</span>}
-                {walletStep === "funded" && <span className="px-2.5 py-1 rounded-full bg-[#00ff88]/10 border border-[#00ff88]/40 text-[#00ff88] text-xs font-mono">non-custodial</span>}
+                {walletStep === "funded" && <span className="px-2.5 py-1 rounded-full bg-[#34D399]/10 border border-[#34D399]/40 text-[#34D399] text-xs font-mono">non-custodial</span>}
                   {result.stoppedEarly && <span className="px-2.5 py-1 rounded-full bg-amber-900/30 border border-amber-600/40 text-amber-400 text-xs font-mono">⚡ early stop</span>}
                 </div>
               </div>
@@ -951,7 +951,7 @@ function AskPageContent() {
                       <tr key={d.receiptId} className="border-b border-[#1e1e2e] hover:bg-[#0a0a0f]/40 transition-colors">
                         <td className="px-4 py-3"><a href={d.url} target="_blank" rel="noopener noreferrer" className="text-[#6366f1] hover:text-indigo-300 transition-colors">{d.source}</a></td>
                         <td className="px-4 py-3 text-right font-mono text-xs">
-                          <span className={d.decision === "PAY" ? "text-[#00ff88]" : "text-[#8b8b9e]"}>${(d.amountPaid / 1_000_000).toFixed(4)}</span>
+                          <span className={d.decision === "PAY" ? "text-[#34D399]" : "text-[#8b8b9e]"}>${(d.amountPaid / 1_000_000).toFixed(4)}</span>
                           {d.decision === "PAY" && d.contributionWeight !== null && (
                             <span className="ml-1.5 text-[#a78bfa] text-[10px]">({(d.contributionWeight * 100).toFixed(0)}%)</span>
                           )}
@@ -991,7 +991,7 @@ function AskPageContent() {
                   const isPay = d.decision === "PAY";
                   const isBlocked = d.decision === "BLOCKED_BY_POLICY";
                   return (
-                    <Link key={d.receiptId} href={d.receiptUrl} className={`flex items-center justify-between p-3 rounded-lg border transition-colors ${isPay ? "border-[#00ff88]/30 hover:border-[#00ff88]/60 bg-[#00ff88]/5" : isBlocked ? "border-orange-700/30 hover:border-orange-600/50 bg-orange-900/10" : "border-[#1e1e2e] hover:border-[#6366f1]/30 opacity-60 hover:opacity-80"}`}>
+                    <Link key={d.receiptId} href={d.receiptUrl} className={`flex items-center justify-between p-3 rounded-lg border transition-colors ${isPay ? "border-[#34D399]/30 hover:border-[#34D399]/60 bg-[#34D399]/5" : isBlocked ? "border-orange-700/30 hover:border-orange-600/50 bg-orange-900/10" : "border-[#1e1e2e] hover:border-[#6366f1]/30 opacity-60 hover:opacity-80"}`}>
                       <div className="flex items-center gap-3">
                         <span className={`px-2 py-0.5 rounded border font-mono text-xs ${decisionStyle(d.decision)}`}>{d.decision === "BLOCKED_BY_POLICY" ? "BLOCKED" : d.decision}</span>
                         <span className={`text-sm ${isPay ? "text-[#f0f0f5]" : "text-[#8b8b9e]"}`}>{d.source}</span>
@@ -1002,7 +1002,7 @@ function AskPageContent() {
                 })}
               </div>
               <div className="mt-4 pt-4 border-t border-[#1e1e2e] flex justify-between text-sm text-[#8b8b9e]">
-                <span>Total USDC paid: <span className="text-[#00ff88] font-mono">${(result.totalPaid / 1_000_000).toFixed(4)}</span></span>
+                <span>Total USDC paid: <span className="text-[#34D399] font-mono">${(result.totalPaid / 1_000_000).toFixed(4)}</span></span>
                 <span>Query fee: <span className="text-[#f0f0f5] font-mono">${(result.queryFee / 1_000_000).toFixed(4)}</span></span>
               </div>
             </div>

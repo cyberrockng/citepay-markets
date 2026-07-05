@@ -357,16 +357,16 @@ export default function DemoPage() {
                 key={k}
                 className={`rounded-xl p-4 border transition-all duration-500 ${
                   isDone
-                    ? "border-[#00ff88]/40 bg-[#00ff88]/5 shadow-[0_0_20px_rgba(0,255,136,0.08)]"
+                    ? "border-[#34D399]/40 bg-[#34D399]/5 shadow-[0_0_20px_rgba(52,211,153,0.08)]"
                     : isRunning
                     ? "border-[#6366f1]/40 bg-[#6366f1]/5"
                     : "border-[#1e1e2e] bg-[#111118]"
                 }`}
               >
-                <div className={`text-lg font-mono mb-1 transition-colors ${isDone ? "text-[#00ff88]" : "text-[#4a4a5e]"}`}>
+                <div className={`text-lg font-mono mb-1 transition-colors ${isDone ? "text-[#34D399]" : "text-[#4a4a5e]"}`}>
                   {isDone ? "✓" : isRunning ? "●" : "○"}
                 </div>
-                <div className={`text-xs font-semibold transition-colors ${isDone ? "text-[#00ff88]" : "text-[#8b8b9e]"}`}>
+                <div className={`text-xs font-semibold transition-colors ${isDone ? "text-[#34D399]" : "text-[#8b8b9e]"}`}>
                   {PROOF_LABELS[k]}
                 </div>
               </div>
@@ -378,7 +378,7 @@ export default function DemoPage() {
         {walletBalance !== null && (
           <div className={`mb-4 rounded-lg px-4 py-2.5 border text-xs flex items-center justify-between ${
             walletBalance >= 0.001
-              ? "bg-[#00ff88]/5 border-[#00ff88]/20 text-[#00ff88]"
+              ? "bg-[#34D399]/5 border-[#34D399]/20 text-[#34D399]"
               : "bg-yellow-500/5 border-yellow-500/30 text-yellow-400"
           }`}>
             <span className="font-mono">Agent wallet: ${walletBalance.toFixed(4)} USDC</span>
@@ -411,7 +411,7 @@ export default function DemoPage() {
           </button>
         </div>
         {seedMsg && (
-          <p className={`text-xs font-mono mb-4 ${seedMsg.startsWith("✓") ? "text-[#00ff88]" : "text-red-400"}`}>
+          <p className={`text-xs font-mono mb-4 ${seedMsg.startsWith("✓") ? "text-[#34D399]" : "text-red-400"}`}>
             {seedMsg}
           </p>
         )}
@@ -438,9 +438,9 @@ export default function DemoPage() {
 
         {/* Final Success State */}
         {done && proofsDone.length === 4 && (
-          <div className="mt-8 rounded-xl p-8 border border-[#00ff88]/30 bg-[#00ff88]/5 text-center">
-            <div className="text-5xl mb-4 text-[#00ff88]">✓</div>
-            <h2 className="text-xl font-bold text-[#00ff88] mb-3">All four proofs verified</h2>
+          <div className="mt-8 rounded-xl p-8 border border-[#34D399]/30 bg-[#34D399]/5 text-center">
+            <div className="text-5xl mb-4 text-[#34D399]">✓</div>
+            <h2 className="text-xl font-bold text-[#34D399] mb-3">All four proofs verified</h2>
             <p className="text-[#8b8b9e] text-sm max-w-md mx-auto mb-6">
               An AI agent queried creator content, paid USDC, produced a verifiable receipt,
               and the challenge mechanism confirmed content integrity — settled on Arc via Circle Gateway.
@@ -480,18 +480,18 @@ export default function DemoPage() {
                 const colors: Record<string, string> = {
                   conservative: "border-yellow-600/40",
                   balanced: "border-[#6366f1]/40",
-                  aggressive: "border-[#00ff88]/30",
+                  aggressive: "border-[#34D399]/30",
                 };
                 const labelColors: Record<string, string> = {
                   conservative: "text-yellow-400",
                   balanced: "text-[#6366f1]",
-                  aggressive: "text-[#00ff88]",
+                  aggressive: "text-[#34D399]",
                 };
                 return (
                   <div key={col.key} className={`bg-[#111118] rounded-xl border ${colors[col.key]} p-4`}>
                     <div className={`font-semibold text-sm mb-1 ${labelColors[col.key]}`}>{col.label}</div>
                     <div className="flex gap-3 text-xs font-mono mb-3">
-                      <span className="text-[#00ff88]">{paid} PAY</span>
+                      <span className="text-[#34D399]">{paid} PAY</span>
                       {blocked > 0 && <span className="text-orange-400">{blocked} BLOCKED</span>}
                       <span className="text-red-400">{refused} REFUSE</span>
                     </div>
@@ -499,7 +499,7 @@ export default function DemoPage() {
                       {results.map((r: { source: string; decision: string; reason: string }, i: number) => {
                         const src = r.source ?? "";
                         const dc =
-                          r.decision === "PAY" ? "text-[#00ff88]" :
+                          r.decision === "PAY" ? "text-[#34D399]" :
                           r.decision === "BLOCKED_BY_POLICY" ? "text-orange-400" :
                           r.decision === "REFUSE" ? "text-red-400" : "text-[#4a4a5e]";
                         return (
@@ -558,7 +558,7 @@ export default function DemoPage() {
                     <div className="flex items-center gap-2 flex-wrap mb-1">
                       <span className="font-semibold text-[#f0f0f5] text-sm truncate">{c.title}</span>
                       {c.emailSent && (
-                        <span className="text-[10px] font-mono bg-[#00ff88]/10 text-[#00ff88] border border-[#00ff88]/20 px-2 py-0.5 rounded-full flex-shrink-0">
+                        <span className="text-[10px] font-mono bg-[#34D399]/10 text-[#34D399] border border-[#34D399]/20 px-2 py-0.5 rounded-full flex-shrink-0">
                           ✓ Notified
                         </span>
                       )}
@@ -582,7 +582,7 @@ export default function DemoPage() {
                     </p>
                   </div>
                   <div className="flex-shrink-0 text-right">
-                    <div className="text-[#00ff88] font-bold font-mono text-sm">
+                    <div className="text-[#34D399] font-bold font-mono text-sm">
                       ${(c.estEarning / 1_000_000).toFixed(4)}
                     </div>
                     <div className="text-[#4a4a5e] text-[10px]">missed</div>
@@ -619,12 +619,12 @@ function StepCard({
   const { status, data, error } = step;
 
   const leftBorder =
-    status === "done"    ? "border-l-[#00ff88]" :
+    status === "done"    ? "border-l-[#34D399]" :
     status === "running" ? "border-l-[#6366f1]" :
     status === "error"   ? "border-l-red-500"   : "border-l-[#1e1e2e]";
 
   const icon =
-    status === "done"    ? <span className="text-[#00ff88]">✓</span> :
+    status === "done"    ? <span className="text-[#34D399]">✓</span> :
     status === "running" ? <span className="text-[#6366f1] animate-pulse">●</span> :
     status === "error"   ? <span className="text-red-400">✗</span>   : null;
 
@@ -634,7 +634,7 @@ function StepCard({
         <span className="text-[#4a4a5e] text-xs font-mono w-4">{number}</span>
         <span className="font-semibold text-sm text-[#f0f0f5]">{title}</span>
         {proof && status === "done" && (
-          <span className="ml-auto text-xs text-[#00ff88] bg-[#00ff88]/10 border border-[#00ff88]/30 px-2 py-0.5 rounded-full">
+          <span className="ml-auto text-xs text-[#34D399] bg-[#34D399]/10 border border-[#34D399]/30 px-2 py-0.5 rounded-full">
             Proof ✓
           </span>
         )}

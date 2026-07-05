@@ -34,7 +34,7 @@ function AuditSummaryPanel() {
         ].map(({ label, value }) => (
           <div key={label} className="bg-[#0a0a0f] rounded-lg p-3 border border-[#1e1e2e]">
             <div className="text-[10px] text-[#4a4a5e] mb-1">{label}</div>
-            <div className="text-sm font-mono text-[#00ff88]">{value}</div>
+            <div className="text-sm font-mono text-[#34D399]">{value}</div>
           </div>
         ))}
       </div>
@@ -43,7 +43,7 @@ function AuditSummaryPanel() {
           <div key={code} className="flex items-center gap-3 text-xs font-mono px-2 py-1 rounded bg-[#0a0a0f] border border-[#1e1e2e]">
             <span className="text-[#6366f1] w-20 flex-shrink-0">{code}</span>
             <span className="text-[#8b8b9e] flex-1">{stats.count} events</span>
-            <span className="text-[#00ff88]">${stats.totalMicro.toFixed(6)}</span>
+            <span className="text-[#34D399]">${stats.totalMicro.toFixed(6)}</span>
           </div>
         ))}
       </div>
@@ -136,7 +136,7 @@ function CitationMemoPanel() {
   }, []);
 
   return (
-    <div className="bg-[#111118] rounded-xl border border-[#00ff88]/20 p-6">
+    <div className="bg-[#111118] rounded-xl border border-[#34D399]/20 p-6">
       <div className="flex items-center justify-between mb-4">
         <div>
           <div className="text-[10px] font-mono text-[#4a4a5e] tracking-widest mb-1">ARC TRANSACTION MEMOS</div>
@@ -146,7 +146,7 @@ function CitationMemoPanel() {
                className="text-[#6366f1] hover:text-indigo-300">MemoDispatcher</a>
           </div>
         </div>
-        <span className="text-[10px] font-mono px-2 py-1 rounded bg-[#00ff88]/10 text-[#00ff88] border border-[#00ff88]/20">
+        <span className="text-[10px] font-mono px-2 py-1 rounded bg-[#34D399]/10 text-[#34D399] border border-[#34D399]/20">
           {loading ? "…" : `${memos.length} memos`}
         </span>
       </div>
@@ -175,7 +175,7 @@ function CitationMemoPanel() {
               </div>
               <div className="flex flex-wrap gap-3 text-[10px]">
                 {m.data.sid != null && <span><span className="text-[#4a4a5e]">source:</span> <span className="text-[#f0f0f5]">{String(m.data.sid)}</span></span>}
-                {m.data.amt != null && <span><span className="text-[#4a4a5e]">paid:</span> <span className="text-[#00ff88]">{(Number(m.data.amt)/1e6).toFixed(4)} USDC</span></span>}
+                {m.data.amt != null && <span><span className="text-[#4a4a5e]">paid:</span> <span className="text-[#34D399]">{(Number(m.data.amt)/1e6).toFixed(4)} USDC</span></span>}
                 {m.data.rel != null && <span><span className="text-[#4a4a5e]">relevance:</span> <span className="text-[#f0f0f5]">{String(m.data.rel)}</span></span>}
                 {m.data.pol != null && <span><span className="text-[#4a4a5e]">policy:</span> <span className="text-[#f0f0f5]">{String(m.data.pol)}</span></span>}
                 {m.data.rid != null && <span><span className="text-[#4a4a5e]">receiptId:</span> <span className="text-[#8b8b9e]">{String(m.data.rid).slice(0,8)}…</span></span>}
@@ -240,7 +240,7 @@ export default function AuditPage() {
 
         <div className="mt-6 mb-8">
           <div className="flex items-center gap-2 mb-1">
-            <span className="text-xs font-mono text-[#00ff88]">TRUSTLESS</span>
+            <span className="text-xs font-mono text-[#34D399]">TRUSTLESS</span>
           </div>
           <h1 className="text-2xl font-bold font-mono text-[#f0f0f5]">On-Chain Audit</h1>
           <p className="text-[#8b8b9e] text-sm mt-1">
@@ -258,15 +258,15 @@ export default function AuditPage() {
         ) : (
           <div className="space-y-4">
             {/* Chain verification panel */}
-            <div className="bg-[#111118] rounded-xl border border-[#00ff88]/20 p-6 font-mono text-sm">
+            <div className="bg-[#111118] rounded-xl border border-[#34D399]/20 p-6 font-mono text-sm">
               <div className="text-[10px] text-[#4a4a5e] mb-5 tracking-widest">
                 CHAIN VERIFICATION — Arc Testnet (chainId 5042002)
               </div>
               <div className="space-y-3">
                 {[
                   { label: "Current block",    value: block?.toLocaleString() ?? "—",        color: "text-[#f0f0f5]" },
-                  { label: "DCW wallet",       value: DCW_WALLET,                             color: "text-[#00ff88]" },
-                  { label: "USDC balance",     value: balance ? `$${balance}` : "—",          color: "text-[#00ff88]" },
+                  { label: "DCW wallet",       value: DCW_WALLET,                             color: "text-[#34D399]" },
+                  { label: "USDC balance",     value: balance ? `$${balance}` : "—",          color: "text-[#34D399]" },
                   { label: "Outbound txs",     value: txCount?.toString() ?? "—",             color: "text-[#6366f1]" },
                   { label: "USDC contract",    value: USDC,                                   color: "text-[#8b8b9e]" },
                   { label: "Payment taxonomy", value: "CITE · QUERY_FEE · AGENT_REWARD · BOND_SLASH", color: "text-[#8b8b9e]" },
@@ -358,7 +358,7 @@ export default function AuditPage() {
             <div className="bg-[#111118] rounded-xl border border-[#1e1e2e] p-6 font-mono text-xs text-[#8b8b9e]">
               <div className="text-[#4a4a5e] mb-3 text-[10px] tracking-widest">INDEPENDENT VERIFICATION</div>
               <div className="text-[#4a4a5e] mb-1">{"# Clone the repo, then run:"}</div>
-              <div className="text-[#00ff88]">{"node scripts/verify-payments.mjs"}</div>
+              <div className="text-[#34D399]">{"node scripts/verify-payments.mjs"}</div>
               <div className="text-[#4a4a5e] mt-1">{"# No API keys. Queries Arc RPC directly."}</div>
             </div>
 

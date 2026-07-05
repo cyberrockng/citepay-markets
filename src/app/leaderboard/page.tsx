@@ -34,7 +34,7 @@ function agentLabel(e: LeaderboardEntry): { text: string; color: string } | null
   const payRatio = e.totalDecisions > 0 ? e.paidCount / e.totalDecisions : 0;
   const blockRatio = e.totalDecisions > 0 ? e.policyBlockedCount / e.totalDecisions : 0;
   if (e.totalPaid > 0 && payRatio >= 0.6 && e.paidCount >= 3)
-    return { text: "Citation Leader", color: "text-[#00ff88] border-[#00ff88]/30 bg-[#00ff88]/5" };
+    return { text: "Citation Leader", color: "text-[#34D399] border-[#34D399]/30 bg-[#34D399]/5" };
   if (blockRatio > 0.3 && e.totalDecisions >= 4)
     return { text: "Policy Enforcer", color: "text-orange-400 border-orange-400/30 bg-orange-900/10" };
   if (e.totalDecisions >= 15)
@@ -133,7 +133,7 @@ export default function LeaderboardPage() {
                         </td>
                         <td className="px-4 py-3">
                           <div className="flex items-center gap-2 flex-wrap">
-                            {active && <span className="w-1.5 h-1.5 rounded-full bg-[#00ff88] pulse-dot shrink-0" title="Active in last 24h" />}
+                            {active && <span className="w-1.5 h-1.5 rounded-full bg-[#34D399] pulse-dot shrink-0" title="Active in last 24h" />}
                             <Link href={`/agent/${e.agentAddress}`} className="font-mono text-xs text-[#6366f1] hover:text-indigo-300 transition-colors">
                               {isDemo ? "CitePay Demo Agent" : shortAddr(e.agentAddress)}
                             </Link>
@@ -143,10 +143,10 @@ export default function LeaderboardPage() {
                           </div>
                           <div className="text-[#4a4a5e] text-[10px] mt-0.5 font-mono">{e.totalDecisions} decisions</div>
                         </td>
-                        <td className="px-4 py-3 text-right font-mono text-[#00ff88] font-semibold">
+                        <td className="px-4 py-3 text-right font-mono text-[#34D399] font-semibold">
                           ${(e.totalPaid / 1_000_000).toFixed(4)}
                         </td>
-                        <td className="px-4 py-3 text-right font-mono text-xs text-[#00ff88]">{e.paidCount}</td>
+                        <td className="px-4 py-3 text-right font-mono text-xs text-[#34D399]">{e.paidCount}</td>
                         <td className="px-4 py-3 text-right font-mono text-xs text-red-400">{e.refusedCount}</td>
                         <td className="px-4 py-3 text-right font-mono text-xs text-orange-400">{e.policyBlockedCount}</td>
                         <td className="px-4 py-3 text-center">
@@ -155,7 +155,7 @@ export default function LeaderboardPage() {
                           ) : <span className="text-[#4a4a5e] text-xs">—</span>}
                         </td>
                         <td className="px-4 py-3 text-right">
-                          <span className={`font-mono text-xs ${payPct >= 50 ? "text-[#00ff88]" : "text-[#8b8b9e]"}`}>{payPct}%</span>
+                          <span className={`font-mono text-xs ${payPct >= 50 ? "text-[#34D399]" : "text-[#8b8b9e]"}`}>{payPct}%</span>
                         </td>
                       </tr>
                     );
@@ -178,9 +178,9 @@ export default function LeaderboardPage() {
                   <div className="flex items-start justify-between mb-3">
                     <div className="flex items-center gap-2">
                       <span className="text-lg">{i < 3 ? ["🥇","🥈","🥉"][i] : <span className="text-[#4a4a5e] font-mono text-sm">{i+1}</span>}</span>
-                      {active && <span className="w-1.5 h-1.5 rounded-full bg-[#00ff88] pulse-dot" />}
+                      {active && <span className="w-1.5 h-1.5 rounded-full bg-[#34D399] pulse-dot" />}
                     </div>
-                    <span className="text-[#00ff88] font-mono font-bold">${(e.totalPaid / 1_000_000).toFixed(4)}</span>
+                    <span className="text-[#34D399] font-mono font-bold">${(e.totalPaid / 1_000_000).toFixed(4)}</span>
                   </div>
                   <Link href={`/agent/${e.agentAddress}`} className="font-mono text-xs text-[#6366f1] hover:text-indigo-300 block mb-1">
                     {isDemo ? "CitePay Demo Agent" : e.agentAddress.slice(0, 10) + "…" + e.agentAddress.slice(-6)}
@@ -191,10 +191,10 @@ export default function LeaderboardPage() {
                   </div>
                   <div className="grid grid-cols-4 gap-2 text-center">
                     {[
-                      { label: "Paid", value: e.paidCount, color: "text-[#00ff88]" },
+                      { label: "Paid", value: e.paidCount, color: "text-[#34D399]" },
                       { label: "Refused", value: e.refusedCount, color: "text-red-400" },
                       { label: "Blocked", value: e.policyBlockedCount, color: "text-orange-400" },
-                      { label: "Pay%", value: `${payPct}%`, color: payPct >= 50 ? "text-[#00ff88]" : "text-[#8b8b9e]" },
+                      { label: "Pay%", value: `${payPct}%`, color: payPct >= 50 ? "text-[#34D399]" : "text-[#8b8b9e]" },
                     ].map(({ label: l, value, color }) => (
                       <div key={l}>
                         <div className={`font-mono text-sm font-semibold ${color}`}>{value}</div>

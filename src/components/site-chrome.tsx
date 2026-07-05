@@ -1,0 +1,156 @@
+import Link from "next/link";
+
+const NAV_LINKS = [
+  { href: "/demo", label: "Demo" },
+  { href: "/market", label: "Market" },
+  { href: "/proof", label: "Proof" },
+  { href: "/traction", label: "Traction" },
+];
+
+const FOOTER_GROUPS = [
+  {
+    title: "Product",
+    links: [
+      { href: "/demo", label: "Demo" },
+      { href: "/ask", label: "Ask" },
+      { href: "/market", label: "Market" },
+      { href: "/auction", label: "Auction" },
+    ],
+  },
+  {
+    title: "Proof",
+    links: [
+      { href: "/proof", label: "Proof Explorer" },
+      { href: "/traction", label: "Traction" },
+      { href: "/audit", label: "Audit" },
+      { href: "/receipt/1", label: "Receipt" },
+      { href: "/live", label: "Live Feed" },
+    ],
+  },
+  {
+    title: "Creators",
+    links: [
+      { href: "/join", label: "Join" },
+      { href: "/register", label: "Register" },
+      { href: "/estimate", label: "Estimate" },
+    ],
+  },
+  {
+    title: "Agents",
+    links: [
+      { href: "/agents", label: "Agents" },
+      { href: "/agent-exchange", label: "Agent Exchange" },
+      { href: "/orchestrate", label: "Orchestrate" },
+      { href: "/economy", label: "Economy" },
+    ],
+  },
+  {
+    title: "Resources",
+    links: [
+      { href: "/mcp", label: "MCP" },
+      { href: "https://github.com/cyberrockng/citepay-markets", label: "GitHub", external: true },
+      { href: "https://www.npmjs.com/package/citepay-mcp", label: "citepay-mcp", external: true },
+    ],
+  },
+];
+
+export function SiteNav() {
+  return (
+    <header className="sticky top-0 z-40 border-b border-white/10 bg-[var(--bg)]/88 backdrop-blur-xl">
+      <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
+        <Link href="/" className="group flex min-w-0 items-center gap-3" aria-label="CitePay Markets home">
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-white/10 bg-[var(--surface-raised)] text-sm font-semibold text-[var(--text-primary)] transition-colors group-hover:border-emerald-300/40">
+            CP
+          </span>
+          <span className="min-w-0">
+            <span className="block truncate text-sm font-semibold tracking-tight text-[var(--text-primary)]">
+              CitePay Markets
+            </span>
+            <span className="hidden text-[11px] font-medium uppercase tracking-[0.18em] text-[var(--text-muted)] sm:block">
+              Proof-of-paid-citation
+            </span>
+          </span>
+        </Link>
+
+        <nav className="hidden items-center gap-7 md:flex" aria-label="Primary navigation">
+          {NAV_LINKS.map((link) => (
+            <Link
+              key={link.href}
+              href={link.href}
+              className="text-sm font-medium text-[var(--text-secondary)] transition-colors hover:text-[var(--text-primary)]"
+            >
+              {link.label}
+            </Link>
+          ))}
+        </nav>
+
+        <Link
+          href="/demo"
+          className="inline-flex h-10 items-center justify-center rounded-lg bg-[#34D399] px-4 text-sm font-semibold text-[#07110D] transition-colors hover:bg-[#6EE7B7]"
+        >
+          Run Demo
+        </Link>
+      </div>
+    </header>
+  );
+}
+
+export function SiteFooter() {
+  return (
+    <footer className="border-t border-white/10 bg-[var(--bg)] pb-24 pt-12 sm:pb-12">
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div className="grid gap-10 lg:grid-cols-[1.2fr_2fr]">
+          <div>
+            <Link href="/" className="inline-flex items-center gap-3">
+              <span className="flex h-10 w-10 items-center justify-center rounded-lg border border-white/10 bg-[var(--surface-raised)] text-sm font-semibold text-[var(--text-primary)]">
+                CP
+              </span>
+              <span>
+                <span className="block text-base font-semibold text-[var(--text-primary)]">CitePay Markets</span>
+                <span className="mt-1 block text-xs text-[var(--text-muted)]">AI citations with USDC receipts.</span>
+              </span>
+            </Link>
+            <p className="mt-5 max-w-sm text-sm leading-6 text-[var(--text-secondary)]">
+              Agents pay creators for cited knowledge, then publish receipts anyone can verify on Arc.
+            </p>
+            <div className="mt-5 text-xs leading-6 text-[var(--text-muted)]">
+              Contract:{" "}
+              <a
+                href="https://testnet.arcscan.app/address/0x396cf1646EbAeF85ee8428C2d9239C46Ae956085"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="font-mono text-[var(--text-secondary)] transition-colors hover:text-[var(--accent)]"
+              >
+                0x396cf164...6085
+              </a>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-8 sm:grid-cols-5">
+            {FOOTER_GROUPS.map((group) => (
+              <div key={group.title}>
+                <h2 className="text-xs font-semibold uppercase tracking-[0.16em] text-[var(--text-muted)]">
+                  {group.title}
+                </h2>
+                <ul className="mt-4 space-y-3">
+                  {group.links.map((link) => (
+                    <li key={`${group.title}-${link.href}`}>
+                      <Link
+                        href={link.href}
+                        target={link.external ? "_blank" : undefined}
+                        rel={link.external ? "noopener noreferrer" : undefined}
+                        className="text-sm text-[var(--text-secondary)] transition-colors hover:text-[var(--text-primary)]"
+                      >
+                        {link.label}
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </footer>
+  );
+}

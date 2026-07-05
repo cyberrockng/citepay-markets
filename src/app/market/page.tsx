@@ -9,7 +9,7 @@ const CATEGORIES = ["All", "Protocol", "Research", "Infrastructure", "AI/Agents"
 
 const CATEGORY_COLORS: Record<string, string> = {
   "Protocol":       "text-[#6366f1] border-[#6366f1]/40",
-  "Research":       "text-[#00ff88] border-[#00ff88]/40",
+  "Research":       "text-[#34D399] border-[#34D399]/40",
   "Infrastructure": "text-yellow-400 border-yellow-400/40",
   "AI/Agents":      "text-purple-400 border-purple-400/40",
   "General":        "text-[#8b8b9e] border-[#8b8b9e]/40",
@@ -17,7 +17,7 @@ const CATEGORY_COLORS: Record<string, string> = {
 
 const CATEGORY_LEFT_BORDER: Record<string, string> = {
   "Protocol":       "#6366f1",
-  "Research":       "#00ff88",
+  "Research":       "#34D399",
   "Infrastructure": "#facc15",
   "AI/Agents":      "#c084fc",
   "General":        "#1e1e2e",
@@ -99,9 +99,9 @@ export default function MarketPage() {
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
         {[
           { label: "Total Sources", value: totalSources, accent: "text-[#6366f1]" },
-          { label: "Active", value: activeCount, accent: "text-[#00ff88]" },
+          { label: "Active", value: activeCount, accent: "text-[#34D399]" },
           { label: "Bonded", value: bondedCount, accent: "text-yellow-400" },
-          { label: "Citations Paid", value: totalPaidCitations, accent: "text-[#00ff88]" },
+          { label: "Citations Paid", value: totalPaidCitations, accent: "text-[#34D399]" },
         ].map(({ label, value, accent }) => (
           <div key={label} className="bg-[#111118] rounded-xl p-4 border border-[#1e1e2e]">
             <div className={`text-2xl font-bold font-mono ${accent}`}>{value}</div>
@@ -244,7 +244,7 @@ export default function MarketPage() {
                   const maxPaid = Math.max(...sources.map((s) => s.paidCount), 1);
                   return sources.map((s) => {
                   const repAbs = Math.abs(s.reputation);
-                  const repColor = repAbs <= 2 ? "text-[#8b8b9e]" : s.reputation > 0 ? "text-[#00ff88]" : "text-red-400";
+                  const repColor = repAbs <= 2 ? "text-[#8b8b9e]" : s.reputation > 0 ? "text-[#34D399]" : "text-red-400";
                   const leftColor = CATEGORY_LEFT_BORDER[s.category ?? "General"] ?? "#1e1e2e";
                   const heatPct = Math.round((s.paidCount / maxPaid) * 100);
                   return (
@@ -263,7 +263,7 @@ export default function MarketPage() {
                             {s.url.replace(/^https?:\/\//, "").slice(0, 38)}
                           </a>
                           {" · "}
-                          <Link href={`/creator/${s.payoutWallet}`} className="text-[#00ff88] hover:underline">
+                          <Link href={`/creator/${s.payoutWallet}`} className="text-[#34D399] hover:underline">
                             earnings →
                           </Link>
                         </div>
@@ -293,9 +293,9 @@ export default function MarketPage() {
                       <td className="px-4 py-3 text-right">
                         <div className="flex items-center justify-end gap-2">
                           <div className="w-16 h-1.5 rounded-full bg-[#1e1e2e] overflow-hidden hidden sm:block">
-                            <div className="h-full rounded-full bg-[#00ff88]/30 transition-all" style={{ width: `${heatPct}%` }} />
+                            <div className="h-full rounded-full bg-[#34D399]/30 transition-all" style={{ width: `${heatPct}%` }} />
                           </div>
-                          <span className="text-[#00ff88] font-mono text-xs">{s.paidCount}</span>
+                          <span className="text-[#34D399] font-mono text-xs">{s.paidCount}</span>
                         </div>
                       </td>
                       <td className="px-4 py-3 text-right text-red-400 font-mono text-xs">{s.refusedCount}</td>

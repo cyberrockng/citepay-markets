@@ -82,7 +82,7 @@ export default function SourcePage({ params }: { params: Promise<{ id: string }>
         <StatCard
           label="Total Earned"
           value={`$${(totalEarned / 1_000_000).toFixed(4)}`}
-          accent="text-[#00ff88]"
+          accent="text-[#34D399]"
           sub="USDC"
         />
         <StatCard
@@ -90,7 +90,7 @@ export default function SourcePage({ params }: { params: Promise<{ id: string }>
           value={`$${(source.price / 1_000_000).toFixed(4)}`}
           accent="text-[#6366f1]"
         />
-        <StatCard label="Citations Paid" value={paid.length} accent="text-[#00ff88]" />
+        <StatCard label="Citations Paid" value={paid.length} accent="text-[#34D399]" />
         <StatCard label="Refusals" value={refused.length} accent="text-red-400" />
       </div>
 
@@ -114,7 +114,7 @@ export default function SourcePage({ params }: { params: Promise<{ id: string }>
             </div>
             <div className="text-right">
               <div className={`text-2xl font-bold font-mono ${
-                (source.avgContributionWeight ?? 0) >= 0.5 ? "text-[#00ff88]"
+                (source.avgContributionWeight ?? 0) >= 0.5 ? "text-[#34D399]"
                 : (source.avgContributionWeight ?? 0) >= 0.2 ? "text-[#6366f1]"
                 : "text-[#4a4a5e]"
               }`}>
@@ -125,7 +125,7 @@ export default function SourcePage({ params }: { params: Promise<{ id: string }>
           <div className="h-2 bg-[#0a0a0f] rounded-full overflow-hidden">
             <div
               className={`h-full rounded-full transition-all ${
-                (source.avgContributionWeight ?? 0) >= 0.5 ? "bg-[#00ff88]"
+                (source.avgContributionWeight ?? 0) >= 0.5 ? "bg-[#34D399]"
                 : (source.avgContributionWeight ?? 0) >= 0.2 ? "bg-[#6366f1]"
                 : "bg-[#2e2e3e]"
               }`}
@@ -148,7 +148,7 @@ export default function SourcePage({ params }: { params: Promise<{ id: string }>
           <DataRow
             label="Reputation"
             value={`${source.reputation >= 0 ? "+" : ""}${source.reputation}`}
-            accent={source.reputation >= 0 ? "text-[#00ff88]" : "text-red-400"}
+            accent={source.reputation >= 0 ? "text-[#34D399]" : "text-red-400"}
           />
           <DataRow label="Registered" value={new Date(source.createdAt).toLocaleDateString()} />
           <DataRow label="Skip Count" value={String(source.skipCount)} />
@@ -211,7 +211,7 @@ export default function SourcePage({ params }: { params: Promise<{ id: string }>
                   {r.decision}
                 </span>
                 {r.decision === "PAY" && (
-                  <div className="text-[#00ff88] font-mono text-xs">${(r.amountPaid / 1_000_000).toFixed(4)}</div>
+                  <div className="text-[#34D399] font-mono text-xs">${(r.amountPaid / 1_000_000).toFixed(4)}</div>
                 )}
                 <Link href={`/receipt/${r.id}`} className="text-[#6366f1] text-xs hover:text-indigo-300 transition-colors">
                   Receipt →

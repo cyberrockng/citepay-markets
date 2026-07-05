@@ -121,9 +121,9 @@ export default function RegisterPage() {
             ← Back to CitePay
           </Link>
 
-          <div className="bg-[#111118] rounded-2xl border border-[#00ff88]/30 p-8">
+          <div className="bg-[#111118] rounded-2xl border border-[#34D399]/30 p-8">
             <div className="flex items-center gap-3 mb-4">
-              <span className="text-[#00ff88] text-3xl">✓</span>
+              <span className="text-[#34D399] text-3xl">✓</span>
               <h1 className="text-2xl font-bold text-[#f0f0f5]">You&apos;re in the market</h1>
             </div>
             <p className="text-[#8b8b9e] text-sm leading-relaxed mb-6">
@@ -142,11 +142,11 @@ export default function RegisterPage() {
               </div>
               <div className="flex justify-between">
                 <span>Price per citation</span>
-                <span className="text-[#00ff88]">${priceToUsd(registered.price)} USDC</span>
+                <span className="text-[#34D399]">${priceToUsd(registered.price)} USDC</span>
               </div>
               <div className="flex justify-between">
                 <span>Status</span>
-                <span className="text-[#00ff88]">active · earning</span>
+                <span className="text-[#34D399]">active · earning</span>
               </div>
             </div>
 
@@ -215,7 +215,7 @@ export default function RegisterPage() {
             No approval. No middleman. Register once — earn on every citation.
           </p>
           <div className="flex items-center gap-2 text-xs font-mono text-[#4a4a5e]">
-            <span className="w-1.5 h-1.5 rounded-full bg-[#00ff88] animate-pulse inline-block" />
+            <span className="w-1.5 h-1.5 rounded-full bg-[#34D399] animate-pulse inline-block" />
             Settling on Arc Testnet · Paid via Circle Gateway
           </div>
         </div>
@@ -229,7 +229,7 @@ export default function RegisterPage() {
               { label: "ArcScan verified",    value: "100%"                                         },
             ].map(({ label, value }) => (
               <div key={label} className="bg-[#111118] border border-[#1e1e2e] rounded-lg p-3 text-center">
-                <div className="text-sm font-bold text-[#00ff88] font-mono">{value}</div>
+                <div className="text-sm font-bold text-[#34D399] font-mono">{value}</div>
                 <div className="text-[10px] text-[#4a4a5e] mt-0.5">{label}</div>
               </div>
             ))}
@@ -318,7 +318,7 @@ export default function RegisterPage() {
               onChange={(e) => setDescription(e.target.value)}
               maxLength={340}
             />
-            <p className="text-[10px] text-[#00ff88]/70 mt-1.5">
+            <p className="text-[10px] text-[#34D399]/70 mt-1.5">
               Better descriptions = more citations = more USDC
             </p>
           </div>

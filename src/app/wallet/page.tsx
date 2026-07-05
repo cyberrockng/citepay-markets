@@ -84,7 +84,7 @@ export default function WalletPage() {
               "@circle-fin/provider-gateway-v1",
               "@circle-fin/adapter-viem-v2",
             ].map((sdk) => (
-              <span key={sdk} className="text-xs font-mono text-[#00ff88] bg-[#00ff88]/5 border border-[#00ff88]/20 px-2 py-1 rounded">
+              <span key={sdk} className="text-xs font-mono text-[#34D399] bg-[#34D399]/5 border border-[#34D399]/20 px-2 py-1 rounded">
                 {sdk}
               </span>
             ))}
@@ -126,7 +126,7 @@ export default function WalletPage() {
                 ].map(({ label, value, highlight }) => (
                   <div key={label} className="flex items-start justify-between gap-4">
                     <span className="text-[#4a4a5e] w-28 flex-shrink-0">{label}</span>
-                    <span className={`break-all text-right ${highlight ? "text-[#00ff88]" : "text-[#8b8b9e]"}`}>
+                    <span className={`break-all text-right ${highlight ? "text-[#34D399]" : "text-[#8b8b9e]"}`}>
                       {value}
                     </span>
                   </div>
@@ -166,9 +166,9 @@ export default function WalletPage() {
             <div className="bg-[#111118] rounded-xl border border-[#1e1e2e] p-6">
               <div className="flex items-center gap-2 mb-4">
                 <h2 className="font-semibold text-[#f0f0f5]">On-Chain Balance</h2>
-                <span className="text-xs text-[#00ff88] bg-[#00ff88]/10 px-2 py-0.5 rounded-full">Arc Testnet</span>
+                <span className="text-xs text-[#34D399] bg-[#34D399]/10 px-2 py-0.5 rounded-full">Arc Testnet</span>
               </div>
-              <div className="text-3xl font-bold font-mono text-[#00ff88]">
+              <div className="text-3xl font-bold font-mono text-[#34D399]">
                 ${wallet.onChainBalance.amount}
               </div>
               <div className="text-xs text-[#8b8b9e] mt-1">USDC — direct ERC-20 balance</div>
@@ -179,8 +179,8 @@ export default function WalletPage() {
                 <div className="text-[#4a4a5e] mb-1">{"// used for creator payouts via DCW"}</div>
                 <div className="text-[#6366f1]">client.createContractExecutionTransaction({"{"}</div>
                 <div className="pl-4">walletId: <span className="text-amber-400">&quot;{wallet.walletId.slice(0, 8)}…&quot;</span>,</div>
-                <div className="pl-4">contractAddress: <span className="text-[#00ff88]">&quot;USDC precompile&quot;</span>,</div>
-                <div className="pl-4">callData: <span className="text-[#00ff88]">&quot;transfer(creator, amount)&quot;</span>,</div>
+                <div className="pl-4">contractAddress: <span className="text-[#34D399]">&quot;USDC precompile&quot;</span>,</div>
+                <div className="pl-4">callData: <span className="text-[#34D399]">&quot;transfer(creator, amount)&quot;</span>,</div>
                 <div className="pl-4">fee: {"{ type: "}<span className="text-amber-400">&quot;level&quot;</span>, config: {"{ feeLevel: "}<span className="text-amber-400">&quot;HIGH&quot;</span> {"} }"}</div>
                 <div className="text-[#6366f1]">{"});"}</div>
               </div>
@@ -205,7 +205,7 @@ export default function WalletPage() {
                   },
                   {
                     step: "3a",
-                    color: "bg-[#00ff88]/10 border-[#00ff88]/30 text-[#00ff88]",
+                    color: "bg-[#34D399]/10 border-[#34D399]/30 text-[#34D399]",
                     label: "Creator payout — same chain",
                     desc: "DCW wallet signs ERC-20 transfer on Arc Testnet via Circle App Kit MPC",
                   },
@@ -253,9 +253,9 @@ export default function WalletPage() {
               <div className="bg-[#0a0a0f] rounded-lg p-3 text-xs font-mono text-[#8b8b9e]">
                 <div className="text-[#4a4a5e] mb-1">{"// POST /api/cctp/fund-creator"}</div>
                 <div className="text-cyan-400">{"{"}</div>
-                <div className="pl-4">creatorWallet: <span className="text-[#00ff88]">&quot;0xCreator…&quot;</span>,</div>
+                <div className="pl-4">creatorWallet: <span className="text-[#34D399]">&quot;0xCreator…&quot;</span>,</div>
                 <div className="pl-4">amountMicroUsdc: <span className="text-amber-400">5000</span>,</div>
-                <div className="pl-4">destChain: <span className="text-[#00ff88]">&quot;Base_Sepolia&quot;</span></div>
+                <div className="pl-4">destChain: <span className="text-[#34D399]">&quot;Base_Sepolia&quot;</span></div>
                 <div className="text-cyan-400">{"}"}</div>
                 <div className="text-[#4a4a5e] mt-2">{"// → burn on Arc · CCTP attestation · mint on Base (gasless)"}</div>
               </div>

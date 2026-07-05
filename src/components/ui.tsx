@@ -3,7 +3,7 @@ import Link from "next/link";
 
 // ── Design tokens ─────────────────────────────────────────────────────────────
 // bg: #0a0a0f  surface: #111118  border: #1e1e2e
-// green: #00ff88  indigo: #6366f1
+// green: #34D399  indigo: #6366f1
 // text-primary: #f0f0f5  text-secondary: #8b8b9e
 
 // ── PageShell ─────────────────────────────────────────────────────────────────
@@ -68,16 +68,16 @@ export function StatCard({
 // ── Badge ─────────────────────────────────────────────────────────────────────
 
 const BADGE_STYLES: Record<string, string> = {
-  PAY:               "text-[#00ff88] border-[#00ff88]/30 bg-[#00ff88]/10",
+  PAY:               "text-[#34D399] border-[#34D399]/30 bg-[#34D399]/10",
   REFUSE:            "text-red-400 border-red-800 bg-red-900/20",
   SKIP:              "text-[#8b8b9e] border-[#1e1e2e] bg-[#111118]",
   BLOCKED_BY_POLICY: "text-orange-400 border-orange-700 bg-orange-900/20",
   BONDED:            "text-yellow-400 border-yellow-700 bg-yellow-900/20",
-  ACTIVE:            "text-[#00ff88] border-[#00ff88]/30 bg-[#00ff88]/10",
+  ACTIVE:            "text-[#34D399] border-[#34D399]/30 bg-[#34D399]/10",
   INACTIVE:          "text-[#4a4a5e] border-[#1e1e2e]",
   CHALLENGED:        "text-yellow-400 border-yellow-700 bg-yellow-900/20",
-  ANCHORED:          "text-[#00ff88] border-[#00ff88]/30 bg-[#00ff88]/10",
-  PROOF:             "text-[#00ff88] border-[#00ff88]/30 bg-[#00ff88]/10",
+  ANCHORED:          "text-[#34D399] border-[#34D399]/30 bg-[#34D399]/10",
+  PROOF:             "text-[#34D399] border-[#34D399]/30 bg-[#34D399]/10",
 };
 
 export function Badge({
@@ -118,7 +118,7 @@ export function ProofPanel({
       <div className="flex items-center justify-between mb-2">
         <span className="text-[#8b8b9e] text-xs">{label}</span>
         {valid !== undefined && valid !== null && (
-          <span className={valid ? "text-[#00ff88] text-xs" : "text-red-400 text-xs"}>
+          <span className={valid ? "text-[#34D399] text-xs" : "text-red-400 text-xs"}>
             {valid ? "✓ valid" : "✗ invalid"}
           </span>
         )}
@@ -152,7 +152,7 @@ export function ScoreBar({
   max: number;
 }) {
   const pct = Math.min(100, Math.round((value / max) * 100));
-  const accent = pct >= 70 ? "#00ff88" : pct >= 40 ? "#6366f1" : "#4a4a5e";
+  const accent = pct >= 70 ? "#34D399" : pct >= 40 ? "#6366f1" : "#4a4a5e";
   return (
     <div>
       <div className="flex justify-between items-center mb-1">
@@ -265,7 +265,7 @@ export function Card({
 
 export function decisionStyle(decision: string): string {
   switch (decision) {
-    case "PAY":               return "text-[#00ff88] border-[#00ff88]/30 bg-[#00ff88]/10";
+    case "PAY":               return "text-[#34D399] border-[#34D399]/30 bg-[#34D399]/10";
     case "REFUSE":            return "text-red-400 border-red-800 bg-red-900/20";
     case "BLOCKED_BY_POLICY": return "text-orange-400 border-orange-700 bg-orange-900/20";
     default:                  return "text-[#8b8b9e] border-[#1e1e2e] bg-[#111118]";
@@ -274,7 +274,7 @@ export function decisionStyle(decision: string): string {
 
 export function decisionAccent(decision: string): string {
   switch (decision) {
-    case "PAY":               return "#00ff88";
+    case "PAY":               return "#34D399";
     case "REFUSE":            return "#f87171";
     case "BLOCKED_BY_POLICY": return "#fb923c";
     default:                  return "#1e1e2e";

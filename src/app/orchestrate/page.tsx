@@ -71,7 +71,7 @@ function AgentNodeGrid({ subQueries, pendingCount, loading }: {
   return (
     <div className="bg-[#111118] rounded-xl border border-indigo-900/30 p-4 mb-6">
       <div className="text-[10px] font-mono text-[#4a4a5e] mb-3 flex items-center gap-2">
-        <span className={`w-1.5 h-1.5 rounded-full inline-block ${loading ? "bg-indigo-400 animate-pulse" : "bg-[#00ff88]"}`} />
+        <span className={`w-1.5 h-1.5 rounded-full inline-block ${loading ? "bg-indigo-400 animate-pulse" : "bg-[#34D399]"}`} />
         LIVE AGENT NETWORK {loading ? "— RUNNING" : doneCount > 0 ? "— COMPLETE" : ""}
       </div>
       <div className="flex items-start gap-3 flex-wrap">
@@ -87,7 +87,7 @@ function AgentNodeGrid({ subQueries, pendingCount, loading }: {
             <div key={a.index} className="flex flex-col items-center gap-1">
               <div className={`w-9 h-9 rounded-lg border-2 flex items-center justify-center text-xs font-bold transition-all ${
                 a.done
-                  ? "border-[#00ff88] bg-[#00ff88]/10 text-[#00ff88]"
+                  ? "border-[#34D399] bg-[#34D399]/10 text-[#34D399]"
                   : a.running
                   ? "border-indigo-400 bg-indigo-900/20 text-indigo-300"
                   : "border-[#1e1e2e] bg-[#0a0a0f] text-[#4a4a5e]"
@@ -96,11 +96,11 @@ function AgentNodeGrid({ subQueries, pendingCount, loading }: {
                   <span className="inline-block w-3 h-3 border border-indigo-400 border-t-transparent rounded-full animate-spin" />
                 ) : a.index + 1}
               </div>
-              <div className={`text-[9px] font-mono ${a.done ? "text-[#00ff88]" : a.running ? "text-indigo-400 animate-pulse" : "text-[#4a4a5e]"}`}>
+              <div className={`text-[9px] font-mono ${a.done ? "text-[#34D399]" : a.running ? "text-indigo-400 animate-pulse" : "text-[#4a4a5e]"}`}>
                 R{a.index + 1}
               </div>
               {a.done && a.result && (
-                <div className="text-[9px] font-mono text-[#00ff88]">
+                <div className="text-[9px] font-mono text-[#34D399]">
                   ${(a.result.totalPaid / 1e6).toFixed(3)}
                 </div>
               )}
@@ -113,7 +113,7 @@ function AgentNodeGrid({ subQueries, pendingCount, loading }: {
             <div className="flex flex-col items-center gap-1">
               <div className="w-9 h-9 rounded-lg border-2 border-amber-500/50 bg-amber-900/10 flex items-center justify-center text-amber-300 text-xs font-bold">C</div>
               <div className="text-[9px] font-mono text-amber-400">Creators</div>
-              <div className="text-[9px] font-mono text-[#00ff88]">${(totalPaidMicro / 1e6).toFixed(4)}</div>
+              <div className="text-[9px] font-mono text-[#34D399]">${(totalPaidMicro / 1e6).toFixed(4)}</div>
             </div>
           </>
         )}
@@ -265,7 +265,7 @@ export default function OrchestratePage() {
             <span className="text-[#4a4a5e]">→</span>
             <span className="px-3 py-1.5 rounded-lg bg-indigo-900/30 border border-indigo-700/40 text-indigo-300">Orchestrator</span>
             <span className="text-[#4a4a5e]">→ x402 ($0.001) →</span>
-            <span className="px-3 py-1.5 rounded-lg bg-[#00ff88]/10 border border-[#00ff88]/30 text-[#00ff88]">Researcher Agents</span>
+            <span className="px-3 py-1.5 rounded-lg bg-[#34D399]/10 border border-[#34D399]/30 text-[#34D399]">Researcher Agents</span>
             <span className="text-[#4a4a5e]">→ USDC →</span>
             <span className="px-3 py-1.5 rounded-lg bg-amber-900/20 border border-amber-700/30 text-amber-300">Creators</span>
           </div>
@@ -331,7 +331,7 @@ export default function OrchestratePage() {
                   line.startsWith("[Orchestrator]")
                     ? "text-indigo-400"
                     : line.startsWith("[Researcher")
-                    ? "text-[#00ff88]"
+                    ? "text-[#34D399]"
                     : "text-[#8b8b9e]"
                 }>
                   {line}
@@ -351,7 +351,7 @@ export default function OrchestratePage() {
                 {[
                   { label: "Sub-agents hired", value: stats.subQueriesDispatched, color: "text-indigo-400" },
                   { label: "Gateway fees paid", value: `$${(stats.totalGatewayFeeMicro / 1e6).toFixed(3)} USDC`, color: "text-violet-400" },
-                  { label: "Citations bought", value: stats.citationsPurchased, color: "text-[#00ff88]" },
+                  { label: "Citations bought", value: stats.citationsPurchased, color: "text-[#34D399]" },
                   { label: "Creator payments", value: `$${(stats.totalCreatorPaymentsMicro / 1e6).toFixed(4)} USDC`, color: "text-amber-400" },
                 ].map((s) => (
                   <div key={s.label} className="bg-[#111118] rounded-xl border border-[#1e1e2e] p-4">
@@ -367,7 +367,7 @@ export default function OrchestratePage() {
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                 {[
                   { label: "Agents completed", value: subQueries.length, color: "text-indigo-400" },
-                  { label: "Citations so far", value: subQueries.flatMap((sq) => sq.decisions).filter((d) => d.decision === "PAY").length, color: "text-[#00ff88]" },
+                  { label: "Citations so far", value: subQueries.flatMap((sq) => sq.decisions).filter((d) => d.decision === "PAY").length, color: "text-[#34D399]" },
                   { label: "Creator payments", value: `$${(subQueries.reduce((s, sq) => s + sq.totalPaid, 0) / 1e6).toFixed(4)} USDC`, color: "text-amber-400" },
                   { label: "Awaiting", value: pendingCount !== null ? pendingCount : "…", color: "text-[#4a4a5e]" },
                 ].map((s) => (
@@ -504,7 +504,7 @@ export default function OrchestratePage() {
                         Sub-Agent {p.agentIndex + 1}: &quot;{p.subQuery.slice(0, 50)}{p.subQuery.length > 50 ? "…" : ""}&quot;
                       </span>
                       <span className="text-[#4a4a5e]">score: {p.contributionScore}/100</span>
-                      <span className="text-[#00ff88]">${(p.rewardMicro / 1e6).toFixed(4)}</span>
+                      <span className="text-[#34D399]">${(p.rewardMicro / 1e6).toFixed(4)}</span>
                       {p.txHash && (
                         <a
                           href={`https://testnet.arcscan.app/tx/${p.txHash}`}
@@ -519,7 +519,7 @@ export default function OrchestratePage() {
                 </div>
                 <div className="mt-3 pt-3 border-t border-[#1e1e2e] text-[10px] text-[#4a4a5e] font-mono flex items-center justify-between">
                   <span>
-                    Total coordination rewards: <span className="text-[#00ff88]">${(agentRewards.reduce((s, p) => s + p.rewardMicro, 0) / 1e6).toFixed(4)} USDC</span>
+                    Total coordination rewards: <span className="text-[#34D399]">${(agentRewards.reduce((s, p) => s + p.rewardMicro, 0) / 1e6).toFixed(4)} USDC</span>
                   </span>
                   <span>Settled on Arc Testnet · 3-layer economic graph</span>
                 </div>
@@ -541,7 +541,7 @@ export default function OrchestratePage() {
                   >
                     Sub-agent {i + 1}
                     {sq.paidViaGateway && (
-                      <span className="ml-2 text-xs text-[#00ff88] opacity-80">x402</span>
+                      <span className="ml-2 text-xs text-[#34D399] opacity-80">x402</span>
                     )}
                   </button>
                 ))}
@@ -566,7 +566,7 @@ export default function OrchestratePage() {
                       {sq.paidViaGateway && (
                         <div className="flex-shrink-0 text-right">
                           <div className="text-xs text-[#8b8b9e] font-mono">Gateway fee</div>
-                          <div className="text-[#00ff88] font-mono text-sm">${(Number(sq.gatewayAmountMicro) / 1e6).toFixed(3)}</div>
+                          <div className="text-[#34D399] font-mono text-sm">${(Number(sq.gatewayAmountMicro) / 1e6).toFixed(3)}</div>
                         </div>
                       )}
                     </div>
@@ -593,7 +593,7 @@ export default function OrchestratePage() {
                               <div className="flex items-center gap-3 flex-shrink-0 font-mono text-xs text-[#4a4a5e]">
                                 <span>rel:{d.scores.relevance}</span>
                                 {d.decision === "PAY" && (
-                                  <span className="text-[#00ff88]">+${(d.amountPaid / 1e6).toFixed(4)}</span>
+                                  <span className="text-[#34D399]">+${(d.amountPaid / 1e6).toFixed(4)}</span>
                                 )}
                                 {d.receiptUrl && (
                                   <Link href={d.receiptUrl} className="text-indigo-400 hover:text-indigo-300">
@@ -606,7 +606,7 @@ export default function OrchestratePage() {
                         </div>
                         {paidDecisions.length > 0 && (
                           <div className="mt-3 pt-3 border-t border-[#1e1e2e] text-xs font-mono text-[#8b8b9e]">
-                            Creator USDC paid: <span className="text-[#00ff88]">${(sq.totalPaid / 1e6).toFixed(4)}</span>
+                            Creator USDC paid: <span className="text-[#34D399]">${(sq.totalPaid / 1e6).toFixed(4)}</span>
                             {paidDecisions[0]?.txHash && (
                               <> · tx: <span className="text-indigo-400">{paidDecisions[0].txHash.slice(0, 18)}…</span></>
                             )}
@@ -624,8 +624,8 @@ export default function OrchestratePage() {
               <div className="flex flex-col sm:flex-row items-center justify-between gap-3 bg-[#111118] rounded-xl border border-[#1e1e2e] px-5 py-4">
                 <div className="text-sm text-[#8b8b9e]">
                   <span className="text-[#f0f0f5] font-semibold">{stats.subQueriesDispatched} agents</span> paid{" "}
-                  <span className="text-[#00ff88]">${(stats.totalGatewayFeeMicro / 1e6).toFixed(3)} USDC</span> in Gateway fees →{" "}
-                  <span className="text-[#00ff88]">{stats.citationsPurchased} citations</span> purchased on Arc
+                  <span className="text-[#34D399]">${(stats.totalGatewayFeeMicro / 1e6).toFixed(3)} USDC</span> in Gateway fees →{" "}
+                  <span className="text-[#34D399]">{stats.citationsPurchased} citations</span> purchased on Arc
                 </div>
                 <a
                   href={`https://twitter.com/intent/tweet?text=${encodeURIComponent(

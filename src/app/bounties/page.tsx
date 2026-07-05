@@ -138,10 +138,10 @@ export default function BountiesPage() {
 
         {/* Featured Bounty Banner */}
         <div className="mb-10 relative" style={{ isolation: "isolate" }}>
-          <div className="absolute inset-[-1px] rounded-2xl z-[-1]" style={{ background: "linear-gradient(135deg, #6366f1 0%, #00ff88 100%)" }} />
+          <div className="absolute inset-[-1px] rounded-2xl z-[-1]" style={{ background: "linear-gradient(135deg, #6366f1 0%, #34D399 100%)" }} />
           <div className="relative bg-[#0d0d15] rounded-2xl p-6 sm:p-8">
             <div className="flex items-center gap-2 mb-3">
-              <span className="text-[10px] font-mono px-2 py-0.5 rounded-full border border-[#00ff88]/40 text-[#00ff88] bg-[#00ff88]/10">FEATURED CHALLENGE</span>
+              <span className="text-[10px] font-mono px-2 py-0.5 rounded-full border border-[#34D399]/40 text-[#34D399] bg-[#34D399]/10">FEATURED CHALLENGE</span>
               <span className="text-[10px] font-mono text-[#4a4a5e]">Deadline: Jun 29, 2026</span>
             </div>
             <h2 className="text-xl sm:text-2xl font-bold text-white mb-2">Best x402 Citation Agent Challenge</h2>
@@ -150,7 +150,7 @@ export default function BountiesPage() {
             </p>
             <div className="flex items-center gap-6 mb-5 flex-wrap">
               <div>
-                <div className="text-2xl font-bold font-mono text-[#00ff88]">0.05 USDC</div>
+                <div className="text-2xl font-bold font-mono text-[#34D399]">0.05 USDC</div>
                 <div className="text-xs text-white/40">Prize reward</div>
               </div>
               <div>
@@ -163,7 +163,7 @@ export default function BountiesPage() {
               </div>
             </div>
             <div className="flex gap-3 flex-wrap items-center">
-              <a href="/ask" className="px-5 py-2.5 rounded-lg bg-[#00ff88] text-black text-sm font-bold hover:bg-emerald-400 transition-colors">
+              <a href="/ask" className="px-5 py-2.5 rounded-lg bg-[#34D399] text-black text-sm font-bold hover:bg-emerald-400 transition-colors">
                 Submit your agent →
               </a>
               <a href="https://testnet.arcscan.app/address/0x396cf1646EbAeF85ee8428C2d9239C46Ae956085" target="_blank" rel="noopener noreferrer" className="text-xs text-[#6366f1] hover:text-indigo-300 transition-colors font-mono">

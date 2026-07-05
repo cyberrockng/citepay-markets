@@ -67,11 +67,11 @@ export async function GET(
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "40px" }}>
           <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
             <div style={{
-              background: isPay ? "rgba(0,255,136,0.15)" : "rgba(239,68,68,0.15)",
-              border: `1px solid ${isPay ? "rgba(0,255,136,0.4)" : "rgba(239,68,68,0.4)"}`,
+              background: isPay ? "rgba(52,211,153,0.15)" : "rgba(239,68,68,0.15)",
+              border: `1px solid ${isPay ? "rgba(52,211,153,0.4)" : "rgba(239,68,68,0.4)"}`,
               borderRadius: "999px",
               padding: "6px 16px",
-              color: isPay ? "#00ff88" : "#ef4444",
+              color: isPay ? "#34D399" : "#ef4444",
               fontSize: "13px",
               fontWeight: "700",
               letterSpacing: "0.1em",
@@ -116,7 +116,7 @@ export async function GET(
         {isPay && (
           <div style={{ display: "flex", alignItems: "baseline", gap: "12px", marginBottom: "28px" }}>
             <div style={{
-              color: "#00ff88",
+              color: "#34D399",
               fontSize: "80px",
               fontWeight: "900",
               lineHeight: "1",
@@ -124,7 +124,7 @@ export async function GET(
             }}>
               ${amountUSD}
             </div>
-            <div style={{ color: "rgba(0,255,136,0.5)", fontSize: "22px", fontWeight: "600" }}>
+            <div style={{ color: "rgba(52,211,153,0.5)", fontSize: "22px", fontWeight: "600" }}>
               USDC earned
             </div>
           </div>
@@ -160,7 +160,7 @@ export async function GET(
         }}>
           <div style={{ display: "flex", gap: "24px", alignItems: "center" }}>
             <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-              <div style={{ width: "6px", height: "6px", borderRadius: "50%", background: "#00ff88" }} />
+              <div style={{ width: "6px", height: "6px", borderRadius: "50%", background: "#34D399" }} />
               <span style={{ color: "rgba(255,255,255,0.4)", fontSize: "13px" }}>
                 {txHash ? "On-chain verified · Arc Testnet" : "Verified receipt · Arc Testnet"}
               </span>
@@ -170,11 +170,11 @@ export async function GET(
             </div>
           </div>
           <div style={{
-            background: "rgba(0,255,136,0.1)",
-            border: "1px solid rgba(0,255,136,0.2)",
+            background: "rgba(52,211,153,0.1)",
+            border: "1px solid rgba(52,211,153,0.2)",
             borderRadius: "8px",
             padding: "6px 14px",
-            color: "#00ff88",
+            color: "#34D399",
             fontSize: "13px",
             fontWeight: "600",
           }}>
