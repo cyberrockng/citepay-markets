@@ -26,7 +26,7 @@ const FOOTER_GROUPS = [
       { href: "/proof", label: "Proof Explorer" },
       { href: "/traction", label: "Traction" },
       { href: "/audit", label: "Audit" },
-      { href: "/receipt/1", label: "Receipt" },
+      { href: "/proof", label: "Receipts" },
       { href: "/live", label: "Live Feed" },
     ],
   },
