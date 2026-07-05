@@ -1,9 +1,8 @@
 "use client";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 
 const NAV = [
-  { href: "/",         label: "Home",   icon: "CP" },
   { href: "/demo",     label: "Demo",   icon: "D" },
   { href: "/market",   label: "Market", icon: "M" },
   { href: "/proof",    label: "Proof",  icon: "P" },
@@ -12,16 +11,28 @@ const NAV = [
 
 export function MobileNav() {
   const pathname = usePathname();
+  const router = useRouter();
   return (
     <nav className="sm:hidden fixed bottom-0 left-0 right-0 z-50 border-t border-white/10 bg-[var(--bg)]/95 backdrop-blur-md">
       <div className="flex">
+        <button
+          type="button"
+          onClick={() => router.back()}
+          className="relative flex min-h-12 flex-1 flex-col items-center gap-0.5 py-3 text-[10px] font-medium tracking-wide text-[var(--text-muted)] transition-colors hover:text-[var(--text-secondary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--accent)]"
+          aria-label="Go back"
+        >
+          <span className="flex h-6 min-w-6 items-center justify-center rounded-md border border-white/10 bg-[var(--surface)] px-1 text-[14px] font-semibold leading-none transition-colors">
+            ←
+          </span>
+          <span>Back</span>
+        </button>
         {NAV.map(({ href, label, icon }) => {
-          const active = href === "/" ? pathname === "/" : pathname.startsWith(href);
+          const active = pathname.startsWith(href);
           return (
             <Link
               key={href}
               href={href}
-              className={`relative flex-1 flex flex-col items-center gap-0.5 py-3 text-[10px] font-medium tracking-wide transition-colors ${
+              className={`relative flex min-h-12 flex-1 flex-col items-center gap-0.5 py-3 text-[10px] font-medium tracking-wide transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--accent)] ${
                 active ? "text-[var(--accent)]" : "text-[var(--text-muted)] hover:text-[var(--text-secondary)]"
               }`}
             >

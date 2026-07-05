@@ -1,6 +1,7 @@
 "use client";
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
+import { BackButton } from "@/components/back-button";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -127,7 +128,7 @@ export default function AgentExchangePage() {
 
       {/* ── NAV ── */}
       <nav className="border-b border-[#1e1e2e] px-4 py-3 flex items-center gap-4">
-        <Link href="/" className="text-[#8b8b9e] text-sm hover:text-[#f0f0f5] transition-colors">← Home</Link>
+        <BackButton />
         <span className="text-[#1e1e2e]">|</span>
         <span className="text-sm text-[#f0f0f5] font-medium">Agent Commerce Network</span>
         <div className="ml-auto flex gap-3">

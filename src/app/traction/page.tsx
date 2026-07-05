@@ -39,9 +39,9 @@ export default function TractionPage() {
     <PageShell maxWidth="max-w-5xl">
       <div className="mb-8 flex items-start justify-between">
         <div>
-          <BackButton label="Home" />
-          <h1 className="text-3xl font-bold mt-4 text-[#f0f0f5]">Traction Dashboard</h1>
-          <p className="text-[#8b8b9e] mt-1">Real metrics from real agent decisions · settled on Arc via Circle Gateway</p>
+          <BackButton />
+          <h1 className="text-3xl font-semibold tracking-tight mt-4 text-[var(--text-primary)] sm:text-4xl">Traction Dashboard</h1>
+          <p className="text-[var(--text-secondary)] mt-2">Real metrics from real agent decisions · settled on Arc via Circle Gateway</p>
         </div>
         {ts && (
           <div className="text-xs text-[#4a4a5e] font-mono mt-1">

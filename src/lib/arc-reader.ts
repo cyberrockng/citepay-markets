@@ -7,8 +7,9 @@
 import { createPublicClient, http, parseAbiItem } from "viem";
 import { ARC_RPC } from "@/lib/x402";
 
-const CONTRACT = (process.env.NEXT_PUBLIC_CONTRACT_ADDRESS ??
-  "0x396cf1646EbAeF85ee8428C2d9239C46Ae956085") as `0x${string}`;
+const DEFAULT_CONTRACT = "0x396cf1646EbAeF85ee8428C2d9239C46Ae956085" as const;
+const configuredContract = process.env.NEXT_PUBLIC_CONTRACT_ADDRESS?.trim();
+const CONTRACT = (configuredContract || DEFAULT_CONTRACT) as `0x${string}`;
 
 const DEPLOY_BLOCK = 48_040_000n;
 const CHUNK = 9_000n;

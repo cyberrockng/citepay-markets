@@ -236,7 +236,7 @@ export default function AuditPage() {
   return (
     <main className="min-h-screen bg-[#0a0a0f] text-[#f0f0f5]">
       <div className="max-w-3xl mx-auto px-6 py-12">
-        <BackButton label="Home" />
+        <BackButton />
 
         <div className="mt-6 mb-8">
           <div className="flex items-center gap-2 mb-1">

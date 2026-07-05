@@ -665,9 +665,9 @@ function AskPageContent() {
     <main className="min-h-screen bg-[#0a0a0f] text-[#f0f0f5]">
       <div className="max-w-5xl mx-auto px-6 py-12">
         <div className="mb-8">
-          <BackButton label="Home" />
-          <h1 className="text-3xl font-bold mt-4 text-[#f0f0f5]">Agent Workbench</h1>
-          <p className="text-[#8b8b9e] mt-1">Set a spend policy · Pay to query · Every decision gets a public Policy Receipt</p>
+          <BackButton />
+          <h1 className="text-3xl font-semibold tracking-tight mt-4 text-[var(--text-primary)] sm:text-4xl">Agent Workbench</h1>
+          <p className="text-[var(--text-secondary)] mt-2">Set a spend policy · Pay to query · Every decision gets a public Policy Receipt</p>
         </div>
 
         {/* Circle Wallet hero panel — no MetaMask required */}

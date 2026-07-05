@@ -18,7 +18,7 @@ export function PageShell({
   className?: string;
 }) {
   return (
-    <main className={`min-h-screen bg-[#0a0a0f] text-[#f0f0f5] overflow-x-hidden ${className}`}>
+    <main className={`min-h-screen bg-[var(--bg)] text-[var(--text-primary)] overflow-x-hidden ${className}`}>
       <div className={`${maxWidth} mx-auto px-4 sm:px-6 py-10 pb-28 sm:pb-12`}>{children}</div>
     </main>
   );
@@ -37,8 +37,8 @@ export function SectionHeader({
 }) {
   return (
     <div className={`mb-6 ${className}`}>
-      <h2 className="text-xl font-semibold text-[#f0f0f5]">{title}</h2>
-      {subtitle && <p className="text-[#8b8b9e] text-sm mt-0.5">{subtitle}</p>}
+      <h2 className="text-xl font-semibold text-[var(--text-primary)]">{title}</h2>
+      {subtitle && <p className="text-[var(--text-secondary)] text-sm mt-0.5">{subtitle}</p>}
     </div>
   );
 }
@@ -57,10 +57,10 @@ export function StatCard({
   sub?: string;
 }) {
   return (
-    <div className="bg-[#111118] rounded-xl p-5 border border-[#1e1e2e]">
+    <div className="bg-[var(--surface)] rounded-xl p-5 border border-white/10">
       <div className={`text-2xl font-bold font-mono ${accent}`}>{value}</div>
-      <div className="text-[#8b8b9e] text-xs mt-1">{label}</div>
-      {sub && <div className="text-[#4a4a5e] text-xs mt-0.5">{sub}</div>}
+      <div className="text-[var(--text-secondary)] text-xs mt-1">{label}</div>
+      {sub && <div className="text-[var(--text-muted)] text-xs mt-0.5">{sub}</div>}
     </div>
   );
 }
@@ -253,9 +253,9 @@ export function Card({
   className?: string;
   accent?: string;
 }) {
-  const border = accent ? `border-${accent}` : "border-[#1e1e2e]";
+  const border = accent ? `border-${accent}` : "border-white/10";
   return (
-    <div className={`bg-[#111118] rounded-xl border ${border} ${className}`}>
+    <div className={`bg-[var(--surface)] rounded-xl border ${border} ${className}`}>
       {children}
     </div>
   );
@@ -289,11 +289,11 @@ export function Skeleton({ className = "" }: { className?: string }) {
 
 export function SkeletonTable({ rows = 5, cols = 5 }: { rows?: number; cols?: number }) {
   return (
-    <div className="bg-[#111118] rounded-xl border border-[#1e1e2e] overflow-hidden">
-      <div className="px-6 py-4 border-b border-[#1e1e2e]">
+    <div className="bg-[var(--surface)] rounded-xl border border-white/10 overflow-hidden">
+      <div className="px-6 py-4 border-b border-white/10">
         <Skeleton className="h-4 w-40" />
       </div>
-      <div className="divide-y divide-[#1e1e2e]">
+      <div className="divide-y divide-white/10">
         {Array.from({ length: rows }).map((_, i) => (
           <div key={i} className="px-6 py-4 flex gap-4">
             {Array.from({ length: cols }).map((__, j) => (

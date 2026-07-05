@@ -92,9 +92,9 @@ export default function ReceiptPage({ params }: { params: Promise<{ id: string }
     <PageShell maxWidth="max-w-3xl">
       {/* Header */}
       <div className="mb-6">
-        <BackButton label="Home" />
+        <BackButton />
         <div className="flex items-center gap-3 mt-4 flex-wrap">
-          <h1 className="text-2xl font-bold text-[#f0f0f5]">Receipt #{receipt.id.slice(0, 8)}</h1>
+          <h1 className="text-2xl font-semibold tracking-tight text-[var(--text-primary)] sm:text-3xl">Receipt #{receipt.id.slice(0, 8)}</h1>
           <span className={`px-3 py-1 rounded border font-mono text-sm ${decisionStyle(receipt.decision)}`}>
             {receipt.decision}
           </span>
@@ -103,7 +103,7 @@ export default function ReceiptPage({ params }: { params: Promise<{ id: string }
       </div>
 
       {/* Receipt Progress Stepper */}
-      <div className="bg-[#111118] rounded-xl p-5 border border-[#1e1e2e] mb-4">
+      <div className="bg-[var(--surface)] rounded-xl p-5 border border-white/10 mb-4">
         <div className="flex items-center gap-0">
           {STEPS.map((step, i) => (
             <div key={step.label} className="flex items-center flex-1">

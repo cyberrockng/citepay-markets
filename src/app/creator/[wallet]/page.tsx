@@ -135,7 +135,7 @@ export default function CreatorPage({ params }: { params: Promise<{ wallet: stri
       )}
 
       <div className="max-w-4xl mx-auto px-6 py-12">
-        <BackButton label="Market" />
+        <BackButton />
 
         {/* Hero */}
         <div className="mt-6 mb-8 bg-gradient-to-br from-[#111118] to-[#0d0d15] rounded-2xl border border-[#1e1e2e] p-8 relative overflow-hidden">

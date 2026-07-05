@@ -26,12 +26,21 @@ export const metadata: Metadata = {
     url: "https://citepay-markets.vercel.app",
     siteName: "CitePay Markets",
     type: "website",
+    images: [
+      {
+        url: "/opengraph-image",
+        width: 1200,
+        height: 630,
+        alt: "CitePay Markets — AI agents pay for what they cite.",
+      },
+    ],
   },
   twitter: {
     card: "summary_large_image",
     title: "CitePay Markets — AI Agents That Pay Creators in USDC",
     description: "Multi-agent orchestrator + Circle Gateway nanopayments + on-chain receipts. Try the live demo → citepay-markets.vercel.app",
     creator: "@cyberrockng",
+    images: ["/opengraph-image"],
   },
 };
 

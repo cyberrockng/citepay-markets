@@ -67,7 +67,7 @@ export default function LeaderboardPage() {
   return (
     <PageShell maxWidth="max-w-5xl">
       <div className="mb-8">
-        <BackButton label="Home" />
+        <BackButton />
         <h1 className="text-3xl font-bold mt-4 text-[#f0f0f5]">Agent Leaderboard</h1>
         <p className="text-[#8b8b9e] mt-1">
           Agents ranked by total USDC routed to creators. Each row is a unique agent wallet.

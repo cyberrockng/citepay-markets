@@ -62,7 +62,7 @@ export default function ProofPage() {
   const CONTRACT = "0x396cf1646EbAeF85ee8428C2d9239C46Ae956085";
 
   return (
-    <main className="min-h-screen bg-[#0a0a0f] text-[#f0f0f5] pb-20 overflow-x-hidden">
+    <main className="min-h-screen bg-[var(--bg)] text-[var(--text-primary)] pb-20 overflow-x-hidden">
       <div className="max-w-5xl mx-auto px-4 sm:px-6 pt-10">
         <BackButton />
 
@@ -72,8 +72,8 @@ export default function ProofPage() {
             <span className="w-1.5 h-1.5 rounded-full bg-[#34D399] inline-block animate-pulse" />
             Arc Testnet · Live from blockchain
           </div>
-          <h1 className="text-3xl font-bold text-[#f0f0f5] mb-2">On-Chain Citation Proof</h1>
-          <p className="text-[#8b8b9e] text-sm max-w-2xl leading-relaxed">
+          <h1 className="text-3xl font-semibold tracking-tight text-[var(--text-primary)] mb-2 sm:text-4xl">On-Chain Citation Proof</h1>
+          <p className="text-[var(--text-secondary)] text-sm max-w-2xl leading-relaxed">
             Every <code className="text-[#34D399] bg-[#111118] px-1.5 py-0.5 rounded text-xs">CitationPaid</code> event
             emitted by <code className="text-[#f0f0f5] text-xs">CitePayMarket.sol</code> on Arc Testnet.
             This data is read directly from the blockchain — no backend database required.
@@ -81,7 +81,7 @@ export default function ProofPage() {
         </div>
 
         {/* Verify yourself */}
-        <div className="bg-[#111118] border border-[#1e1e2e] rounded-xl p-5 mb-6 font-mono text-xs">
+        <div className="bg-[var(--surface)] border border-white/10 rounded-xl p-5 mb-6 font-mono text-xs">
           <div className="text-[#4a4a5e] text-[10px] tracking-widest mb-3">VERIFY YOURSELF</div>
           <div className="space-y-1.5">
             <div className="flex gap-3">

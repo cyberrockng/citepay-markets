@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import type { TractionStats } from "@/types";
+import { BackButton } from "@/components/back-button";
 
 const MIN_PRICE = 500;
 const MAX_PRICE = 5000;
@@ -117,9 +118,9 @@ export default function RegisterPage() {
     return (
       <main className="min-h-screen bg-[#0a0a0f] text-[#f0f0f5]">
         <div className="max-w-2xl mx-auto px-6 py-12">
-          <Link href="/" className="text-[#4a4a5e] hover:text-[#8b8b9e] text-sm font-mono transition-colors mb-8 inline-block">
-            ← Back to CitePay
-          </Link>
+          <div className="mb-8">
+            <BackButton />
+          </div>
 
           <div className="bg-[#111118] rounded-2xl border border-[#34D399]/30 p-8">
             <div className="flex items-center gap-3 mb-4">
@@ -193,9 +194,9 @@ export default function RegisterPage() {
     <main className="min-h-screen bg-[#0a0a0f] text-[#f0f0f5]">
       <div className="max-w-2xl mx-auto px-6 py-12">
 
-        <Link href="/" className="text-[#4a4a5e] hover:text-[#8b8b9e] text-sm font-mono transition-colors mb-8 inline-block">
-          ← Back to CitePay
-        </Link>
+        <div className="mb-8">
+          <BackButton />
+        </div>
 
         {/* Header */}
         <div className="mb-8">

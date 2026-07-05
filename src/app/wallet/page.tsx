@@ -48,7 +48,7 @@ export default function WalletPage() {
     <main className="min-h-screen bg-[#0a0a0f] text-[#f0f0f5]">
       <div className="max-w-4xl mx-auto px-6 py-12">
         <div className="mb-8">
-          <BackButton label="Home" />
+          <BackButton />
           <div className="mt-4 flex items-center gap-3">
             <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-cyan-600 flex items-center justify-center text-white text-sm font-bold">W</div>
             <h1 className="text-3xl font-bold">Agent Wallet</h1>

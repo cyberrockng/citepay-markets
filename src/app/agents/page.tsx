@@ -8,7 +8,7 @@ export default function AgentsPage() {
   return (
     <main className="min-h-screen bg-[#0a0a0f] text-[#f0f0f5] pb-20">
       <div className="max-w-4xl mx-auto px-6 pt-12 pb-20">
-        <BackButton label="Home" />
+        <BackButton />
 
         {/* Header */}
         <div className="mt-6 mb-12">

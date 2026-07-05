@@ -53,7 +53,7 @@ export default function SubscribePage() {
 
   return (
     <PageShell maxWidth="max-w-2xl">
-      <BackButton label="Home" />
+      <BackButton />
       <h1 className="text-3xl font-bold mt-6 text-[#f0f0f5]">Subscription Pass</h1>
       <p className="text-[#8b8b9e] mt-1 mb-8">
         Pay once, query freely — {PASS_QUERIES} citation queries over {PASS_HOURS} hours for ${PASS_PRICE.toFixed(2)} USDC

@@ -1,6 +1,7 @@
 "use client";
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import { BackButton } from "@/components/back-button";
 
 interface JoinResult {
   sourceId: string;
@@ -191,9 +192,7 @@ export default function JoinPage() {
         </div>
 
         <div className="text-center mt-6">
-          <Link href="/" className="text-xs text-[#4a4a5e] hover:text-[#8b8b9e] transition-colors">
-            ← Back to CitePay Markets
-          </Link>
+          <BackButton />
         </div>
       </div>
     </main>

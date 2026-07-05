@@ -245,7 +245,7 @@ export default function OrchestratePage() {
       <div className="max-w-5xl mx-auto px-6 py-12">
         {/* Header */}
         <div className="mb-8">
-          <BackButton label="Home" />
+          <BackButton />
           <div className="mt-4 flex items-center gap-3">
             <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center text-white text-sm font-bold">
               O

@@ -337,14 +337,14 @@ export default function DemoPage() {
   const proofsDone = PROOFS.filter(k => steps[k]?.status === "done");
 
   return (
-    <main className="min-h-screen bg-[#0a0a0f] text-[#f0f0f5] overflow-x-hidden">
+    <main className="min-h-screen bg-[var(--bg)] text-[var(--text-primary)] overflow-x-hidden">
       <div className="max-w-3xl mx-auto px-4 sm:px-6 py-12">
 
         {/* Header */}
         <div className="mb-8">
-          <BackButton label="Home" />
-          <h1 className="text-3xl font-bold mt-4 text-[#f0f0f5]">Proof-of-Paid-Citation</h1>
-          <p className="text-[#8b8b9e] mt-1">Live judge demo — four proofs in one automated flow</p>
+          <BackButton />
+          <h1 className="text-3xl font-semibold tracking-tight mt-4 text-[var(--text-primary)] sm:text-4xl">Proof-of-Paid-Citation</h1>
+          <p className="text-[var(--text-secondary)] mt-2">Live judge demo — four proofs in one automated flow</p>
         </div>
 
         {/* 4 Proof Badges — 2×2 grid */}
@@ -360,7 +360,7 @@ export default function DemoPage() {
                     ? "border-[#34D399]/40 bg-[#34D399]/5 shadow-[0_0_20px_rgba(52,211,153,0.08)]"
                     : isRunning
                     ? "border-[#6366f1]/40 bg-[#6366f1]/5"
-                    : "border-[#1e1e2e] bg-[#111118]"
+                    : "border-white/10 bg-[var(--surface)]"
                 }`}
               >
                 <div className={`text-lg font-mono mb-1 transition-colors ${isDone ? "text-[#34D399]" : "text-[#4a4a5e]"}`}>
@@ -395,7 +395,7 @@ export default function DemoPage() {
             disabled={running || seeding}
             className={`flex-1 py-4 rounded-xl font-bold text-lg transition-all ${
               running || seeding
-                ? "bg-[#111118] text-[#4a4a5e] cursor-not-allowed border border-[#1e1e2e]"
+                ? "bg-[var(--surface)] text-[var(--text-muted)] cursor-not-allowed border border-white/10"
                 : "bg-[#6366f1] hover:bg-indigo-500 text-white"
             }`}
           >
@@ -405,7 +405,7 @@ export default function DemoPage() {
             onClick={resetDemo}
             disabled={running || seeding}
             title="Reset database to 10 seed sources"
-            className="px-4 py-4 rounded-xl border border-[#1e1e2e] bg-[#111118] hover:border-[#2e2e3e] text-[#4a4a5e] hover:text-[#8b8b9e] text-sm transition-all disabled:cursor-not-allowed"
+            className="px-4 py-4 rounded-xl border border-white/10 bg-[var(--surface)] hover:border-white/20 text-[var(--text-muted)] hover:text-[var(--text-secondary)] text-sm transition-all disabled:cursor-not-allowed"
           >
             {seeding ? "Resetting…" : "↺ Reset DB"}
           </button>

@@ -79,7 +79,7 @@ export default function RevenuePage() {
       {/* Header */}
       <div className="mb-8 flex items-start justify-between">
         <div>
-          <BackButton label="Home" />
+          <BackButton />
           <h1 className="text-3xl font-bold mt-4 text-[#f0f0f5]">Revenue Dashboard</h1>
           <p className="text-[#8b8b9e] mt-1">
             USDC flowing from agents to creators · settled on Arc Testnet via Circle Gateway

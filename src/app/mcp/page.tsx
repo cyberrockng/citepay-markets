@@ -154,7 +154,7 @@ export default function McpPage() {
   return (
     <main className="min-h-screen bg-[#0a0a0f] text-[#f0f0f5]">
       <div className="max-w-3xl mx-auto px-6 py-12">
-        <BackButton label="Home" />
+        <BackButton />
 
         <div className="mt-6 mb-10">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#111118] border border-[#1e1e2e] text-[#8b8b9e] text-xs font-mono mb-4">

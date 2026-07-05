@@ -81,15 +81,15 @@ export default function MarketPage() {
     <PageShell maxWidth="max-w-5xl">
       <div className="flex items-start justify-between mb-8">
         <div>
-          <BackButton label="Home" />
-          <h1 className="text-3xl font-bold mt-4 text-[#f0f0f5]">Creator Source Market</h1>
-          <p className="text-[#8b8b9e] mt-1">
+          <BackButton />
+          <h1 className="text-3xl font-semibold tracking-tight mt-4 text-[var(--text-primary)] sm:text-4xl">Creator Source Market</h1>
+          <p className="text-[var(--text-secondary)] mt-2">
             {totalSources} sources competing for AI citations · settled on Arc via Circle Gateway
           </p>
         </div>
         <button
           onClick={() => setShowForm(!showForm)}
-          className="mt-6 bg-[#6366f1] hover:bg-indigo-500 text-white font-semibold px-5 py-2 rounded-lg transition-colors text-sm"
+          className="mt-6 bg-[#6366f1] hover:bg-indigo-500 text-white font-semibold px-5 py-2 rounded-lg transition-colors text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--bg)]"
         >
           + Register Source
         </button>
@@ -103,7 +103,7 @@ export default function MarketPage() {
           { label: "Bonded", value: bondedCount, accent: "text-yellow-400" },
           { label: "Citations Paid", value: totalPaidCitations, accent: "text-[#34D399]" },
         ].map(({ label, value, accent }) => (
-          <div key={label} className="bg-[#111118] rounded-xl p-4 border border-[#1e1e2e]">
+          <div key={label} className="bg-[var(--surface)] rounded-xl p-4 border border-white/10">
             <div className={`text-2xl font-bold font-mono ${accent}`}>{value}</div>
             <div className="text-[#8b8b9e] text-xs mt-1">{label}</div>
           </div>

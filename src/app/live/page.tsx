@@ -97,7 +97,7 @@ export default function LivePage() {
 
         {/* Header */}
         <div className="mb-8">
-          <BackButton label="Home" />
+          <BackButton />
           <div className="mt-4 flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="relative flex items-center justify-center w-8 h-8">

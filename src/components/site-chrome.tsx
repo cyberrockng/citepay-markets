@@ -1,4 +1,7 @@
+"use client";
+
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 
 const NAV_LINKS = [
   { href: "/demo", label: "Demo" },
@@ -55,6 +58,7 @@ const FOOTER_GROUPS = [
 ];
 
 export function SiteNav() {
+  const pathname = usePathname();
   return (
     <header className="sticky top-0 z-40 border-b border-white/10 bg-[var(--bg)]/88 backdrop-blur-xl">
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
@@ -77,7 +81,12 @@ export function SiteNav() {
             <Link
               key={link.href}
               href={link.href}
-              className="text-sm font-medium text-[var(--text-secondary)] transition-colors hover:text-[var(--text-primary)]"
+              aria-current={pathname.startsWith(link.href) ? "page" : undefined}
+              className={`text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--bg)] ${
+                pathname.startsWith(link.href)
+                  ? "text-[var(--accent)]"
+                  : "text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+              }`}
             >
               {link.label}
             </Link>
@@ -86,7 +95,7 @@ export function SiteNav() {
 
         <Link
           href="/demo"
-          className="inline-flex h-10 items-center justify-center rounded-lg bg-[#34D399] px-4 text-sm font-semibold text-[#07110D] transition-colors hover:bg-[#6EE7B7]"
+          className="inline-flex h-10 items-center justify-center rounded-lg bg-[#34D399] px-4 text-sm font-semibold text-[#07110D] transition-colors hover:bg-[#6EE7B7] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--bg)]"
         >
           Run Demo
         </Link>

@@ -4,11 +4,6 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import type { TractionStats } from "@/types";
 
-type OnchainStats = {
-  citationPaidEvents: number;
-  sourceRegisteredEvents: number;
-};
-
 const CONTRACT_ADDRESS = "0x396cf1646EbAeF85ee8428C2d9239C46Ae956085";
 const AGENT_WALLET = "0x5389688243328c26a92b301faEEAb5fbf9AFf105";
 
@@ -66,7 +61,7 @@ function StatChip({ label, value }: { label: string; value: string }) {
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
   return (
-    <div className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--text-muted)]">
+    <div className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[var(--text-muted)]">
       {children}
     </div>
   );
@@ -96,18 +91,12 @@ function GhostLink({ href, children }: { href: string; children: React.ReactNode
 
 export default function LandingPage() {
   const [stats, setStats] = useState<TractionStats | null>(null);
-  const [onchainStats, setOnchainStats] = useState<OnchainStats | null>(null);
 
   useEffect(() => {
     fetch("/api/traction")
       .then((r) => r.json())
       .then((d) => setStats(d.stats ?? null))
       .catch(() => setStats(null));
-
-    fetch("/api/onchain-stats")
-      .then((r) => r.json())
-      .then((d) => setOnchainStats(d ?? null))
-      .catch(() => setOnchainStats(null));
   }, []);
 
   const proofStats = useMemo(
@@ -122,8 +111,8 @@ export default function LandingPage() {
   return (
     <main className="overflow-x-hidden bg-[var(--bg)] text-[var(--text-primary)]">
       <section className="relative overflow-hidden border-b border-white/10">
-        <div className="absolute inset-x-0 top-0 h-80 bg-[radial-gradient(circle_at_top_left,rgba(52,211,153,0.16),transparent_34%),radial-gradient(circle_at_top_right,rgba(99,102,241,0.12),transparent_32%)]" />
-        <div className="relative mx-auto grid max-w-7xl gap-12 px-4 py-20 sm:px-6 lg:grid-cols-[1.05fr_0.95fr] lg:px-8 lg:py-24">
+        <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/20 to-transparent" />
+        <div className="relative mx-auto grid max-w-7xl gap-12 px-4 py-20 sm:px-6 lg:grid-cols-[1.05fr_0.95fr] lg:px-8 lg:py-28">
           <div className="flex min-w-0 flex-col justify-center">
             <div className="inline-flex w-fit items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-xs font-medium text-[var(--text-secondary)]">
               <span className="h-1.5 w-1.5 rounded-full bg-[var(--accent)]" />
@@ -159,15 +148,15 @@ export default function LandingPage() {
               </div>
               <div className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <div className="rounded-lg border border-white/10 bg-black/10 p-4">
-                  <div className="text-sm text-[var(--text-muted)]">CitationPaid events</div>
+                  <div className="text-sm text-[var(--text-muted)]">Paid citations</div>
                   <div className="mt-2 font-mono text-3xl font-semibold text-[var(--accent)]">
-                    {formatNumber(onchainStats?.citationPaidEvents)}
+                    {formatNumber(stats?.paidCitations)}
                   </div>
                 </div>
                 <div className="rounded-lg border border-white/10 bg-black/10 p-4">
                   <div className="text-sm text-[var(--text-muted)]">Sources registered</div>
                   <div className="mt-2 font-mono text-3xl font-semibold">
-                    {formatNumber(onchainStats?.sourceRegisteredEvents)}
+                    {formatNumber(stats?.sourcesRegistered)}
                   </div>
                 </div>
               </div>
@@ -187,34 +176,41 @@ export default function LandingPage() {
                   <span className="text-[var(--text-muted)]">Agent wallet</span>
                   <span className="break-all text-right font-mono text-[var(--text-secondary)]">{shortAddress(AGENT_WALLET)}</span>
                 </div>
+                <div className="mt-3 flex min-w-0 items-center justify-between gap-4 text-sm">
+                  <span className="text-[var(--text-muted)]">Last stats sync</span>
+                  <span className="font-mono text-[var(--text-secondary)]">{stats ? "live" : "loading"}</span>
+                </div>
+              </div>
+              <div className="mt-4 rounded-lg bg-[#34D399]/10 p-4 text-sm leading-7 text-[var(--text-secondary)]">
+                Every number in this panel is the same traction payload used by the hero chips and proof strip.
               </div>
             </div>
           </div>
         </div>
       </section>
 
-      <section className="mx-auto grid max-w-7xl gap-6 px-4 py-16 sm:px-6 lg:grid-cols-2 lg:px-8">
-        <div className="rounded-xl border border-white/10 bg-[var(--surface)] p-7">
+      <section className="mx-auto grid max-w-7xl gap-10 px-4 py-24 sm:px-6 lg:grid-cols-[0.85fr_1.15fr] lg:px-8">
+        <div className="p-2">
           <SectionLabel>The problem</SectionLabel>
-          <h2 className="mt-4 text-3xl font-semibold tracking-tight">AI cites knowledge without permission, payment, or accountability.</h2>
-          <p className="mt-4 text-base leading-8 text-[var(--text-secondary)]">
+          <h2 className="mt-4 text-3xl font-semibold tracking-tight sm:text-4xl">AI cites knowledge without permission, payment, or accountability.</h2>
+          <p className="mt-5 text-base leading-8 text-[var(--text-secondary)]">
             Current agents can quote sources, summarize work, and route value away from creators without leaving a reliable payment or policy trail.
           </p>
         </div>
         <div className="rounded-xl border border-white/10 bg-[var(--surface-raised)] p-7">
           <SectionLabel>The solution</SectionLabel>
-          <h2 className="mt-4 text-3xl font-semibold tracking-tight">CitePay turns every citation into payment plus proof.</h2>
-          <p className="mt-4 text-base leading-8 text-[var(--text-secondary)]">
+          <h2 className="mt-4 text-3xl font-semibold tracking-tight sm:text-4xl">CitePay turns every citation into payment plus proof.</h2>
+          <p className="mt-5 text-base leading-8 text-[var(--text-secondary)]">
             Agents pay in USDC, creators earn when selected, and the resulting receipt shows exactly what was cited, why it was paid, and where it settled.
           </p>
         </div>
       </section>
 
       <section className="border-y border-white/10 bg-[var(--surface)]">
-        <div className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
+        <div className="mx-auto max-w-7xl px-4 py-24 sm:px-6 lg:px-8">
           <div className="max-w-2xl">
             <SectionLabel>How it works</SectionLabel>
-            <h2 className="mt-4 text-3xl font-semibold tracking-tight">A citation market in three verifiable steps.</h2>
+            <h2 className="mt-4 text-3xl font-semibold tracking-tight sm:text-4xl">A citation market in three verifiable steps.</h2>
           </div>
           <div className="mt-10 grid gap-4 md:grid-cols-3">
             {PROCESS_STEPS.map((step) => (
@@ -228,14 +224,14 @@ export default function LandingPage() {
         </div>
       </section>
 
-      <section className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
+      <section className="mx-auto max-w-7xl px-4 py-24 sm:px-6 lg:px-8">
         <div className="rounded-xl border border-white/10 bg-[var(--surface-raised)] p-6 sm:p-8">
           <div className="grid gap-8 lg:grid-cols-[0.9fr_1.1fr] lg:items-center">
             <div>
               <SectionLabel>Live proof strip</SectionLabel>
-              <h2 className="mt-4 text-3xl font-semibold tracking-tight">Real numbers from the running market.</h2>
+              <h2 className="mt-4 text-3xl font-semibold tracking-tight sm:text-4xl">Real numbers from the running market.</h2>
               <p className="mt-4 text-sm leading-7 text-[var(--text-secondary)]">
-                These values are read from CitePay's traction and on-chain stats APIs. If a data source is unavailable, the page shows a loading state instead of fabricated activity.
+                These values are read from CitePay's traction API. If the data source is unavailable, the page shows a loading state instead of fabricated activity.
               </p>
             </div>
             <div className="grid gap-3 sm:grid-cols-3">
@@ -253,11 +249,11 @@ export default function LandingPage() {
       </section>
 
       <section className="border-y border-white/10 bg-[var(--surface)]">
-        <div className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
+        <div className="mx-auto max-w-7xl px-4 py-24 sm:px-6 lg:px-8">
           <div className="grid gap-10 lg:grid-cols-[0.95fr_1.05fr] lg:items-start">
             <div>
               <SectionLabel>Cross-network credibility</SectionLabel>
-              <h2 className="mt-4 text-3xl font-semibold tracking-tight">Two agent networks paying each other.</h2>
+              <h2 className="mt-4 text-3xl font-semibold tracking-tight sm:text-4xl">Two agent networks paying each other.</h2>
               <p className="mt-5 text-base leading-8 text-[var(--text-secondary)]">
                 Tollgate paid CitePay as a cited creator, then CitePay paid Tollgate as an external reader through an x402-settled query. The same CitePay wallet earned and paid through agent-mediated citation settlement.
               </p>
@@ -297,10 +293,10 @@ export default function LandingPage() {
         </div>
       </section>
 
-      <section className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
+      <section className="mx-auto max-w-7xl px-4 py-24 sm:px-6 lg:px-8">
         <div className="max-w-2xl">
           <SectionLabel>Explore the product</SectionLabel>
-          <h2 className="mt-4 text-3xl font-semibold tracking-tight">The route map is part of the product story.</h2>
+          <h2 className="mt-4 text-3xl font-semibold tracking-tight sm:text-4xl">The route map is part of the product story.</h2>
         </div>
         <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {PRODUCT_CARDS.map((card) => (

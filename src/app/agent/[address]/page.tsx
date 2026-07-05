@@ -52,7 +52,7 @@ export default function AgentPage({ params }: { params: Promise<{ address: strin
   return (
     <PageShell maxWidth="max-w-4xl">
       <div className="mb-8">
-        <BackButton label="Home" />
+        <BackButton />
         <h1 className="text-2xl font-bold mt-4 text-[#f0f0f5]">Agent Dashboard</h1>
         <div className="font-mono text-[#6366f1] text-sm mt-1 break-all">{address}</div>
       </div>

@@ -27,6 +27,19 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
+html {
+  scroll-behavior: smooth;
+}
+
+* {
+  scroll-margin-top: 5rem;
+}
+
+:where(a, button, input, textarea, select):focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+
 /* Tabular numbers for all data columns */
 .font-mono { font-variant-numeric: tabular-nums; }
 
