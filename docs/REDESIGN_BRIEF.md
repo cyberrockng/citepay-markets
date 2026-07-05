@@ -89,3 +89,46 @@ Sections, in order:
 ## 8. Process
 - Work in small commits per phase; declare any deviation from this brief before doing it (AGENTS.md discipline).
 - After Phase 1 deploys, notify the user for a look before starting Phase 2 — the user is the final judge of the aesthetic, and course-correcting after Phase 1 is cheap.
+
+---
+
+# PHASE 1.5 — Punch list after Phase 1 audit (Claude + user review, Jul 5)
+Phase 1 verdict: strong architecture, professional baseline, demo verified intact (18s). What follows closes the gap to "undeniably professional." Order = priority.
+
+## 1. 🔴 CRITICAL — one source of truth for every number (credibility bug)
+The landing currently shows CONFLICTING stats on the same page:
+- Hero panel: "CitationPaid events 542" vs hero chips "404 Paid citations"
+- Hero panel: "Sources registered 30" vs the market's 10
+- Proof strip: "762 Refusals / 436 Skips" vs /api/traction's 304/205
+For a product whose pitch is verifiable numbers, two truths on one screen is disqualifying. Fix: EVERY stat on the landing comes from `/api/traction` (single fetch, shared via one hook/context). If a number intentionally measures something different (e.g., raw on-chain event count vs confirmed floor), either reconcile to one metric or label it unambiguously ("all-time on-chain events" vs "confirmed paid citations") — but prefer ONE metric per concept. Refusals/skips/sources must match the traction API exactly.
+
+## 2. USER REQUIREMENT — navigation semantics
+- The **"CitePay Markets" wordmark (top-left) is the ONLY "home" navigation** — clicking it goes to `/`.
+- Any in-page control that navigates BACK must be **labeled "Back"** (and behave as back), never "Home."
+- Mobile bottom nav: rename/replace the "Home" item accordingly — wordmark handles home; the bottom nav should not duplicate it with a "Home" label. Keep 44px touch targets.
+
+## 3. Layout balance & rhythm
+- Hero right panel ("Live Proof Layer") has dead space at the bottom — fill (e.g., latest receipt row or last-payment timestamp) or tighten its height.
+- Problem/Solution: two equal heavy boxes → vary the rhythm. Not every section needs a border; alternate full-bleed bands and contained cards like the reference sites.
+- Section vertical spacing: consistent scale (e.g., 96/128px between major sections), generous but rhythmic.
+
+## 4. Typography hierarchy pass
+Section eyebrows (THE PROBLEM / LIVE PROOF STRIP) + h2s currently compete at similar weights. Establish: eyebrow (11px tracking-widest muted) → h2 (32–40 semibold) → body (16 relaxed muted). One clear reading order per section.
+
+## 5. Verify/complete remaining brief items (from section 4 of the original brief)
+- "How it works" 3-step section — confirm present; add if missing.
+- "Explore the product" grid (max 6 cards) — routes emerging from landing.
+- Footer sitemap with grouped routes (Product/Proof/Creators/Agents/Resources) + GitHub + npm + contract address.
+
+## 6. "Undeniably professional" finishing details
+- **OG/social meta:** og:title, og:description, and an **og:image** (1200×630, new brand) — X/WhatsApp link previews are part of first impressions; we are actively sharing links.
+- Favicon consistent with the CP mark.
+- Hover/focus states on all interactive elements (subtle, consistent); visible keyboard focus.
+- Active nav state (current page highlighted in top nav).
+- Smooth-scroll + scroll-margin for any anchor links.
+- 375px mobile pass on the full landing (no clipping/overflow — history!).
+
+## 7. Acceptance for Phase 1.5
+- Zero conflicting numbers anywhere on the landing (spot-check against /api/traction live).
+- Wordmark=home, "Back"=back everywhere.
+- Playwright demo sanity still ok; build clean; `vercel --prod --yes`; verify LIVE on the domain (auto-deploy still broken).
