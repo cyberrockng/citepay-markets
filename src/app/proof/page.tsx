@@ -74,9 +74,9 @@ export default function ProofPage() {
           </div>
           <h1 className="text-3xl font-semibold tracking-tight text-[var(--text-primary)] mb-2 sm:text-4xl">On-Chain Citation Proof</h1>
           <p className="text-[var(--text-secondary)] text-sm max-w-2xl leading-relaxed">
-            Every <code className="text-[#34D399] bg-[#111118] px-1.5 py-0.5 rounded text-xs">CitationPaid</code> event
+            Recent <code className="text-[#34D399] bg-[#111118] px-1.5 py-0.5 rounded text-xs">CitationPaid</code> events
             emitted by <code className="text-[#f0f0f5] text-xs">CitePayMarket.sol</code> on Arc Testnet.
-            This data is read directly from the blockchain — no backend database required.
+            This view reads directly from the blockchain and shows the latest RPC window; all-time product totals live on the traction dashboard.
           </p>
         </div>
 
@@ -109,11 +109,11 @@ export default function ProofPage() {
           <div className="grid grid-cols-3 gap-4 mb-6">
             <div className="bg-[#111118] border border-[#34D399]/20 rounded-xl p-4 text-center">
               <div className="text-2xl font-bold font-mono text-[#34D399]">{data.totalEvents.toLocaleString()}</div>
-              <div className="text-xs text-[#8b8b9e] mt-1">CitationPaid Events</div>
+              <div className="text-xs text-[#8b8b9e] mt-1">Recent CitationPaid Events</div>
             </div>
             <div className="bg-[#111118] border border-[#34D399]/20 rounded-xl p-4 text-center">
               <div className="text-2xl font-bold font-mono text-[#34D399]">${data.totalUSDC.toFixed(4)}</div>
-              <div className="text-xs text-[#8b8b9e] mt-1">Total USDC (on-chain)</div>
+              <div className="text-xs text-[#8b8b9e] mt-1">Recent USDC (on-chain)</div>
             </div>
             <div className="bg-[#111118] border border-[#1e1e2e] rounded-xl p-4 text-center">
               <a href={data.contractExplorerUrl} target="_blank" rel="noopener noreferrer"
@@ -172,7 +172,7 @@ export default function ProofPage() {
 
         {data && !loading && (
           <div className="mt-6 text-center text-xs font-mono text-[#4a4a5e]">
-            Showing {data.events.length} events from last 10,000 blocks · Updated {new Date(data.generatedAt).toLocaleTimeString()}
+            Showing {data.events.length} recent events from the last 10,000 blocks · all-time totals are on /traction · Updated {new Date(data.generatedAt).toLocaleTimeString()}
           </div>
         )}
       </div>

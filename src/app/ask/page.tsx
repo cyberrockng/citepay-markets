@@ -202,8 +202,11 @@ function AskPageContent() {
 
   const isActive      = step !== "idle" && step !== "error" && step !== "done";
   const policy: AgentPolicy = POLICY_PRESETS[policyKey];
-  const useWalletMode = circleReady || (walletStep === "funded" && sessionKey !== null) ||
-                        (walletStep === "circle_ready" && circleWalletId !== null);
+  const circlePaymentReady = walletStep === "circle_ready" && circleWalletId !== null && circleWalletAddress !== null && siweAddress !== null;
+  const eoaPaymentReady = walletStep === "funded" && sessionKey !== null;
+  const useWalletMode = eoaPaymentReady || circlePaymentReady;
+  const circleNeedsSignIn = circleReady && !circlePaymentReady;
+  const canSubmit = query.trim() !== "" && !isActive && !circleNeedsSignIn;
 
   useEffect(() => {
     /* eslint-disable react-hooks/set-state-in-effect */
@@ -454,15 +457,19 @@ function AskPageContent() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!query.trim()) return;
+    if (circleNeedsSignIn) {
+      const message = "Please complete wallet sign-in above first — no payment was attempted.";
+      setError(message);
+      setStep("error");
+      return;
+    }
     setResult(null); setError(""); setTraces([]); setSourceGrid([]);
     traceIdRef.current = 0;
     // eslint-disable-next-line react-hooks/purity
     startMsRef.current = Date.now();
     setStep("waiting_payment");
-    if (circleReady && circleWalletId && circleWalletAddress) {
-      await runCircleWalletMode(circleWalletId, circleWalletAddress, siweAddress ?? "anonymous");
-    } else if (walletStep === "circle_ready" && circleWalletId && circleWalletAddress) {
-      await runCircleWalletMode(circleWalletId, circleWalletAddress, siweAddress ?? "anonymous");
+    if (circlePaymentReady && circleWalletId && circleWalletAddress && siweAddress) {
+      await runCircleWalletMode(circleWalletId, circleWalletAddress, siweAddress);
     } else if (walletStep === "funded" && sessionKey) {
       await runWalletMode(sessionKey);
     } else {
@@ -492,7 +499,11 @@ function AskPageContent() {
       }).then((r) => r.json());
       if (signRes.error) throw new Error(signRes.error);
       paymentSignature = signRes.paymentSignature;
-    } catch (err) { setStep("error"); setError("Circle DCW signing failed: " + String(err)); return; }
+    } catch {
+      setStep("error");
+      setError("Please complete wallet sign-in above first — no payment was attempted.");
+      return;
+    }
     addTrace({ icon: "✓", text: "EIP-3009 signed by Circle Programmable Wallet · sending to /api/ask…", sub: `Circle HSM · ${walletAddress.slice(0, 10)}… · no private key in browser`, badgeClass: "text-[#34D399]" });
 
     // Step 3: Submit with Circle-signed payment
@@ -668,6 +679,14 @@ function AskPageContent() {
           <BackButton />
           <h1 className="text-3xl font-semibold tracking-tight mt-4 text-[var(--text-primary)] sm:text-4xl">Agent Workbench</h1>
           <p className="text-[var(--text-secondary)] mt-2">Set a spend policy · Pay to query · Every decision gets a public Policy Receipt</p>
+        </div>
+
+        <div className="mb-4 rounded-xl border border-[#6366f1]/30 bg-[#6366f1]/5 p-4 text-sm text-[var(--text-secondary)]">
+          No wallet ready yet?{" "}
+          <Link href="/demo" className="font-semibold text-[#6366f1] transition-colors hover:text-indigo-300">
+            Try the one-click demo
+          </Link>
+          {" "}to see the full pay → cite → receipt flow without setup.
         </div>
 
         {/* Circle Wallet hero panel — no MetaMask required */}
@@ -869,13 +888,15 @@ function AskPageContent() {
             </div>
             <button
               type="submit"
-              disabled={!query.trim() || isActive}
+              disabled={!canSubmit}
               className={`w-full font-semibold px-6 py-3 rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${(circleReady || walletStep === "circle_ready") ? "bg-[#a78bfa] hover:bg-violet-400 text-black" : useWalletMode ? "bg-[#34D399] hover:bg-emerald-400 text-black" : "bg-[#6366f1] hover:bg-indigo-500 text-white"}`}
             >
-              {isActive ? "Running…" : (circleReady || walletStep === "circle_ready") ? "Circle Pay & Ask →" : useWalletMode ? "Sign & Ask →" : "Ask →"}
+              {isActive ? "Running…" : circleNeedsSignIn ? "Complete Sign-In First" : (circlePaymentReady || walletStep === "circle_ready") ? "Circle Pay & Ask →" : useWalletMode ? "Sign & Ask →" : "Ask →"}
             </button>
             <p className="text-[#4a4a5e] text-xs mt-3">
-              {(circleReady || walletStep === "circle_ready")
+              {circleNeedsSignIn
+                ? "Connect your wallet and sign in above to use Circle Pay & Ask. No payment has been attempted."
+                : (circlePaymentReady || walletStep === "circle_ready")
                 ? "Circle DCW HSM signs EIP-3009 · no private key in browser · Circle Gateway settles on Arc Testnet"
                 : useWalletMode
                 ? "Your browser signs the EIP-3009 auth · server never sees your session key · Circle Gateway settles on Arc"

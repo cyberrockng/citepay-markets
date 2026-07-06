@@ -24,7 +24,7 @@ const STEP_META: Record<string, { title: string; proof?: string; hint?: string }
   query:     { title: "Agent pays & queries via Circle Gateway", proof: "Agent used creator content", hint: "Making a real USDC payment on Arc + scoring sources with Claude — this takes ~30s." },
   receipt:   { title: "Creator payout confirmed",          proof: "Creator paid in USDC" },
   verify:    { title: "Evidence hash verified",            proof: "Citation decision is verifiable" },
-  tamper:    { title: "Creator edits content (simulated)" },
+  tamper:    { title: "Content change detected" },
   challenge: { title: "Objective challenge succeeds",     proof: "Tampering can be challenged" },
 };
 
@@ -708,7 +708,9 @@ function StepData({ stepKey, data, microToUsdc, trunc }: {
     <Row label="Source"   value={data.sourceTitle} plain />
     <Row label="Old hash" value={trunc(data.oldHash, 40)} />
     <Row label="New hash" value={trunc(data.newHash, 40)} />
-    <p className="text-yellow-500 mt-1">Hash at decision is now different from current hash.</p>
+    <p className="text-yellow-500 mt-1">
+      Content changed after citation: the hash stored at decision time is different from the current source hash.
+    </p>
   </>);
 
   if (stepKey === 6) return (<>
