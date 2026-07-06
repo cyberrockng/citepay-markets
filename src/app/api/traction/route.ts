@@ -11,7 +11,6 @@ export const dynamic = "force-dynamic";
 // On-chain CitationPaid events are the authoritative floor — updated 2026-07-04 (404 events).
 const FLOOR = {
   totalQueries:        136,
-  totalDecisions:      827,
   paidCitations:       404,
   refusals:            304,
   skips:               205,
