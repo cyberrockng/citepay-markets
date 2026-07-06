@@ -29,7 +29,7 @@
 "So what happens if a creator silently edits their content after being cited? Watch the challenge: hash at decision time versus hash now. They differ — challenge succeeds, reputation drops. Pure cryptography. No AI judge, no committee, no appeals to vibes."
 
 **S7 · 2:15–2:35 · Tab⑤ /proof then Tab⑥ /traction (brief scrolls)**
-"And none of this is staged. Four hundred and one paid citations — read live from the chain, no database to trust. A hundred and thirty-six queries, over eight hundred agent decisions, eleven creators paid real USDC."
+"And none of this is staged. Confirmed paid citations are read live from the chain, no database to trust. The traction page shows reconciled queries, agent decisions, creators paid, and real USDC routed."
 
 **S8 · 2:35–2:55 · Tab⑦ Tollgate answer → flick to Tab⑧ Arcscan payout**
 "And this week, the loop went external. CitePay paid Tollgate — an entirely different agent network — as its first outside reader. Tollgate's answer cited CitePay back, so part of our own payment returned to us as creator earnings. Two agent networks paying each other, one wallet, all on-chain, settled in three blocks."

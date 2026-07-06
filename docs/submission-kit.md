@@ -2,7 +2,7 @@
 > Everything needed to submit to the Lepton Agents Hackathon. Deadline: **July 6, 2026, 11:59 PM ET.** Form: https://forms.gle/SMqLaw2pMGDe58LFA · You may resubmit unlimited times before the deadline.
 
 ## Traction baseline (record before outreach)
-As of Jul 4 evening: **404 on-chain citations · 827 agent decisions · 136 queries · 11 creators paid · $0.91 USDC routed.**
+Use the current live values from `/traction`: confirmed on-chain citations, reconciled agent decisions, total queries, creators paid, and USDC routed.
 Measurement: watch `/traction` (on-chain counter climbs with real demo runs) + Vercel Analytics (visitor counts). Tomorrow's delta = real-human traction.
 
 ---
@@ -23,7 +23,7 @@ Measurement: watch `/traction` (on-chain counter climbs with real demo runs) + V
 > CitePay is the policy and payment layer for AI citations. An agent asks a question with a budget; the server returns HTTP 402; the agent pays USDC via Circle Gateway on Arc; then Claude Haiku scores sources and issues PAY / REFUSE / SKIP decisions — each one a public, hash-verifiable receipt anchored on-chain via CitePayMarket.sol. Creators register content, set a price, optionally bond it; tampering is caught by objective hash-comparison, not AI opinion. Tech: Next.js, x402 + Circle Gateway, Arc Testnet, Claude Haiku, an on-chain contract, and a published MCP server (citepay-mcp) for Claude Code/Cursor. This week we also closed a two-way settlement loop with another agent network, Tollgate — mutually confirmed on-chain.
 
 ### Traction (update numbers to live before submitting)
-> The product runs live on Arc Testnet with 404+ confirmed on-chain citation payments across 827 agent decisions, 136 queries, and 11 creators paid — all verifiable at /proof, read directly from the chain. Beyond human users, we validated agent-to-agent demand: Tollgate ran 5 autonomous paid queries into CitePay, and CitePay became Tollgate's first external paying reader (queryId 0x44dee…, confirmed by Tollgate on-chain). We're also the first external capital sponsor on Shadow Float V2. So validation comes from three sides — real citations, a mutually-confirmed cross-network loop, and a live financial integration. _(Add: "N real people ran the live demo this week" once outreach lands.)_
+> The product runs live on Arc Testnet with confirmed on-chain citation payments, reconciled agent decisions, live query volume, creator payouts, and USDC routed — all verifiable at /proof and /traction. Beyond human users, we validated agent-to-agent demand: Tollgate ran 5 autonomous paid queries into CitePay, and CitePay became Tollgate's first external paying reader (queryId 0x44dee…, confirmed by Tollgate on-chain). We're also the first external capital sponsor on Shadow Float V2. So validation comes from three sides — real citations, a mutually-confirmed cross-network loop, and a live financial integration. _(Before submitting, replace this sentence with exact current values from /traction and add: "N real people ran the live demo this week" once outreach lands.)_
 
 ### Arc OSS — "why should we choose your project?" (optional field, do fill it)
 > CitePay is fully open-source and built natively on Arc + Circle Gateway x402 — not ported, but designed around HTTP-402 settlement from the ground up. It ships a reusable MCP server, an on-chain citation contract, and the first mutually-confirmed two-way settlement loop between two independent agent networks on Arc. It's a working primitive other agent builders can plug into: a payment + trust layer for the citation economy.
@@ -41,7 +41,7 @@ Measurement: watch `/traction` (on-chain counter climbs with real demo runs) + V
 >
 > Try it, no wallet needed → **citepay-markets.vercel.app/demo** — **hit the Run button** and watch it pay a creator live in ~30s.
 >
-> It's all real: 400+ confirmed on-chain citations, verifiable at `/proof`. This week we also closed a two-way settlement loop with @Tollgate — agents from two teams paying each other on-chain.
+> It's all real: confirmed on-chain citations, verifiable at `/proof`, with current totals at `/traction`. This week we also closed a two-way settlement loop with @Tollgate — agents from two teams paying each other on-chain.
 >
 > Any feedback massively appreciated 🙏 — happy to run a query into *your* project too if we can loop.
 
@@ -52,7 +52,7 @@ Measurement: watch `/traction` (on-chain counter climbs with real demo runs) + V
 >
 > Try it live (no wallet, 30s) 👉 citepay-markets.vercel.app/demo — **hit Run and watch it pay a creator.**
 >
-> 400+ paid citations, all verifiable on-chain. Built on @arc + @circle x402.
+> Paid citations are verifiable on-chain, with live totals at `/traction`. Built on @arc + @circle x402.
 >
 > #LeptonHackathon #Arc #x402
 

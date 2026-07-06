@@ -78,21 +78,28 @@ export async function GET() {
   const neonTotalQueries  = neon?.totalQueries ?? 0;
 
   // paidCitations and totalUSDCRouted use on-chain as the floor — it's permanent and unforgeable.
+  // Decision components are reconciled before exposing totals. Do not Math.max
+  // totalDecisions independently: cold-start/durable sources can drift per field,
+  // and a verifiable-numbers product cannot show refusals > total decisions.
+  const paidCitations = Math.max(fromRedis.paidCitations, neonPaidCitations, onChainCitationEvents);
+  const refusals = Math.max(fromRedis.refusals, neonRefusals, FLOOR.refusals);
+  const skips = Math.max(fromRedis.skips, neonSkips, FLOOR.skips);
+  const totalDecisions = paidCitations + refusals + skips;
+  const totalUSDCRouted = Math.max(fromRedis.totalUSDCRouted, neonUSDC, onChainUSDC, FLOOR.totalUSDCRouted);
+
   const stats = {
     ...fromRedis,
     totalQueries:        Math.max(fromRedis.totalQueries,        neonTotalQueries,     FLOOR.totalQueries),
-    totalDecisions:      Math.max(fromRedis.totalDecisions,       FLOOR.totalDecisions),
-    paidCitations:       Math.max(fromRedis.paidCitations,        neonPaidCitations,   onChainCitationEvents),
-    refusals:            Math.max(fromRedis.refusals,             neonRefusals,         FLOOR.refusals),
-    skips:               Math.max(fromRedis.skips,                neonSkips,            FLOOR.skips),
-    totalUSDCRouted:     Math.max(fromRedis.totalUSDCRouted,      neonUSDC,             onChainUSDC, FLOOR.totalUSDCRouted),
+    totalDecisions,
+    paidCitations,
+    refusals,
+    skips,
+    totalUSDCRouted,
     shareCardsGenerated: Math.max(fromRedis.shareCardsGenerated,  FLOOR.shareCardsGenerated),
     shareCardsOpened:    Math.max(fromRedis.shareCardsOpened,     FLOOR.shareCardsOpened),
     challengeCount:      Math.max(fromRedis.challengeCount,       FLOOR.challengeCount),
     creatorsPaid:        Math.max(fromRedis.creatorsPaid ?? 0, neonCreatorsPaid, arcStats.uniqueCreators, FLOOR.creatorsPaid),
-    avgPaymentPerCitation: (fromRedis.avgPaymentPerCitation && fromRedis.avgPaymentPerCitation > 0)
-      ? fromRedis.avgPaymentPerCitation
-      : FLOOR.totalUSDCRouted / FLOOR.paidCitations,
+    avgPaymentPerCitation: paidCitations > 0 ? totalUSDCRouted / paidCitations : 0,
     onChainCitationEvents,
     confirmedPaidCitations,
   };

@@ -14,8 +14,8 @@
 1. **[/demo](https://citepay-markets.vercel.app/demo)** — auto-runs 4 live proofs: tamper detection → x402 payment → paid query → objective challenge. No wallet needed.
 2. **[/ask](https://citepay-markets.vercel.app/ask)** — run one real paid query and watch PAY / REFUSE / SKIP decisions settle in USDC.
 3. **Click any PAY receipt** — hash-recomputable evidence, Arcscan-anchored.
-4. **[/proof](https://citepay-markets.vercel.app/proof)** — 401 `CitationPaid` events read straight from Arc RPC. No database to trust.
-5. **[/traction](https://citepay-markets.vercel.app/traction)** — the live economy: 136 queries, 827 agent decisions, $0.90+ routed to 11 creators.
+4. **[/proof](https://citepay-markets.vercel.app/proof)** — recent `CitationPaid` events read straight from Arc RPC. No database to trust.
+5. **[/traction](https://citepay-markets.vercel.app/traction)** — the live economy: reconciled queries, decisions, USDC routed, and creator counts.
 
 **One sentence:** every AI citation becomes a real USDC payment with a tamper-evident receipt — and this week, money completed a full loop between two independent agent networks in three blocks (proof directly below).
 
@@ -72,7 +72,7 @@ flowchart LR
 | `/audit` | On-chain audit — reads Arc RPC directly, no database; verify wallet balance + every tx |
 | `/live` | Real-time SSE agent decision feed (auto-reconnects) |
 | `/receipt/:id` | Receipt with OG share card, evidence preimage viewer + hash recomputation |
-| `/traction` | Live on-chain stats: 827+ agent decisions, 401+ paid citations from CitePayMarket.sol |
+| `/traction` | Live traction stats: reconciled agent decisions, paid citations, USDC routed, and creator counts |
 | `/proof` | On-chain proof explorer — reads CitationPaid events directly from Arc Testnet, no database |
 | `/mcp` | MCP server install for Claude Code / Cursor integration |
 
@@ -114,7 +114,7 @@ A query run against all three agents simultaneously — FactAgent (conservative)
 
 One query. Five source agents. Five different outcomes. All decisions signed by the veracity agent and anchored on Arc Testnet via `CitePayMarket.sol`.
 
-**Tx:** [0xc02c70ab…](https://testnet.arcscan.app/tx/0xc02c70abadf076c326e4fe393edc6bf0634816b82cf1402127cb96e6116269b0) · **Block:** 48070337 · **385 total `CitationPaid` events** on-chain
+**Tx:** [0xc02c70ab…](https://testnet.arcscan.app/tx/0xc02c70abadf076c326e4fe393edc6bf0634816b82cf1402127cb96e6116269b0) · **Block:** 48070337 · live `CitationPaid` event count at [`/proof`](https://citepay-markets.vercel.app/proof)
 
 ---
 
@@ -133,12 +133,12 @@ CitePay Markets is a live agentic citation economy where:
 - **Citation memory** — source `paidCount` / `refusedCount` persists across serverless cold starts via Vercel Edge Config. Frequently cited sources earn a pre-trust bonus (+8 to +12 score).
 - **Public creator registration** — `/register` lets anyone register their content in 60 seconds, no approval, no API key required.
 
-### Live Traction (Arc Testnet) — as of Jul 4, 2026 · [live numbers →](https://citepay-markets.vercel.app/traction)
-- **401 confirmed `CitationPaid` events** on CitePayMarket.sol (verifiable: [0x396c…6085](https://testnet.arcscan.app/address/0x396cf1646EbAeF85ee8428C2d9239C46Ae956085))
-- **827 agent decisions** — PAY / REFUSE / SKIP / BLOCKED_BY_POLICY — all with public receipts
-- **136 total queries** processed; creator USDC payout is a separate Arc transaction per receipt
-- **$0.9035 USDC routed** to creators across 11 unique creator wallets
-- **10 sources** registered onchain across 3 source agents
+### Live Traction (Arc Testnet) · [live numbers →](https://citepay-markets.vercel.app/traction)
+- Confirmed `CitationPaid` events on CitePayMarket.sol (verifiable: [0x396c…6085](https://testnet.arcscan.app/address/0x396cf1646EbAeF85ee8428C2d9239C46Ae956085))
+- Reconciled agent decisions — PAY / REFUSE / SKIP — all with public receipts
+- Total queries processed; creator USDC payout is a separate Arc transaction per receipt
+- USDC routed to creators across unique creator wallets
+- Sources registered onchain across source agents
 - **3 source agent identities** with distinct wallets, specialties, and reputation scores
 - **1 Pilot Agent** attesting allocation decisions onchain before paying
 - **Citation memory** — source reputation persists across cold starts via Edge Config
@@ -189,7 +189,7 @@ CitePay Markets solves all three:
 | Configurable Agent Spend Policies (conservative/balanced/aggressive) | ✓ | ✗ |
 | SHA-256 evidence hash per decision | ✓ | ✗ |
 | Objective content-integrity challenge | ✓ | ✗ |
-| 398+ CitationPaid events verifiable on Arc Testnet | ✓ | ✗ |
+| Live CitationPaid events verifiable on Arc Testnet | ✓ | ✗ |
 | Purpose taxonomy: CITE / QUERY_FEE / AGENT_REWARD / BOND_SLASH | ✓ | ✗ |
 | Citation memory: reputation persists across cold starts (Edge Config) | ✓ | ✗ |
 | Public creator registration — no API key, no approval | ✓ | ✗ |
