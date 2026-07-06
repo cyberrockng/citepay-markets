@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { BrandMark } from "@/components/brand-mark";
 
 const NAV_LINKS = [
   { href: "/demo", label: "Demo" },
@@ -63,9 +64,7 @@ export function SiteNav() {
     <header className="sticky top-0 z-40 border-b border-white/10 bg-[var(--bg)]/88 backdrop-blur-xl">
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
         <Link href="/" className="group flex min-w-0 items-center gap-3" aria-label="CitePay Markets home">
-          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-white/10 bg-[var(--surface-raised)] text-sm font-semibold text-[var(--text-primary)] transition-colors group-hover:border-emerald-300/40">
-            CP
-          </span>
+          <BrandMark size={38} />
           <span className="min-w-0">
             <span className="block truncate text-sm font-semibold tracking-tight text-[var(--text-primary)]">
               CitePay Markets
@@ -111,9 +110,7 @@ export function SiteFooter() {
         <div className="grid gap-10 lg:grid-cols-[1.2fr_2fr]">
           <div>
             <Link href="/" className="inline-flex items-center gap-3">
-              <span className="flex h-10 w-10 items-center justify-center rounded-lg border border-white/10 bg-[var(--surface-raised)] text-sm font-semibold text-[var(--text-primary)]">
-                CP
-              </span>
+              <BrandMark size={42} />
               <span>
                 <span className="block text-base font-semibold text-[var(--text-primary)]">CitePay Markets</span>
                 <span className="mt-1 block text-xs text-[var(--text-muted)]">AI citations with USDC receipts.</span>

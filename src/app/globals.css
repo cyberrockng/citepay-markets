@@ -13,6 +13,9 @@
   --text-primary: #F5F7FA;
   --text-secondary: #A6ADBB;
   --text-muted: #6B7280;
+  --brand-gradient: linear-gradient(135deg, #34D399 0%, #2DD4BF 45%, #6366F1 100%);
+  --shadow-soft: 0 24px 80px rgba(0, 0, 0, 0.32);
+  --shadow-lift: 0 18px 55px rgba(4, 12, 20, 0.34);
 }
 
 @theme inline {
@@ -94,4 +97,52 @@ html {
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
+}
+
+.brand-mark {
+  border-radius: 10px;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.08), 0 10px 28px rgba(0,0,0,0.28);
+}
+
+.premium-card {
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.045), rgba(255,255,255,0.018)),
+    var(--surface);
+  border: 1px solid rgba(255,255,255,0.10);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.055), var(--shadow-soft);
+}
+
+.hero-mesh {
+  background:
+    radial-gradient(circle at 76% 18%, rgba(52,211,153,0.14), transparent 30%),
+    radial-gradient(circle at 18% 22%, rgba(99,102,241,0.12), transparent 28%),
+    linear-gradient(rgba(255,255,255,0.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,0.035) 1px, transparent 1px);
+  background-size: auto, auto, 48px 48px, 48px 48px;
+  mask-image: linear-gradient(to bottom, black 0%, black 62%, transparent 100%);
+}
+
+.lift-link {
+  transition: transform 180ms ease, border-color 180ms ease, background 180ms ease, box-shadow 180ms ease;
+}
+.lift-link:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-lift);
+}
+
+.balance-text {
+  text-wrap: balance;
+}
+
+.pretty-text {
+  text-wrap: pretty;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+  }
 }

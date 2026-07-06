@@ -37,10 +37,10 @@ export default function Image() {
             <div
               style={{
                 alignItems: "center",
-                background: "#171B24",
+                background: "linear-gradient(135deg, rgba(52,211,153,0.20), rgba(99,102,241,0.18))",
                 border: "1px solid rgba(255,255,255,0.12)",
                 borderRadius: 18,
-                color: "#34D399",
+                color: "#F5F7FA",
                 display: "flex",
                 fontSize: 28,
                 fontWeight: 800,
@@ -49,7 +49,7 @@ export default function Image() {
                 width: 72,
               }}
             >
-              CP
+              ][
             </div>
             <div style={{ display: "flex", flexDirection: "column" }}>
               <div style={{ fontSize: 34, fontWeight: 800 }}>CitePay Markets</div>
@@ -67,7 +67,7 @@ export default function Image() {
           </div>
 
           <div style={{ alignItems: "center", color: "#34D399", display: "flex", fontSize: 24, fontWeight: 700, gap: 16 }}>
-            <span>Live demo</span>
+            <span>Live citation receipts</span>
             <span style={{ color: "#6B7280" }}>•</span>
             <span>On-chain proof</span>
             <span style={{ color: "#6B7280" }}>•</span>
