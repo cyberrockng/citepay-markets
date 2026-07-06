@@ -5,7 +5,7 @@ import { createHash } from "crypto";
 import { v4 as uuidv4 } from "uuid";
 import type { Source, Receipt, QueryRecord } from "@/types";
 import { redisIncrSourcePaid, redisIncrSourceRefused } from "@/lib/redis-stats";
-import { persistReceipt } from "@/lib/neon";
+import { persistReceipt, updateNeonReceiptOnChain } from "@/lib/neon";
 
 const DATA_DIR = process.env.NODE_ENV === "production"
   ? "/tmp"
@@ -396,6 +396,7 @@ export function updateSourceOnChainId(id: string, onChainId: number): void {
 export function updateReceiptOnChain(id: string, onChainReceiptId: number, onChainTxHash: string): void {
   getDb().prepare("UPDATE receipts SET on_chain_receipt_id = ?, on_chain_tx_hash = ? WHERE id = ?")
     .run(onChainReceiptId, onChainTxHash, id);
+  updateNeonReceiptOnChain(id, onChainReceiptId, onChainTxHash);
 }
 
 function rowToSource(r: Record<string, unknown>): Source {
@@ -457,10 +458,22 @@ export function insertReceipt(r: Receipt): void {
     decision: r.decision, query: r.query, queryHash: r.queryHash,
     sourceTitle: r.sourceTitle, sourceUrl: r.sourceUrl,
     amountPaid: r.amountPaid, evidenceHash: r.evidenceHash,
+    evidencePreimage: r.evidencePreimage,
+    contentHashAtDecision: r.contentHashAtDecision,
+    scores: r.scores,
     reason: r.reason, txHash: r.txHash ?? null,
     paymentStatus: r.paymentStatus ?? null, policyProfile: r.policyProfile ?? null,
+    policyRulesPassed: r.policyRulesPassed,
+    policyRulesFailed: r.policyRulesFailed,
+    policyReason: r.policyReason,
+    agentSignature: r.agentSignature ?? null,
+    budgetBefore: r.budgetBefore,
+    budgetAfter: r.budgetAfter,
+    challenged: r.challenged,
     onChainReceiptId: r.onChainReceiptId ?? null, onChainTxHash: r.onChainTxHash ?? null,
-    purposeCode: r.purposeCode ?? null, createdAt: r.createdAt,
+    purposeCode: r.purposeCode ?? null,
+    contributionWeight: r.contributionWeight ?? null,
+    createdAt: r.createdAt,
   });
 }
 

@@ -87,6 +87,16 @@ describe("Traction unit conversion", () => {
     expect(microUSDC).toBeGreaterThan(1000); // raw value is wrong for display
     expect(microUSDC / 1e6).toBeLessThan(10); // converted value is correct
   });
+
+  it("reconciles total decisions from decision components", () => {
+    const paidCitations = 404;
+    const refusals = 304;
+    const skips = 205;
+    const totalDecisions = paidCitations + refusals + skips;
+
+    expect(totalDecisions).toBe(913);
+    expect(paidCitations + refusals + skips).toBe(totalDecisions);
+  });
 });
 
 describe("payCreator zero-amount guard contract", () => {

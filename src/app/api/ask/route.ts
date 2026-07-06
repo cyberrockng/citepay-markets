@@ -21,7 +21,6 @@ import {
   updateSourceStats,
   updateReceiptOnChain,
 } from "@/lib/db";
-import { persistReceipt } from "@/lib/neon";
 
 let anchorChecked = false;
 
@@ -270,28 +269,6 @@ Provide a concise answer with inline citations.`,
     };
 
     insertReceipt(receipt);
-    persistReceipt({
-      id:                 receipt.id,
-      sourceId:           String(receipt.sourceId),
-      queryId:            receipt.queryId,
-      agentAddress:       receipt.agentAddress,
-      creatorWallet:      receipt.creatorWallet,
-      decision:           receipt.decision,
-      query:              receipt.query,
-      queryHash:          receipt.queryHash,
-      sourceTitle:        receipt.sourceTitle,
-      sourceUrl:          receipt.sourceUrl,
-      amountPaid:         receipt.amountPaid,
-      evidenceHash:       receipt.evidenceHash,
-      reason:             receipt.reason,
-      txHash:             receipt.txHash,
-      paymentStatus:      receipt.paymentStatus,
-      policyProfile:      receipt.policyProfile ?? null,
-      onChainReceiptId:   null,
-      onChainTxHash:      null,
-      purposeCode:        receipt.purposeCode ?? null,
-      createdAt:          receipt.createdAt,
-    });
 
     // Emit live feed event (best-effort — only reaches same serverless instance)
     agentEvents.emit("decision", {
