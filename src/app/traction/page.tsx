@@ -40,6 +40,7 @@ export default function TractionPage() {
           <BackButton />
           <h1 className="text-3xl font-semibold tracking-tight mt-4 text-[var(--text-primary)] sm:text-4xl">Traction Dashboard</h1>
           <p className="text-[var(--text-secondary)] mt-2">Real metrics from real agent decisions · settled on Arc via Circle Gateway</p>
+          <p className="text-[#8b8b9e] text-xs mt-1.5">Some volume includes demo traffic run through the public endpoints; every paid event is still settled on-chain and independently verifiable.</p>
         </div>
         {ts && (
           <div className="text-xs text-[#4a4a5e] font-mono mt-1">

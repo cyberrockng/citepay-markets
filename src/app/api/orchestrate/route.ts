@@ -251,8 +251,8 @@ export async function POST(req: NextRequest) {
           agentWallet: "0x5389688243328c26a92b301faEEAb5fbf9AFf105",
           host,
         });
-        send({ type: "trace", line: `[Orchestrator] Synthesized answer auto-registered → /knowledge/${knowledgeSourceId}` });
-        send({ type: "knowledge_registered", knowledgeSourceId, knowledgeUrl: `${proto}://${host}/knowledge/${knowledgeSourceId}` });
+        send({ type: "trace", line: `[Orchestrator] Synthesized answer auto-registered → /labs/knowledge/${knowledgeSourceId}` });
+        send({ type: "knowledge_registered", knowledgeSourceId, knowledgeUrl: `${proto}://${host}/labs/knowledge/${knowledgeSourceId}` });
       } catch (e) {
         send({ type: "trace", line: `[Orchestrator] Knowledge auto-registration skipped: ${String(e).slice(0, 60)}` });
       }

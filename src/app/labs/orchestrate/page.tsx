@@ -440,7 +440,7 @@ export default function OrchestratePage() {
                     <p className="text-xs text-white/40">Future AI agents can cite this knowledge and pay the originating agent in USDC</p>
                   </div>
                 </div>
-                <a href={`/knowledge/${knowledgeSourceId}`}
+                <a href={`/labs/knowledge/${knowledgeSourceId}`}
                   className="shrink-0 px-4 py-2 rounded-lg border border-violet-500/30 text-violet-300 text-sm hover:border-violet-500/60 hover:text-violet-200 transition-colors whitespace-nowrap">
                   View source →
                 </a>

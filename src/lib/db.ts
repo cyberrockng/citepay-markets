@@ -772,7 +772,7 @@ export function autoRegisterKnowledge(opts: {
     : opts.query;
   const title = `[AI Synthesis] ${shortTitle}`;
   const proto = opts.host.startsWith("localhost") ? "http" : "https";
-  const url = `${proto}://${opts.host}/knowledge/${id}`;
+  const url = `${proto}://${opts.host}/labs/knowledge/${id}`;
   const description = opts.answer.slice(0, 400);
 
   db.prepare(`

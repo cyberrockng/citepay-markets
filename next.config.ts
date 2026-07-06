@@ -42,6 +42,8 @@ const nextConfig: NextConfig = {
       { source: "/agents", destination: "/labs/agents", permanent: true },
       { source: "/orchestrate", destination: "/labs/orchestrate", permanent: true },
       { source: "/economy", destination: "/labs/economy", permanent: true },
+      { source: "/wallet", destination: "/labs/wallet", permanent: true },
+      { source: "/knowledge/:id", destination: "/labs/knowledge/:id", permanent: true },
     ];
   },
 };

@@ -148,6 +148,7 @@ CitePay Markets is a live agentic citation economy where:
 - **Citation memory** — source reputation persists across cold starts via Edge Config
 
 > Production metrics count only confirmed payout transactions. Simulated receipts (zero-balance fallback) are excluded from confirmed stats at `/api/proof`.
+> Some volume includes demo traffic run through the public endpoints (see `scripts/generate-traction.mjs`); every paid event is still settled on-chain and independently verifiable.
 
 ---
 
