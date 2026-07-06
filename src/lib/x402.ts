@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { sha256 } from "./evidence";
 import { isReplayed, recordSignature } from "./replay-guard";
+import { isExplicitDevModeEnabled } from "./env-gates";
 
 // ── Arc Testnet constants ──────────────────────────────────────────────────
 export const ARC_CHAIN_ID     = 5042002;
@@ -127,11 +128,7 @@ export async function verifyGatewayPayment(req: NextRequest): Promise<{
   const legacyPayment    = req.headers.get("X-PAYMENT") || req.headers.get("x-payment");
 
   // Dev fallback: X-PAYMENT for web UI / curl demos.
-  // Explicitly blocked in production even if X402_DEV_MODE is set — prevents accidental bypass.
-  const devMode =
-    (process.env.NODE_ENV === "development" || process.env.X402_DEV_MODE === "true") &&
-    process.env.VERCEL_ENV !== "production";
-  if (devMode && legacyPayment && !paymentSignature) {
+  if (isExplicitDevModeEnabled() && legacyPayment && !paymentSignature) {
     const fakeTx = `0x${sha256(legacyPayment + Date.now()).substring(0, 64)}`;
     return { valid: true, txHash: fakeTx };
   }

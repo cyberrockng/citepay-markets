@@ -3,6 +3,7 @@
  * Tests critical path: policy enforcement → unit conversion → receipt integrity.
  */
 import { describe, it, expect } from "vitest";
+import { isExplicitDevModeEnabled } from "../src/lib/env-gates";
 
 // ── Policy rule constants (mirrors agent-exchange.ts) ──────────────────────────
 
@@ -125,5 +126,31 @@ describe("PaymentResult.failureReason contract", () => {
     };
     expect((confirmedResult as Record<string, unknown>).failureReason).toBeUndefined();
     expect(confirmedResult.status).toBe("confirmed");
+  });
+});
+
+describe("x402 dev bypass gate", () => {
+  it("is disabled when environment variables are unset", () => {
+    const env = process.env as Record<string, string | undefined>;
+    const original = {
+      X402_DEV_MODE: env.X402_DEV_MODE,
+      VERCEL_ENV: env.VERCEL_ENV,
+      NODE_ENV: env.NODE_ENV,
+    };
+
+    try {
+      delete env.X402_DEV_MODE;
+      delete env.VERCEL_ENV;
+      delete env.NODE_ENV;
+
+      expect(isExplicitDevModeEnabled()).toBe(false);
+    } finally {
+      if (original.X402_DEV_MODE === undefined) delete env.X402_DEV_MODE;
+      else env.X402_DEV_MODE = original.X402_DEV_MODE;
+      if (original.VERCEL_ENV === undefined) delete env.VERCEL_ENV;
+      else env.VERCEL_ENV = original.VERCEL_ENV;
+      if (original.NODE_ENV === undefined) delete env.NODE_ENV;
+      else env.NODE_ENV = original.NODE_ENV;
+    }
   });
 });

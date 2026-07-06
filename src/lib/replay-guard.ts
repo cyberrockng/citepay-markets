@@ -6,14 +6,19 @@
 
 import { createHmac } from "crypto";
 import { neon } from "@neondatabase/serverless";
+import { isExplicitDevModeEnabled } from "./env-gates";
 
 const TTL_MS = 600_000; // 10 minutes
 const _seen = new Map<string, number>(); // hot cache: fingerprint → timestamp
 
-const HMAC_SECRET = process.env.REPLAY_GUARD_SECRET ?? "citepay-replay-guard-v1";
-
 let _sql: ReturnType<typeof neon> | null = null;
 let _tableReady = false;
+
+function getHmacSecret(): string {
+  if (process.env.REPLAY_GUARD_SECRET) return process.env.REPLAY_GUARD_SECRET;
+  if (isExplicitDevModeEnabled()) return "citepay-replay-guard-dev-only";
+  throw new Error("REPLAY_GUARD_SECRET is required outside explicit dev mode");
+}
 
 function getSql() {
   const url = process.env.DATABASE_URL;
@@ -39,7 +44,7 @@ async function ensureTable() {
 }
 
 function fingerprint(sig: string): string {
-  return createHmac("sha256", HMAC_SECRET).update(sig).digest("hex");
+  return createHmac("sha256", getHmacSecret()).update(sig).digest("hex");
 }
 
 function pruneMemory(): void {
