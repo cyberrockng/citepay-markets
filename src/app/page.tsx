@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
-import type { TractionStats } from "@/types";
+import { useMemo } from "react";
+import { useTraction } from "@/hooks/use-traction";
 
 const CONTRACT_ADDRESS = "0x396cf1646EbAeF85ee8428C2d9239C46Ae956085";
 const AGENT_WALLET = "0x5389688243328c26a92b301faEEAb5fbf9AFf105";
@@ -90,14 +90,7 @@ function GhostLink({ href, children }: { href: string; children: React.ReactNode
 }
 
 export default function LandingPage() {
-  const [stats, setStats] = useState<TractionStats | null>(null);
-
-  useEffect(() => {
-    fetch("/api/traction")
-      .then((r) => r.json())
-      .then((d) => setStats(d.stats ?? null))
-      .catch(() => setStats(null));
-  }, []);
+  const { stats } = useTraction();
 
   const proofStats = useMemo(
     () => [

@@ -1,8 +1,8 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
-import type { TractionStats } from "@/types";
 import { BackButton } from "@/components/back-button";
+import { useTraction } from "@/hooks/use-traction";
 
 const MIN_PRICE = 500;
 const MAX_PRICE = 5000;
@@ -20,7 +20,7 @@ interface RegisteredSource {
 }
 
 export default function RegisterPage() {
-  const [stats, setStats] = useState<TractionStats | null>(null);
+  const { stats } = useTraction();
 
   const [creatorName,   setCreatorName]   = useState("");
   const [creatorHandle, setCreatorHandle] = useState("");
@@ -46,13 +46,6 @@ export default function RegisterPage() {
     setPrice(1500);
     setError("");
   }
-
-  useEffect(() => {
-    fetch("/api/traction")
-      .then((r) => r.json())
-      .then((d) => setStats(d.stats))
-      .catch(() => {});
-  }, []);
 
   function validate(): string {
     if (!creatorName.trim()) return "Your name is required.";

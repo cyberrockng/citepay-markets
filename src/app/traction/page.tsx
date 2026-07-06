@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import type { TractionStats } from "@/types";
+import { useTraction } from "@/hooks/use-traction";
 import { PageShell, StatCard } from "@/components/ui";
 import { BackButton } from "@/components/back-button";
 
@@ -14,8 +14,7 @@ interface OnChainStats {
 }
 
 export default function TractionPage() {
-  const [stats, setStats] = useState<TractionStats | null>(null);
-  const [ts, setTs] = useState("");
+  const { stats, generatedAt: ts } = useTraction({ refreshMs: 15000 });
   const [onChain, setOnChain] = useState<OnChainStats | null>(null);
 
   const onChainUsdcRouted = onChain?.totalUSDCMicro != null
@@ -24,10 +23,6 @@ export default function TractionPage() {
 
   useEffect(() => {
     function load() {
-      fetch("/api/traction")
-        .then((r) => r.json())
-        .then((d) => { setStats(d.stats); setTs(d.generatedAt); })
-        .catch(() => {});
       fetch("/api/onchain-stats")
         .then((r) => r.json())
         .then((d) => { if (!d.error) setOnChain(d); })

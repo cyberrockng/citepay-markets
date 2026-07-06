@@ -2,22 +2,12 @@
 import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import { BackButton } from "@/components/back-button";
+import { useTraction } from "@/hooks/use-traction";
+import type { TractionStats } from "@/types";
 
 const ARCSCAN = "https://testnet.arcscan.app";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
-
-interface TractionStats {
-  totalQueries: number;
-  paidCitations: number;
-  refusals: number;
-  skips: number;
-  totalUSDCRouted: number;
-  creatorsPaid: number;
-  sourcesRegistered: number;
-  challengeCount: number;
-  onChainCitationEvents: number;
-}
 
 interface Source {
   id: string;
@@ -410,6 +400,7 @@ function DecisionBar({ t }: { t: TractionStats }) {
 // ── Main page ─────────────────────────────────────────────────────────────────
 
 export default function EconomyPage() {
+  const { stats: tractionStats } = useTraction({ refreshMs: 15000 });
   const [data, setData] = useState<IndexData>({
     traction: null, sources: [], agents: [], recentPayments: [], openBounties: [], lessons: [],
   });
@@ -418,8 +409,7 @@ export default function EconomyPage() {
 
   const load = useCallback(async () => {
     try {
-      const [tractionRes, sourcesRes, agentsRes, revenueRes, bountiesRes, lessonsRes] = await Promise.all([
-        fetch("/api/traction").then((r) => r.json()),
+      const [sourcesRes, agentsRes, revenueRes, bountiesRes, lessonsRes] = await Promise.all([
         fetch("/api/sources").then((r) => r.json()),
         fetch("/api/leaderboard").then((r) => r.json()),
         fetch("/api/revenue").then((r) => r.json()),
@@ -428,7 +418,7 @@ export default function EconomyPage() {
       ]);
 
       setData({
-        traction:      tractionRes.stats ?? null,
+        traction:      null,
         sources:       sourcesRes.sources ?? [],
         agents:        agentsRes.entries ?? [],
         recentPayments: revenueRes.recentPayments ?? [],
@@ -448,7 +438,7 @@ export default function EconomyPage() {
     return () => clearInterval(iv);
   }, [load]);
 
-  const t = data.traction;
+  const t = tractionStats ?? data.traction;
 
   return (
     <div className="min-h-screen bg-[#0a0a0f] text-[#f0f0f5]">

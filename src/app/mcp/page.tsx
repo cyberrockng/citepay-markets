@@ -1,7 +1,7 @@
 "use client";
 import { useState, useEffect } from "react";
 import { BackButton } from "@/components/back-button";
-import type { TractionStats } from "@/types";
+import { useTraction } from "@/hooks/use-traction";
 
 const CLAUDE_CONFIG = `{
   "mcpServers": {
@@ -145,11 +145,7 @@ function DemoTerminal() {
 }
 
 export default function McpPage() {
-  const [stats, setStats] = useState<TractionStats | null>(null);
-
-  useEffect(() => {
-    fetch("/api/traction").then((r) => r.json()).then((d) => setStats(d.stats)).catch(() => {});
-  }, []);
+  const { stats } = useTraction();
 
   return (
     <main className="min-h-screen bg-[#0a0a0f] text-[#f0f0f5]">

@@ -139,4 +139,6 @@ export interface TractionStats {
   challengeCount: number;
   activeAgents: number;
   agentReputation: number;
+  onChainCitationEvents: number;
+  confirmedPaidCitations: number;
 }
