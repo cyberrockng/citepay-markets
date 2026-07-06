@@ -39,7 +39,6 @@ interface RunResult {
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-function shortAddr(addr: string) { return `${addr.slice(0, 6)}…${addr.slice(-4)}`; }
 function fmtUsdc(micro: number)  { return `$${(micro / 1_000_000).toFixed(4)}`; }
 
 const POLICY_BADGE: Record<string, string> = {
@@ -84,7 +83,13 @@ export default function AgentExchangePage() {
       .catch(() => {});
   }, []);
 
-  useEffect(() => { loadAgents(); loadReceipts(); }, [loadAgents, loadReceipts]);
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      loadAgents();
+      loadReceipts();
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, [loadAgents, loadReceipts]);
 
   async function runDemo() {
     setRunning(true); setRunError(""); setRunResult(null);

@@ -123,10 +123,6 @@ const CITEPAY_ABI = parseAbi([
   "function checkAndRecord(uint256 mandateId, uint256 sourceId, bytes32 evidenceHash, uint256 amountMicro, uint256 relevanceScore, bool creatorBonded) returns (bool allowed, uint8 blockReason)",
 ]);
 
-const CITATION_PAID_TOPIC = "0x" + [..."CitationPaid(uint256,uint256,address,address,uint256,bytes32,bytes32)"]
-  .reduce(() => "") // placeholder — resolved via viem below
-  .padStart(64, "0");
-
 export async function w3sPayCitation(opts: {
   contract:    string;
   sourceId:    number;

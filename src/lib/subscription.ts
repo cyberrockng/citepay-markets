@@ -6,6 +6,7 @@
  */
 
 import { createHmac } from "crypto";
+import { v4 as uuidv4 } from "uuid";
 import { getDb } from "@/lib/db";
 import { neon } from "@neondatabase/serverless";
 
@@ -53,7 +54,6 @@ export interface PassRecord {
 
 export function createPass(agentAddress: string, txHash: string | null): PassRecord {
   ensurePassTable();
-  const { v4: uuidv4 } = require("uuid") as { v4: () => string };
   const id = uuidv4();
   const token = sign(id);
   const now = new Date();

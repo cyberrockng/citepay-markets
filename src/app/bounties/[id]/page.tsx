@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect, use } from "react";
+import { useState, useEffect, use, useCallback } from "react";
 import Link from "next/link";
 import { BackButton } from "@/components/back-button";
 
@@ -34,7 +34,7 @@ export default function BountyDetailPage({ params }: { params: Promise<{ id: str
   const [submitError, setSubmitError] = useState("");
   const [submitted, setSubmitted] = useState(false);
 
-  const load = () => {
+  const load = useCallback(() => {
     fetch(`/api/bounties/${id}`)
       .then((r) => r.json())
       .then((d: { bounty: Bounty; submissions: Submission[] }) => {
@@ -43,9 +43,9 @@ export default function BountyDetailPage({ params }: { params: Promise<{ id: str
         setLoading(false);
       })
       .catch(() => setLoading(false));
-  };
+  }, [id]);
 
-  useEffect(() => { load(); }, [id]);
+  useEffect(() => { load(); }, [load]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -97,7 +97,6 @@ export default function BountyDetailPage({ params }: { params: Promise<{ id: str
   const hoursLeft = Math.max(0, Math.round((deadline.getTime() - nowMs) / 3600000));
   const isOpen = bounty.status === "open" && deadline.getTime() > nowMs;
   const isClosed = bounty.status === "closed";
-  const AGENT_ADDRESS = "0x5389688243328c26a92b301faEEAb5fbf9AFf105";
 
   return (
     <main className="min-h-screen bg-[#0a0a0f] text-white">

@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { v4 as uuidv4 } from "uuid";
 import { insertSource } from "@/lib/db";
 import { registerSourceOnChain } from "@/lib/anchor";
-import { fetchAndHash } from "@/lib/content-hash";
 import { fetchPageContent } from "@/lib/page-indexer";
 
 export const dynamic = "force-dynamic";

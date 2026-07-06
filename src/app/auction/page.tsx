@@ -178,7 +178,6 @@ export default function AuctionPage() {
   const winners = ranked.slice(0, 3);
   const winnerIds = new Set(winners.map((s) => s.sourceId));
 
-  const totalAuctionValue = ranked.reduce((s, src) => s + src.price, 0) / 1_000_000;
   const topScore = ranked[0]?.total ?? 0;
   const avgScore = ranked.length > 0 ? Math.round(ranked.reduce((s, src) => s + src.total, 0) / ranked.length) : 0;
 

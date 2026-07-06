@@ -83,10 +83,12 @@ export async function GET(req: NextRequest) {
   if (!pass) pass = await getNeonPassStatus(token);
   if (!pass) return NextResponse.json({ error: "Pass not found" }, { status: 404 });
 
-  const expired = new Date() > new Date(pass.expiresAt);
+  const expiresAtMs = new Date(pass.expiresAt).getTime();
+  const expired = new Date() > new Date(expiresAtMs);
   return NextResponse.json({
     token:            pass.token,
     queriesRemaining: expired ? 0 : pass.queriesRemaining,
+    hoursLeft:        Math.max(0, Math.round((expiresAtMs - Date.now()) / 3_600_000)),
     expiresAt:        pass.expiresAt,
     expired,
     valid:            !expired && pass.queriesRemaining > 0,

@@ -304,7 +304,7 @@ function RecentCitations({ payments }: { payments: Payment[] }) {
 
 // ── Section: Open Bounties ────────────────────────────────────────────────────
 
-function OpenBounties({ bounties }: { bounties: Bounty[] }) {
+function OpenBounties({ bounties, nowMs }: { bounties: Bounty[]; nowMs: number }) {
   if (bounties.length === 0) return null;
 
   return (
@@ -315,7 +315,7 @@ function OpenBounties({ bounties }: { bounties: Bounty[] }) {
       </p>
       <div className="space-y-2">
         {bounties.slice(0, 4).map((b) => {
-          const hoursLeft = Math.max(0, Math.round((new Date(b.deadline).getTime() - Date.now()) / 3_600_000));
+          const hoursLeft = Math.max(0, Math.round((new Date(b.deadline).getTime() - nowMs) / 3_600_000));
           return (
             <div key={b.id} className="flex items-start gap-3 p-3 rounded-xl bg-amber-900/5 border border-amber-500/10">
               <div className="flex-1 min-w-0">
@@ -433,9 +433,12 @@ export default function EconomyPage() {
   }, []);
 
   useEffect(() => {
-    load();
+    const timer = window.setTimeout(load, 0);
     const iv = setInterval(load, 15_000);
-    return () => clearInterval(iv);
+    return () => {
+      window.clearTimeout(timer);
+      clearInterval(iv);
+    };
   }, [load]);
 
   const t = tractionStats ?? data.traction;
@@ -500,7 +503,7 @@ export default function EconomyPage() {
 
             {(data.openBounties.length > 0 || data.lessons.length > 0) && (
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
-                {data.openBounties.length > 0 && <OpenBounties bounties={data.openBounties} />}
+                {data.openBounties.length > 0 && <OpenBounties bounties={data.openBounties} nowMs={lastUpdated?.getTime() ?? 0} />}
                 {data.lessons.length > 0 && <AgentMemory lessons={data.lessons} />}
               </div>
             )}

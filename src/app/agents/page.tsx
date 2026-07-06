@@ -73,7 +73,7 @@ export default function AgentsPage() {
             </div>
           </div>
           <div className="bg-[#0a0a0f] rounded-lg p-4 font-mono text-xs border border-[#1e1e2e] mb-4 overflow-x-auto text-[#8b8b9e]">
-            <div className="text-[#4a4a5e] mb-2">// Circle Gateway (JavaScript)</div>
+            <div className="text-[#4a4a5e] mb-2">{"// Circle Gateway (JavaScript)"}</div>
             <div><span className="text-[#6366f1]">const</span>{" client = new GatewayClient({"}</div>
             <div className="pl-4">{"chain: "}<span className="text-[#34D399]">{"\"arcTestnet\""}</span>{","}</div>
             <div className="pl-4">{"privateKey: "}<span className="text-[#34D399]">{"process.env.AGENT_KEY"}</span></div>

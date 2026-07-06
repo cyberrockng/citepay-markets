@@ -11,6 +11,7 @@ const PASS_PRICE     = 0.01;
 interface PassStatus {
   token: string;
   queriesRemaining: number;
+  hoursLeft: number;
   expiresAt: string;
   expired: boolean;
   valid: boolean;
@@ -20,7 +21,6 @@ interface PassStatus {
 
 export default function SubscribePage() {
   const [token, setToken] = useState("");
-  const [savedToken, setSavedToken] = useState("");
   const [status, setStatus] = useState<PassStatus | null>(null);
   const [checking, setChecking] = useState(false);
   const [checkError, setCheckError] = useState("");
@@ -35,7 +35,6 @@ export default function SubscribePage() {
       const d = await r.json();
       if (r.ok) {
         setStatus(d);
-        setSavedToken(t.trim());
       } else {
         setCheckError(d.error ?? "Pass not found");
         setStatus(null);
@@ -46,10 +45,6 @@ export default function SubscribePage() {
       setChecking(false);
     }
   }
-
-  const hoursLeft = status
-    ? Math.max(0, Math.round((new Date(status.expiresAt).getTime() - Date.now()) / 3_600_000))
-    : null;
 
   return (
     <PageShell maxWidth="max-w-2xl">
@@ -162,7 +157,7 @@ curl -X POST https://citepay-markets.vercel.app/api/ask \\
             <div className="flex items-center justify-between">
               <span className="text-xs text-[#8b8b9e]">Expires</span>
               <span className="text-xs font-mono text-[#8b8b9e]">
-                {new Date(status.expiresAt).toLocaleString()} ({hoursLeft}h left)
+                {new Date(status.expiresAt).toLocaleString()} ({status.hoursLeft}h left)
               </span>
             </div>
             {status.txHash && (

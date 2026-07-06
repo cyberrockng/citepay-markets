@@ -20,7 +20,7 @@ function deriveAddress(seed: string): string {
 
 export async function POST(req: Request) {
   try {
-    const { name, url, category, description, credentialId, walletAddress } = await req.json();
+    const { name, url, category, credentialId, walletAddress } = await req.json();
     if (!name || !url) return NextResponse.json({ error: "name and url required" }, { status: 400 });
 
     const pk = process.env.AGENT_PRIVATE_KEY;

@@ -247,7 +247,7 @@ export default function LandingPage() {
               <SectionLabel>Live proof strip</SectionLabel>
               <h2 className="balance-text mt-4 text-3xl font-semibold tracking-tight sm:text-4xl">Real numbers from the running market.</h2>
               <p className="pretty-text mt-4 text-sm leading-7 text-[var(--text-secondary)]">
-                These values are read from CitePay's traction API. If the data source is unavailable, the page shows a loading state instead of fabricated activity.
+                These values are read from CitePay&apos;s traction API. If the data source is unavailable, the page shows a loading state instead of fabricated activity.
               </p>
             </div>
             <div className="grid gap-3 sm:grid-cols-3">

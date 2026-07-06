@@ -60,9 +60,6 @@ const ARCSCAN      = "https://testnet.arcscan.app";
 
 // keccak256("Memo(address,address,bytes32,bytes32,bytes,uint256)")
 const MEMO_TOPIC   = "0xeb15ee720798341c37739df41be53acfbbf70ae6802dade35457beec6e47a5e4";
-// Pad agent wallet to 32-byte topic
-const AGENT_TOPIC  = "0x000000000000000000000000" + AGENT_WALLET.slice(2).toLowerCase();
-
 interface MemoEvent {
   txHash: string;
   blockNumber: number;

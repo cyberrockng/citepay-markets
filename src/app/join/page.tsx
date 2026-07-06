@@ -1,6 +1,5 @@
 "use client";
-import { useState, useEffect } from "react";
-import Link from "next/link";
+import { useState } from "react";
 import { BackButton } from "@/components/back-button";
 
 interface JoinResult {
@@ -14,15 +13,11 @@ interface JoinResult {
 }
 
 export default function JoinPage() {
-  const [url, setUrl]       = useState("");
+  const [url, setUrl]       = useState(() => {
+    if (typeof window === "undefined") return "";
+    return new URLSearchParams(window.location.search).get("url") ?? "";
+  });
   const [wallet, setWallet] = useState("");
-
-  // Pre-fill URL when coming from /estimate
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const prefill = params.get("url");
-    if (prefill) setUrl(prefill);
-  }, []);
   const [name, setName]     = useState("");
   const [step, setStep]     = useState<"idle" | "loading" | "done" | "error">("idle");
   const [result, setResult] = useState<JoinResult | null>(null);
