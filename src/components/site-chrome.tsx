@@ -18,7 +18,7 @@ const FOOTER_GROUPS = [
       { href: "/demo", label: "Demo" },
       { href: "/ask", label: "Ask" },
       { href: "/market", label: "Market" },
-      { href: "/auction", label: "Auction" },
+      { href: "/register", label: "Creators" },
     ],
   },
   {
@@ -28,24 +28,15 @@ const FOOTER_GROUPS = [
       { href: "/traction", label: "Traction" },
       { href: "/audit", label: "Audit" },
       { href: "/proof", label: "Receipts" },
-      { href: "/live", label: "Live Feed" },
     ],
   },
   {
-    title: "Creators",
+    title: "Labs",
     links: [
-      { href: "/join", label: "Join" },
-      { href: "/register", label: "Register" },
-      { href: "/estimate", label: "Estimate" },
-    ],
-  },
-  {
-    title: "Agents",
-    links: [
-      { href: "/agents", label: "Agents" },
-      { href: "/agent-exchange", label: "Agent Exchange" },
-      { href: "/orchestrate", label: "Orchestrate" },
-      { href: "/economy", label: "Economy" },
+      { href: "/labs/agents", label: "Agents" },
+      { href: "/labs/agent-exchange", label: "Agent Exchange" },
+      { href: "/labs/orchestrate", label: "Orchestrate" },
+      { href: "/labs/economy", label: "Economy" },
     ],
   },
   {

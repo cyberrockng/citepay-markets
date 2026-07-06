@@ -145,13 +145,13 @@ export default function AgentsPage() {
           </p>
           <div className="flex gap-3 flex-wrap">
             <Link
-              href="/creator"
+              href="/register"
               className="bg-amber-500/20 border border-amber-500/40 hover:border-amber-500/70 text-amber-300 font-semibold px-5 py-2.5 rounded-lg transition-colors text-sm"
             >
               Register your docs →
             </Link>
             <Link
-              href="/creator"
+              href="/register"
               className="border border-[#1e1e2e] hover:border-amber-500/30 text-[#8b8b9e] hover:text-amber-300 font-semibold px-5 py-2.5 rounded-lg transition-colors text-sm"
             >
               Register via RSS feed
@@ -165,7 +165,7 @@ export default function AgentsPage() {
             { href: "/ask",        label: "Try /ask",         desc: "Live query UI" },
             { href: "/mcp",        label: "MCP Setup",        desc: "Claude integration" },
             { href: "/market",     label: "Browse Sources",   desc: "See what is citable" },
-            { href: "/economy",    label: "Economy Index",    desc: "Live market stats" },
+            { href: "/labs/economy",    label: "Economy Index",    desc: "Live market stats" },
           ].map(({ href, label, desc }) => (
             <Link key={href} href={href}
               className="bg-[#111118] border border-[#1e1e2e] hover:border-[#6366f1]/30 rounded-xl p-4 text-center transition-colors group">

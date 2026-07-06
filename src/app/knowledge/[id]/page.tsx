@@ -27,7 +27,7 @@ export default async function KnowledgePage({ params }: { params: Promise<{ id: 
     <main className="min-h-screen bg-[#0a0a0f] text-white">
       {/* Header */}
       <div className="border-b border-white/10 px-4 py-3 flex items-center gap-3">
-        <Link href="/orchestrate" className="text-white/40 hover:text-white/70 text-sm transition-colors">← Orchestrate</Link>
+        <Link href="/labs/orchestrate" className="text-white/40 hover:text-white/70 text-sm transition-colors">← Orchestrate</Link>
         <span className="text-white/20">|</span>
         <Link href="/market" className="text-white/40 hover:text-white/70 text-sm transition-colors">Market</Link>
         <span className="ml-auto flex items-center gap-2">
@@ -112,7 +112,7 @@ export default async function KnowledgePage({ params }: { params: Promise<{ id: 
             Cite this knowledge →
           </a>
           <Link
-            href="/orchestrate"
+            href="/labs/orchestrate"
             className="flex-1 text-center px-6 py-3 rounded-lg border border-white/20 text-white/70 hover:text-white hover:border-white/40 transition-colors"
           >
             Generate new knowledge

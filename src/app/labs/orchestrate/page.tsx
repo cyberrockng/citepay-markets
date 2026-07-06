@@ -453,7 +453,7 @@ export default function OrchestratePage() {
                 <div className="flex items-center gap-2 mb-2">
                   <div className="w-6 h-6 rounded bg-emerald-600/30 flex items-center justify-center text-emerald-300 text-xs font-bold">✦</div>
                   <span className="text-sm font-semibold text-emerald-300">Agent Self-Assessment</span>
-                  <a href="/intelligence" className="ml-auto text-xs text-emerald-400/60 hover:text-emerald-400">View all lessons →</a>
+                  <a href="/labs/economy" className="ml-auto text-xs text-emerald-400/60 hover:text-emerald-400">View all lessons →</a>
                 </div>
                 <p className="text-sm text-white/70 leading-relaxed">{lesson.lesson}</p>
                 {lesson.gap && <p className="text-xs text-amber-400/70 mt-2">Gap identified: {lesson.gap}</p>}
@@ -650,7 +650,7 @@ export default function OrchestratePage() {
         {/* Empty state with Live feed link */}
         {!hasResults && !loading && (
           <div className="text-center py-8">
-            <Link href="/live" className="text-xs text-[#4a4a5e] hover:text-[#8b8b9e] font-mono transition-colors">
+            <Link href="/labs/economy" className="text-xs text-[#4a4a5e] hover:text-[#8b8b9e] font-mono transition-colors">
               Watch the live agent feed →
             </Link>
           </div>

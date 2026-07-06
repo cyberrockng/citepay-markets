@@ -592,7 +592,6 @@ REGISTER_API_KEY=...                # Protects POST /api/sources/register (spam 
 | POST | `/api/sources/register` | Register a new source (optional `X-Api-Key` auth) |
 | POST | `/api/sources/register-public` | Auth-free public creator registration (IP rate-limited) |
 | GET | `/api/audit-summary` | Receipts filtered by agent, purpose code, date range |
-| GET | `/api/live-events` | Recent decisions with reason, score, creatorHandle |
 | POST | `/api/ask` | x402 pay-to-query endpoint — returns 402 without payment |
 | POST | `/api/demo-query` | Web UI proxy — Circle Gateway payment server-side, auto-refill |
 | POST | `/api/orchestrate` | Multi-agent orchestrator — hires researcher agents via x402 |

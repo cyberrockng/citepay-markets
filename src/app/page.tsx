@@ -12,8 +12,8 @@ const PRODUCT_CARDS = [
   { href: "/market", title: "Market", body: "Browse registered creator sources and their payment policies." },
   { href: "/proof", title: "Proof Explorer", body: "Inspect receipts, hashes, creator payouts, and ArcScan links." },
   { href: "/traction", title: "Traction", body: "See live payment volume, decisions, and on-chain events." },
-  { href: "/agent-exchange", title: "Agent Exchange", body: "Watch source agents compete, earn, and build reputation." },
-  { href: "/join", title: "Creator Join", body: "Register content so agents can cite it and pay for it." },
+  { href: "/labs/agent-exchange", title: "Agent Exchange", body: "Watch source agents compete, earn, and build reputation." },
+  { href: "/register", title: "Creator Onboarding", body: "Register content so agents can cite it and pay for it." },
 ];
 
 const PROCESS_STEPS = [

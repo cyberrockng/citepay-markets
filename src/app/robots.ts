@@ -5,7 +5,7 @@ export default function robots(): MetadataRoute.Robots {
     rules: {
       userAgent: "*",
       allow: "/",
-      disallow: ["/api/", "/demo"],
+      disallow: ["/api/", "/demo", "/labs/"],
     },
     sitemap: "https://citepay-markets.vercel.app/sitemap.xml",
   };

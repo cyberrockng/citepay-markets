@@ -195,7 +195,7 @@ function TopCreators({ sources }: { sources: Source[] }) {
 
   return (
     <div className="bg-[#111118] border border-[#1e1e2e] rounded-2xl p-5">
-      <SectionHead title="Top Creators" href="/leaderboard" count={creators.length} />
+      <SectionHead title="Top Creators" href="/labs/economy" count={creators.length} />
       <div className="space-y-3">
         {creators.map((c, i) => (
           <div key={c.wallet} className="flex items-center gap-3">
@@ -225,7 +225,7 @@ function TopAgents({ agents }: { agents: Agent[] }) {
 
   return (
     <div className="bg-[#111118] border border-[#1e1e2e] rounded-2xl p-5">
-      <SectionHead title="Active Agents" href="/leaderboard" count={agents.length} />
+      <SectionHead title="Active Agents" href="/labs/economy" count={agents.length} />
       {agents.length === 0 ? (
         <div className="text-xs text-[#4a4a5e] text-center py-4">No agent activity yet</div>
       ) : (
@@ -309,7 +309,7 @@ function OpenBounties({ bounties, nowMs }: { bounties: Bounty[]; nowMs: number }
 
   return (
     <div className="bg-[#111118] border border-amber-500/20 rounded-2xl p-5">
-      <SectionHead title="Open Bounties" href="/bounties" count={bounties.length} />
+      <SectionHead title="Open Bounties" href="/labs/economy" count={bounties.length} />
       <p className="text-[10px] text-[#4a4a5e] mb-3">
         The agent identified these knowledge gaps and posted bounties. Submit a source to earn USDC.
       </p>
@@ -349,7 +349,7 @@ function AgentMemory({ lessons }: { lessons: Lesson[] }) {
 
   return (
     <div className="bg-[#111118] border border-emerald-500/20 rounded-2xl p-5">
-      <SectionHead title="Agent Memory" href="/intelligence" count={lessons.length} />
+      <SectionHead title="Agent Memory" href="/labs/economy" count={lessons.length} />
       <p className="text-[10px] text-[#4a4a5e] mb-3">
         The agent reflects after every orchestration and stores lessons for future queries.
       </p>
@@ -512,14 +512,12 @@ export default function EconomyPage() {
             <div className="flex flex-wrap gap-4 justify-center text-[10px] font-mono text-[#4a4a5e] mt-6 pt-6 border-t border-[#1e1e2e]">
               {[
                 ["/demo",        "Demo"],
-                ["/orchestrate", "Orchestrate"],
-                ["/creator",     "Creator"],
+                ["/labs/orchestrate", "Orchestrate"],
+                ["/register",    "Creator"],
                 ["/market",      "Market"],
-                ["/bounties",    "Bounties"],
-                ["/revenue",     "Revenue"],
-                ["/leaderboard", "Leaderboard"],
-                ["/intelligence","Intelligence"],
-                ["/live",        "Live feed"],
+                ["/labs/economy", "Economy"],
+                ["/labs/agent-exchange", "Agent Exchange"],
+                ["/labs/agents", "Agents"],
                 ["/audit",       "Audit"],
               ].map(([href, label]) => (
                 <Link key={href} href={href} className="hover:text-[#f0f0f5] transition-colors">

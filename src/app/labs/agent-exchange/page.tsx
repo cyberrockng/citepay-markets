@@ -139,7 +139,7 @@ export default function AgentExchangePage() {
         <div className="ml-auto flex gap-3">
           <Link href="/proof" className="text-xs text-[#8b8b9e] hover:text-[#f0f0f5]">Proof</Link>
           <Link href="/traction" className="text-xs text-[#8b8b9e] hover:text-[#f0f0f5]">Traction</Link>
-          <Link href="/agents" className="text-xs text-[#8b8b9e] hover:text-[#f0f0f5]">Source Agents</Link>
+          <Link href="/labs/agents" className="text-xs text-[#8b8b9e] hover:text-[#f0f0f5]">Source Agents</Link>
         </div>
       </nav>
 

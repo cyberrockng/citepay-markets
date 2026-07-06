@@ -34,6 +34,16 @@ const nextConfig: NextConfig = {
       },
     ];
   },
+  async redirects() {
+    return [
+      { source: "/join", destination: "/register", permanent: true },
+      { source: "/creator", destination: "/register", permanent: true },
+      { source: "/agent-exchange", destination: "/labs/agent-exchange", permanent: true },
+      { source: "/agents", destination: "/labs/agents", permanent: true },
+      { source: "/orchestrate", destination: "/labs/orchestrate", permanent: true },
+      { source: "/economy", destination: "/labs/economy", permanent: true },
+    ];
+  },
 };
 
 export default nextConfig;
