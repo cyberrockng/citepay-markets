@@ -27,6 +27,11 @@ let anchorChecked = false;
 
 export const dynamic = "force-dynamic";
 
+function paymentError(message: string, detail: unknown, status = 402) {
+  console.warn("[api/ask] Payment flow detail:", detail);
+  return NextResponse.json({ error: message }, { status });
+}
+
 /**
  * POST /api/ask
  *
@@ -68,10 +73,7 @@ export async function POST(req: NextRequest) {
     // Direct Arc USDC transfer path — any EVM agent, no Circle Gateway required
     const { valid, txHash: verifiedTxHash, error: payError } = await verifyDirectPayment(req);
     if (!valid) {
-      return NextResponse.json(
-        { error: "Direct payment verification failed", detail: payError },
-        { status: 402 }
-      );
+      return paymentError("Payment could not be verified. Submit a fresh Arc payment and try again.", payError);
     }
     feesTxHash = verifiedTxHash ?? null;
   } else {
@@ -79,18 +81,12 @@ export async function POST(req: NextRequest) {
     const rawSig = req.headers.get("payment-signature") ?? req.headers.get("X-PAYMENT") ?? req.headers.get("x-payment") ?? "";
 
     if (rawSig && await isReplayed(rawSig)) {
-      return NextResponse.json(
-        { error: "Replayed payment signature", detail: "This payment has already been used. Submit a new payment." },
-        { status: 402 }
-      );
+      return paymentError("This payment has already been used. Submit a fresh payment and try again.", "replayed payment signature");
     }
 
     const { valid, txHash: verifiedTxHash, error: payError } = await verifyGatewayPayment(req);
     if (!valid) {
-      return NextResponse.json(
-        { error: "Payment verification failed", detail: payError },
-        { status: 402 }
-      );
+      return paymentError("Payment could not be verified. Check your wallet session and try again.", payError);
     }
 
     feesTxHash = verifiedTxHash ?? null;
@@ -130,7 +126,8 @@ export async function POST(req: NextRequest) {
     decisions = await runBuyerAgent(query, budgetMicro, sources, policy);
   } catch (err) {
     updateQuery(queryId, { status: "failed" });
-    return NextResponse.json({ error: "Agent error", detail: String(err) }, { status: 500 });
+    console.error("[api/ask] runBuyerAgent failed:", err);
+    return NextResponse.json({ error: "The agent could not complete this query. Try again later." }, { status: 500 });
   }
 
   // ── Step 5.5: External citation outreach (kept alive via waitUntil) ──────────

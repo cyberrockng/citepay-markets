@@ -39,6 +39,10 @@ function getIP(req: NextRequest): string {
   );
 }
 
+function safeError(message: string, status: number) {
+  return NextResponse.json({ error: message }, { status });
+}
+
 export async function POST(req: NextRequest) {
   const ip = getIP(req);
   if (!checkRateLimit(ip)) {
@@ -54,19 +58,23 @@ export async function POST(req: NextRequest) {
   const { walletId, walletAddress, siweAddress } = body;
 
   if (!walletId || typeof walletId !== "string") {
-    return NextResponse.json({ error: "walletId required" }, { status: 400 });
+    console.warn("[auth/sign-payment] Missing walletId");
+    return safeError("Payment session is not ready. Create a wallet session and try again.", 400);
   }
   if (!walletAddress || !isAddress(walletAddress)) {
-    return NextResponse.json({ error: "walletAddress must be a valid EVM address" }, { status: 400 });
+    console.warn("[auth/sign-payment] Invalid walletAddress");
+    return safeError("Payment wallet is invalid. Create a fresh wallet session and try again.", 400);
   }
   if (!siweAddress || !isAddress(siweAddress)) {
-    return NextResponse.json({ error: "siweAddress required — complete SIWE first" }, { status: 401 });
+    console.warn("[auth/sign-payment] Missing or invalid siweAddress");
+    return safeError("Complete wallet sign-in before requesting a payment signature.", 401);
   }
 
   try {
     const paymentSignature = await signSessionPayment(walletId, walletAddress);
     return NextResponse.json({ paymentSignature });
   } catch (err) {
-    return NextResponse.json({ error: String(err) }, { status: 500 });
+    console.error("[auth/sign-payment] signSessionPayment failed:", err);
+    return safeError("Payment signature could not be created. Try again with a fresh wallet session.", 500);
   }
 }

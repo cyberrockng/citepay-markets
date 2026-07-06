@@ -353,8 +353,9 @@ export async function POST(req: NextRequest) {
 
       const { valid, error: payError } = await verifyGatewayPayment(req);
       if (!valid) {
+        console.warn("[api/mcp] Payment verification detail:", payError);
         return ok(id, {
-          content: [{ type: "text", text: JSON.stringify({ error: "Payment verification failed", detail: payError }) }],
+          content: [{ type: "text", text: JSON.stringify({ error: "Payment could not be verified. Submit a fresh payment and try again." }) }],
           isError: true,
         });
       }

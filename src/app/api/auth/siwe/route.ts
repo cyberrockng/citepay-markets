@@ -4,18 +4,24 @@ import { nonceStore } from "../nonce/route";
 
 export const dynamic = "force-dynamic";
 
+function safeError(message: string, status: number) {
+  return NextResponse.json({ error: message }, { status });
+}
+
 export async function POST(req: NextRequest) {
   let body: { message?: string; signature?: string; sessionId?: string } = {};
   try { body = await req.json(); } catch { /* ignore */ }
 
   const { message, signature, sessionId } = body;
   if (!message || !signature || !sessionId) {
-    return NextResponse.json({ error: "message, signature, and sessionId required" }, { status: 400 });
+    console.warn("[auth/siwe] Missing message, signature, or sessionId");
+    return safeError("Wallet sign-in request is incomplete. Try connecting again.", 400);
   }
 
   const stored = nonceStore.get(sessionId);
   if (!stored || stored.expiresAt < Date.now()) {
-    return NextResponse.json({ error: "Nonce expired or invalid" }, { status: 401 });
+    console.warn("[auth/siwe] Expired or invalid nonce");
+    return safeError("Wallet sign-in expired. Try connecting again.", 401);
   }
 
   try {
@@ -23,7 +29,8 @@ export async function POST(req: NextRequest) {
     const result      = await siweMessage.verify({ signature, nonce: stored.nonce });
 
     if (!result.success) {
-      return NextResponse.json({ error: "SIWE verification failed" }, { status: 401 });
+      console.warn("[auth/siwe] Verification failed");
+      return safeError("Wallet signature could not be verified.", 401);
     }
 
     nonceStore.delete(sessionId);
@@ -34,6 +41,7 @@ export async function POST(req: NextRequest) {
       chainId: siweMessage.chainId,
     });
   } catch (err) {
-    return NextResponse.json({ error: String(err) }, { status: 401 });
+    console.error("[auth/siwe] Verification threw:", err);
+    return safeError("Wallet sign-in could not be completed.", 401);
   }
 }

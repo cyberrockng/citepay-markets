@@ -43,6 +43,10 @@ function getIP(req: NextRequest): string {
   );
 }
 
+function safeError(message: string, status: number) {
+  return NextResponse.json({ error: message }, { status });
+}
+
 const arcChain = {
   id: 5042002,
   name: "Arc Testnet",
@@ -53,7 +57,8 @@ const arcChain = {
 export async function GET(req: NextRequest) {
   const address = req.nextUrl.searchParams.get("address");
   if (!address || !isAddress(address)) {
-    return NextResponse.json({ error: "address must be a valid EVM address" }, { status: 400 });
+    console.warn("[auth/circle-session] Invalid balance address");
+    return safeError("Wallet address is invalid.", 400);
   }
   try {
     const client = createPublicClient({ chain: arcChain, transport: http(ARC_RPC) });
@@ -70,24 +75,21 @@ export async function GET(req: NextRequest) {
       queriesRemaining: Math.floor(Number(balance) / QUERY_FEE_MICRO),
     });
   } catch (err) {
-    return NextResponse.json({ error: String(err) }, { status: 500 });
+    console.error("[auth/circle-session] Balance lookup failed:", err);
+    return safeError("Wallet balance could not be loaded.", 500);
   }
 }
 
 export async function POST(req: NextRequest) {
   if (!isCircleSessionEnabled()) {
-    return NextResponse.json(
-      { error: "Circle session wallets not configured on this instance" },
-      { status: 503 }
-    );
+    console.warn("[auth/circle-session] Circle session wallet env is not configured");
+    return safeError("Circle wallet sessions are not available right now.", 503);
   }
 
   const ip = getIP(req);
   if (!checkRateLimit(ip)) {
-    return NextResponse.json(
-      { error: "Rate limit: max 3 Circle session wallets per hour per IP" },
-      { status: 429 }
-    );
+    console.warn("[auth/circle-session] Rate limit for IP:", ip);
+    return safeError("Circle wallet creation is temporarily limited. Try again later.", 429);
   }
 
   // Optional: still accept siweAddress for per-address dedup when MetaMask is connected
@@ -108,6 +110,7 @@ export async function POST(req: NextRequest) {
       ...(siweAddress ? { siweAddress } : {}),
     });
   } catch (err) {
-    return NextResponse.json({ error: String(err) }, { status: 500 });
+    console.error("[auth/circle-session] createAndFundSessionWallet failed:", err);
+    return safeError("Circle wallet could not be created. Try again later.", 500);
   }
 }

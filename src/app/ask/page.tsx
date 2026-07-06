@@ -161,6 +161,11 @@ function formatPolicyRule(rule: string): string {
   return map[rule] ?? rule.replace(/_/g, " ");
 }
 
+function userSafeClientError(err: unknown, fallback: string): string {
+  console.error("[ask]", err);
+  return fallback;
+}
+
 export default function AskPage() {
   return <Suspense><AskPageContent /></Suspense>;
 }
@@ -267,7 +272,9 @@ function AskPageContent() {
     try {
       await connectAsync({ connector: injected() });
       setWalletStep("connected");
-    } catch (err) { setWalletError(String(err)); }
+    } catch (err) {
+      setWalletError(userSafeClientError(err, "Wallet connection was cancelled or unavailable."));
+    }
   }
 
   async function handleSIWE() {
@@ -296,7 +303,7 @@ function AskPageContent() {
       setSiweAddress(res.address);
       setWalletStep("authed");
     } catch (err) {
-      setWalletError(String(err));
+      setWalletError(userSafeClientError(err, "Wallet sign-in was not completed."));
       setWalletStep("connected");
     }
   }
@@ -319,7 +326,7 @@ function AskPageContent() {
       setSessionKey(key);
       setWalletStep("funded");
     } catch (err) {
-      setWalletError(String(err));
+      setWalletError(userSafeClientError(err, "Session funding could not be completed. Try again later."));
       setWalletStep("authed");
     }
   }
@@ -346,7 +353,7 @@ function AskPageContent() {
       setCircleWalletAddress(res.address);
       setCircleReady(true);
     } catch (err) {
-      setCircleError(String(err));
+      setCircleError(userSafeClientError(err, "Circle wallet creation could not be completed. Try again later."));
     } finally {
       setCircleCreating(false);
     }
@@ -385,7 +392,7 @@ function AskPageContent() {
       setCircleReady(true);
       setWalletStep("circle_ready");
     } catch (err) {
-      setWalletError(String(err));
+      setWalletError(userSafeClientError(err, "Circle wallet session could not be created. Try again later."));
       setWalletStep("authed");
     }
   }
@@ -458,9 +465,9 @@ function AskPageContent() {
     e.preventDefault();
     if (!query.trim()) return;
     if (circleNeedsSignIn) {
-      const message = "Please complete wallet sign-in above first — no payment was attempted.";
+      const message = "Complete wallet sign-in before using Circle Pay & Ask. No payment was attempted.";
       setError(message);
-      setStep("error");
+      setWalletError(message);
       return;
     }
     setResult(null); setError(""); setTraces([]); setSourceGrid([]);
@@ -499,9 +506,10 @@ function AskPageContent() {
       }).then((r) => r.json());
       if (signRes.error) throw new Error(signRes.error);
       paymentSignature = signRes.paymentSignature;
-    } catch {
+    } catch (err) {
+      console.error("[ask] sign-payment failed:", err);
       setStep("error");
-      setError("Please complete wallet sign-in above first — no payment was attempted.");
+      setError("Complete wallet sign-in before using Circle Pay & Ask. No payment was attempted.");
       return;
     }
     addTrace({ icon: "✓", text: "EIP-3009 signed by Circle Programmable Wallet · sending to /api/ask…", sub: `Circle HSM · ${walletAddress.slice(0, 10)}… · no private key in browser`, badgeClass: "text-[#34D399]" });
@@ -516,7 +524,7 @@ function AskPageContent() {
     });
     if (!res2.ok) {
       const err = await res2.json().catch(() => ({ error: `HTTP ${res2.status}` }));
-      const msg = err.detail || err.error || `Payment failed (${res2.status})`;
+      const msg = err.error || `Payment failed (${res2.status})`;
       addTrace({ icon: "✗", text: msg, badgeClass: "text-red-400" });
       setStep("error"); setError(msg); return;
     }
@@ -557,7 +565,12 @@ function AskPageContent() {
     try {
       const { signX402Payment } = await import("@/lib/x402-client");
       paymentSig = await signX402Payment(key);
-    } catch (err) { setStep("error"); setError("Signing failed: " + String(err)); return; }
+    } catch (err) {
+      console.error("[ask] browser signing failed:", err);
+      setStep("error");
+      setError("Wallet signing could not be completed. Try again with a fresh session.");
+      return;
+    }
     addTrace({ icon: "✓", text: "Payment signed · sending payment-signature to /api/ask…", badgeClass: "text-[#34D399]" });
 
     // Step 3: Real /api/ask with payment-signature header
@@ -570,7 +583,7 @@ function AskPageContent() {
     });
     if (!res2.ok) {
       const err = await res2.json().catch(() => ({ error: `HTTP ${res2.status}` }));
-      const msg = err.detail || err.error || `Payment failed (${res2.status})`;
+      const msg = err.error || `Payment failed (${res2.status})`;
       addTrace({ icon: "✗", text: msg, badgeClass: "text-red-400" });
       setStep("error"); setError(msg); return;
     }
@@ -618,7 +631,11 @@ function AskPageContent() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ query, budget: parseFloat(budget), policy: policyKey }),
       });
-    } catch (err) { setStep("error"); setError(String(err)); return; }
+    } catch (err) {
+      setStep("error");
+      setError(userSafeClientError(err, "The demo stream could not be started. Try again later."));
+      return;
+    }
     if (!res2.ok || !res2.body) { setStep("error"); setError("Stream failed: " + res2.status); return; }
 
     const reader  = res2.body.getReader();
@@ -671,6 +688,17 @@ function AskPageContent() {
   }
 
   const isWalletClickable = ["disconnected", "connected", "authed"].includes(walletStep);
+  const showWalletExplainer = (walletStep === "disconnected" && !circleReady) || circleNeedsSignIn || (isConnected && !siweAddress && walletStep !== "siwe_pending");
+
+  function handleExplainerWalletClick() {
+    if (walletStep === "disconnected") {
+      handleConnect();
+      return;
+    }
+    if (walletStep === "connected" || circleNeedsSignIn) {
+      handleSIWE();
+    }
+  }
 
   return (
     <main className="min-h-screen bg-[#0a0a0f] text-[#f0f0f5]">
@@ -681,13 +709,35 @@ function AskPageContent() {
           <p className="text-[var(--text-secondary)] mt-2">Set a spend policy · Pay to query · Every decision gets a public Policy Receipt</p>
         </div>
 
-        <div className="mb-4 rounded-xl border border-[#6366f1]/30 bg-[#6366f1]/5 p-4 text-sm text-[var(--text-secondary)]">
-          No wallet ready yet?{" "}
-          <Link href="/demo" className="font-semibold text-[#6366f1] transition-colors hover:text-indigo-300">
-            Try the one-click demo
-          </Link>
-          {" "}to see the full pay → cite → receipt flow without setup.
-        </div>
+        {showWalletExplainer && (
+          <div className="mb-4 rounded-xl border border-[#6366f1]/30 bg-[#6366f1]/5 p-4">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <h2 className="text-sm font-semibold text-[var(--text-primary)]">
+                  Wallet sign-in is needed for live payments
+                </h2>
+                <p className="mt-1 text-sm leading-6 text-[var(--text-secondary)]">
+                  You can run the automated demo without a wallet, or connect and sign in to submit a real x402 payment.
+                </p>
+              </div>
+              <div className="flex shrink-0 flex-col gap-2 sm:flex-row">
+                <Link
+                  href="/demo"
+                  className="inline-flex h-10 items-center justify-center rounded-lg border border-[#6366f1]/40 px-4 text-sm font-semibold text-[#c4b5fd] transition-colors hover:border-[#6366f1]"
+                >
+                  Try the automated demo instead
+                </Link>
+                <button
+                  type="button"
+                  onClick={handleExplainerWalletClick}
+                  className="inline-flex h-10 items-center justify-center rounded-lg bg-[#6366f1] px-4 text-sm font-semibold text-white transition-colors hover:bg-indigo-500"
+                >
+                  Connect wallet
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Circle Wallet hero panel — no MetaMask required */}
         <div className={`rounded-xl border mb-4 p-5 transition-all ${circleReady ? "bg-[#1a1228] border-[#a78bfa]/40" : "bg-[#111118] border-[#2e1e4e]/60"}`}>

@@ -59,6 +59,10 @@ function getIP(req: NextRequest): string {
   );
 }
 
+function safeError(message: string, status: number) {
+  return NextResponse.json({ error: message }, { status });
+}
+
 export async function POST(req: NextRequest) {
   let body: { sessionAddress?: string; siweAddress?: string } = {};
   try { body = await req.json(); } catch { /* ignore */ }
@@ -66,10 +70,12 @@ export async function POST(req: NextRequest) {
   const { sessionAddress, siweAddress } = body;
 
   if (!sessionAddress || !isAddress(sessionAddress)) {
-    return NextResponse.json({ error: "sessionAddress must be a valid EVM address" }, { status: 400 });
+    console.warn("[auth/fund-session] Missing or invalid sessionAddress");
+    return safeError("Session wallet is invalid. Create a fresh session and try again.", 400);
   }
   if (!siweAddress || !isAddress(siweAddress)) {
-    return NextResponse.json({ error: "siweAddress required — complete SIWE first" }, { status: 401 });
+    console.warn("[auth/fund-session] Missing or invalid siweAddress");
+    return safeError("Complete wallet sign-in before funding a session wallet.", 401);
   }
   if (funded.has(sessionAddress.toLowerCase())) {
     return NextResponse.json({ alreadyFunded: true, message: "Session EOA already funded" });
@@ -78,7 +84,8 @@ export async function POST(req: NextRequest) {
   const ip = getIP(req);
   const rl = checkRateLimit(ip, QUERY_FEE_MICRO);
   if (!rl.allowed) {
-    return NextResponse.json({ error: rl.reason }, { status: 429 });
+    console.warn("[auth/fund-session] Rate limit:", rl.reason);
+    return safeError("Session funding is temporarily limited. Try again later.", 429);
   }
 
   try {
@@ -99,6 +106,7 @@ export async function POST(req: NextRequest) {
       status: result.status,
     });
   } catch (err) {
-    return NextResponse.json({ error: String(err) }, { status: 500 });
+    console.error("[auth/fund-session] payCreator failed:", err);
+    return safeError("Session wallet could not be funded. Try again later.", 500);
   }
 }
