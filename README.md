@@ -13,7 +13,7 @@
 
 1. **[/demo](https://citepay-markets.vercel.app/demo)** — auto-runs 4 live proofs: tamper detection → x402 payment → paid query → objective challenge. No wallet needed.
 2. **[/ask](https://citepay-markets.vercel.app/ask)** — run one real paid query and watch PAY / REFUSE / SKIP decisions settle in USDC.
-3. **Click any PAY receipt** — hash-recomputable evidence, Arcscan-anchored.
+3. **Click any PAY receipt** — hash-recomputable evidence, Arcscan-linked when anchored.
 4. **[/proof](https://citepay-markets.vercel.app/proof)** — recent `CitationPaid` events read straight from Arc RPC. No database to trust.
 5. **[/traction](https://citepay-markets.vercel.app/traction)** — the live economy: reconciled queries, decisions, USDC routed, and creator counts.
 
@@ -49,32 +49,35 @@ flowchart LR
 
 ---
 
+## Trust Boundary
+
+CitePay separates semantic judgment from payment authority.
+
+- `src/lib/policy.ts` is the deterministic gate for all payable decisions. It enforces max price, relevance threshold, creator bond requirements, session budget, and policy receipts.
+- Claude Haiku informs semantic relevance, source excerpts, and answer text. Claude does not set payment amounts and cannot bypass policy checks.
+- Amounts are derived from configured source prices, policy limits, contribution weights, and budget state in code before any USDC transfer is attempted.
+- Receipts are tamper-evident: the evidence preimage recomputes to the stored SHA-256 hash, and anchored PAY events can be checked against Arc Testnet.
+
+---
+
 ## Judge Quick Start
 
 **Live app:** [citepay-markets.vercel.app](https://citepay-markets.vercel.app)
 
 > **Start here:** `/demo` → `/ask` → any receipt → `/proof` → `/traction`. Everything below is deep-dive material.
-> The demo database is deliberately **stateless** (resets on cold start) — the canonical record lives on-chain and is always readable at `/proof` and `/audit`, straight from Arc RPC.
+> Receipts and traction history are persisted durably in Neon when `DATABASE_URL` is configured, with SQLite used only as the local-development fallback. On-chain settlement remains the source of truth for confirmed USDC movement.
 
 | Path | What to show |
 |---|---|
 | `/demo` | Best first stop — auto-runs 4 proofs: tamper → x402 pay → query → challenge. No wallet needed. |
-| `/auction` | Citation Auction — watch Claude score all sources in real time via SSE, top 3 win citation slots |
 | `/ask` | Agent workbench with configurable spend policy, Circle Programmable Wallet, live proof console |
-| `/orchestrate` | Pilot Agent reads onchain reputation → attests plan → hires researcher agents via x402 |
-| `/agent-exchange` | Agent Commerce Network — policy-gated agent hiring with real USDC payments + Claude Haiku responses |
-| `/estimate` | Citation Earnings Estimator — shows unregistered creators what they're leaving on the table |
-| `/join` | One-URL creator self-registration — paste a URL, set a price, start earning |
-| `/economy` | Live CitePay Index — real-time economy overview |
-| `/agents` | 3 competing source agents with live Healthy/Watch/Stop reputation from CitationPaid events |
-| `/wallet` | Circle DCW + App Kit + Unified Balance Kit + DCW Adapter: live USDC balance across chains |
 | `/register` | Public creator onboarding — register content, set price per citation, earn USDC instantly |
 | `/audit` | On-chain audit — reads Arc RPC directly, no database; verify wallet balance + every tx |
-| `/live` | Real-time SSE agent decision feed (auto-reconnects) |
 | `/receipt/:id` | Receipt with OG share card, evidence preimage viewer + hash recomputation |
 | `/traction` | Live traction stats: reconciled agent decisions, paid citations, USDC routed, and creator counts |
 | `/proof` | On-chain proof explorer — reads CitationPaid events directly from Arc Testnet, no database |
 | `/mcp` | MCP server install for Claude Code / Cursor integration |
+| `/labs/*` | Experimental agent-commerce demos, separated from the core product surface |
 
 **MCP (Claude Code / Cursor):**
 ```json
@@ -125,13 +128,13 @@ CitePay Markets is a live agentic citation economy where:
 - **3 competing source agents** — FactAgent, TechAgent, EconAgent — publish knowledge claims with distinct specialties and policies. Each has an onchain identity on CitePayMarket.sol. Their reputation is derived entirely from `CitationPaid` events — no editable leaderboard.
 - **Pilot Agent** reads each source agent's live onchain reputation, allocates query budget proportionally, and anchors a SHA-256 plan hash onchain before a single USDC token moves.
 - **AI veracity agent** (Claude Haiku) receives a query and a USDC budget, evaluates source claims on relevance, price, creator bond, and reputation, subject to a configurable **Agent Spend Policy**.
-- **Trust boundary** — Claude informs semantic relevance and explanation text only; deterministic policy code gates every payable decision by relevance threshold, creator bond status, max price, session budget, and evidence hash before any USDC movement is attempted.
+- **Trust boundary** — Claude informs semantic relevance and explanation text only; deterministic policy code in `src/lib/policy.ts` gates every payable decision by relevance threshold, creator bond status, max price, session budget, and evidence hash before any USDC movement is attempted. Claude never sets payment amounts.
 - **Every decision** — PAY, REFUSE, SKIP, or BLOCKED_BY_POLICY — generates a public receipt with an evidence hash, content hash, payment proof, and human-readable reason.
-- **Multi-agent orchestration** — An orchestrator agent decomposes complex queries, hires researcher agents via real x402 Circle Gateway payments, and synthesizes a comprehensive answer. Agent-to-agent USDC flows are live.
+- **Labs** — agent-commerce experiments such as orchestrator, agent exchange, agent registry, and economy index live under `/labs/*` so production journeys stay focused.
 - **Circle stack (7 products)**: Gateway + x402 (pay per query), DCW (MPC-secured creator payouts + `signTypedData` Programmable Wallet buyer), App Kit (Unified Balance Kit + Circle Wallets Adapter), Modular Wallets (Circle HSM signs EIP-3009 — no browser key), Gas Station (gasless creator onboarding), CCTP v2 (`POST /api/cctp/fund-creator` — burn on Arc, mint on Base/Ethereum/Arbitrum via Circle Forwarder).
 - **MCP server** at `/api/mcp` exposes `cite_query`, `get_receipt`, and `check_policy` as tools for Claude Code and Cursor integration.
 - **Purpose taxonomy** — every USDC movement is tagged: `CITE`, `QUERY_FEE`, `AGENT_REWARD`, `BOND_SLASH`. Queryable via `/api/audit-summary`.
-- **Citation memory** — source `paidCount` / `refusedCount` persists across serverless cold starts via Vercel Edge Config. Frequently cited sources earn a pre-trust bonus (+8 to +12 score).
+- **Durable receipt storage** — receipts are written to Neon when `DATABASE_URL` is configured; SQLite remains the local-development fallback.
 - **Public creator registration** — `/register` lets anyone register their content in 60 seconds, no approval, no API key required.
 
 ### Live Traction (Arc Testnet) · [live numbers →](https://citepay-markets.vercel.app/traction)
@@ -165,12 +168,11 @@ This creates three problems:
 CitePay Markets solves all three:
 
 1. A user or agent pays a small USDC fee via **Circle Gateway x402** to submit a query.
-2. CitePay's **buyer agent** (Claude Haiku) searches the creator source market.
-3. The agent scores each source on **relevance, price, creator bond, and reputation**, subject to a configurable **Agent Spend Policy**.
-4. The agent **pays** the best sources in USDC, **refuses** overpriced or weak ones, **skips** irrelevant ones, and **blocks** those that violate policy rules.
-5. Every decision gets a **public receipt** with evidence preimage, evidence hash, content hash, and payment proof.
-6. Creators see earnings on their **dashboard** and share a **payout card**.
-7. The **traction dashboard** shows live on-chain stats: creators paid, USDC routed, receipts generated — sourced from Arc Testnet Transfer events.
+2. The x402 gate verifies or rejects the payment before agent work starts.
+3. CitePay's buyer agent scores each source semantically; deterministic policy code then decides PAY, REFUSE, SKIP, or BLOCKED_BY_POLICY.
+4. PAY decisions settle USDC to creator wallets on Arc Testnet.
+5. Every decision gets a **public receipt** with evidence preimage, evidence hash, content hash, payment status, and policy result.
+6. `/receipt/:id` verifies the hash; `/proof` reads Arc events; `/traction` exposes reconciled live metrics from `/api/traction`.
 
 ---
 
@@ -246,10 +248,9 @@ CitePay Markets solves all three:
      │
      ▼
   ┌──────────────────────────────────────┐
-  │   SQLite (better-sqlite3)             │
-  │   sources / receipts / queries        │
-  │   traction / share_cards             │
-  │   Auto-seeded on cold start          │
+  │   Neon Postgres + SQLite fallback     │
+  │   receipts / queries / traction       │
+  │   SQLite only for local development   │
   └──────────────────────────────────────┘
      │
      ▼
@@ -263,6 +264,7 @@ CitePay Markets solves all three:
 **Tech stack:**
 - **Frontend**: Next.js App Router, Tailwind CSS 4
 - **Backend**: Next.js API routes, better-sqlite3 (Node 24)
+- **Durable storage**: Neon Postgres for production receipt/history persistence; SQLite fallback for local development
 - **AI**: Anthropic Claude Haiku (relevance scoring + answer generation + orchestration)
 - **Payments**: x402 protocol + Circle Gateway (BatchFacilitatorClient) + GatewayClient — real USDC on Arc Testnet
 - **Contract**: Solidity 0.8.24, deployed on Arc Testnet (chainId 5042002)
@@ -308,9 +310,18 @@ Step 4 — Agent runs, pays creators
 
 ---
 
-## 7. Multi-Agent Orchestration
+## 7. Labs: Agent Commerce Experiments
 
-`POST /api/orchestrate` runs a real agent-to-agent payment chain:
+Experimental agent-commerce routes are separated under `/labs/*`. They are useful demos, but they are not the core CitePay payment-and-receipt journey.
+
+| Path | Purpose |
+|---|---|
+| `/labs/orchestrate` | Multi-agent orchestrator demo |
+| `/labs/agent-exchange` | Agent discovery, hiring, and reputation experiment |
+| `/labs/agents` | Source-agent connection examples |
+| `/labs/economy` | Experimental economy dashboard |
+
+`POST /api/orchestrate` remains the backing API for the labs orchestrator:
 
 ```
 You → Orchestrator (Claude Haiku)
@@ -341,11 +352,11 @@ Every sub-agent payment is a real Circle Gateway x402 transaction. The orchestra
 
 AI agents can register as paid services, be discovered by orchestrators, get hired through policy-gated payments, produce research outputs, and build on-chain reputation — all in one run.
 
-**Live at:** [`/agent-exchange`](https://citepay-markets.vercel.app/agent-exchange)
+**Live at:** [`/labs/agent-exchange`](https://citepay-markets.vercel.app/labs/agent-exchange)
 
 ### Demo flow
 
-1. Open `/agent-exchange`
+1. Open `/labs/agent-exchange`
 2. View 4 registered agents: FactAgent (conservative, trust 92), TechAgent (balanced, trust 85), MarketAgent (aggressive, trust 68), RiskyAgent (blocked — trust 20, invalid wallet)
 3. Run "Agent Commerce Demo" with **balanced policy** and `agentCount: 2`
 4. Watch orchestrator: hire FactAgent + TechAgent (real USDC on Arc Testnet), warn MarketAgent, block RiskyAgent
@@ -547,7 +558,7 @@ npm run dev
 # 5. App pages
 # → http://localhost:3000/market      (creator source registry)
 # → http://localhost:3000/ask         (agent workbench)
-# → http://localhost:3000/orchestrate (multi-agent demo)
+# → http://localhost:3000/labs/orchestrate (multi-agent demo)
 # → http://localhost:3000/mcp         (MCP install guide)
 # → http://localhost:3000/traction    (live metrics)
 ```
@@ -559,6 +570,8 @@ npm run dev
 ```bash
 # ── Required ──────────────────────────────────────────────────
 ANTHROPIC_API_KEY=sk-ant-...        # Claude Haiku for scoring + orchestration
+DATABASE_URL=postgres://...         # Neon durable receipts/history in production
+REPLAY_GUARD_SECRET=...             # 32+ random bytes; required outside explicit dev mode
 
 # ── Agent wallet (Arc Testnet) ────────────────────────────────
 AGENT_PRIVATE_KEY=0x...             # Funded Arc Testnet wallet for creator payouts
@@ -577,9 +590,10 @@ ARC_CITATION_MANDATE_ADDRESS=0xBad090764dd720B5EdcD8B49e054D5d8Ce13C695
 # ── Security (optional) ───────────────────────────────────────
 SEED_KEY=...                        # Protects POST /api/seed (DB reset endpoint)
 REGISTER_API_KEY=...                # Protects POST /api/sources/register (spam guard)
+X402_DEV_MODE=false                 # Local-only x402 bypass; requires VERCEL_ENV=development/preview
 ```
 
-**Never commit `.env.local`.** The app runs without `AGENT_PRIVATE_KEY` — creator payouts fall back to deterministic simulated hashes so receipts remain structurally valid.
+**Never commit `.env.local`.** Production must set `REPLAY_GUARD_SECRET`; without it the replay guard fails closed. The app can run locally without `AGENT_PRIVATE_KEY` — creator payouts fall back to deterministic simulated hashes so receipts remain structurally valid.
 
 ---
 
@@ -604,12 +618,11 @@ REGISTER_API_KEY=...                # Protects POST /api/sources/register (spam 
 | GET | `/api/onchain-stats` | On-chain stats from Arc Testnet Transfer events |
 | POST | `/api/challenge/:receiptId` | Submit objective hash-change challenge |
 | POST | `/api/seed` | Reset + re-seed DB (requires `SEED_KEY` if set) |
-| GET | `/api/agent-exchange/register` | List registered agents (with leaderboard floors) |
+| GET | `/api/agent-exchange/register` | List registered labs agents |
 | POST | `/api/agent-exchange/register` | Register a new agent in the commerce network |
 | POST | `/api/agent-exchange/run` | Run Agent Commerce Demo (discovery → hire → pay → respond) |
 | POST | `/api/agent-exchange/hire` | Hire a single agent by ID (rate-limited: 1/8s per IP) |
 | GET | `/api/proof` | On-chain CitationPaid event proof from Arc Testnet |
-| GET | `/api/traction` | Traction metrics: SQLite + Redis + Arc Testnet three-layer |
 
 ---
 
@@ -618,7 +631,6 @@ REGISTER_API_KEY=...                # Protects POST /api/sources/register (spam 
 - `/` — Landing: hero (agents + creators), live activity ticker, real receipt cards, stats
 - `/ask` — Agent workbench: policy selector, proof console, source competition board
 - `/register` — Public creator onboarding: name, URL, price slider, Arc wallet, instant activation
-- `/orchestrate` — Multi-agent orchestrator: agent flow diagram, stats, per-agent tabs
 - `/audit` — On-chain audit: reads Arc RPC directly, wallet balance, tx count, ArcScan links
 - `/demo` — 4-step interactive demo: tamper → pay → query → challenge
 - `/market` — Creator source registry with price, bond, reputation
@@ -628,16 +640,16 @@ REGISTER_API_KEY=...                # Protects POST /api/sources/register (spam 
 - `/source/:id` — Source detail and receipt history
 - `/traction` — Live on-chain metrics from Arc Testnet
 - `/mcp` — MCP server install guide for Claude Code / Cursor
-- `/live` — Real-time decision feed with glyph colour-coding
-- `/leaderboard` — Creator leaderboard by earnings
+- `/labs` — Experimental agent-commerce surface
+- `/labs/orchestrate`, `/labs/agent-exchange`, `/labs/agents`, `/labs/economy` — labs experiments
 
 ---
 
 ## 17. Known Limitations
 
-- **SQLite persistence**: Sources are auto-seeded (with baked on-chain IDs) on every cold start. Receipts accumulate on warm Vercel instances and reset on cold starts. Suitable for demo; production needs a managed DB.
+- **Storage boundary**: Production receipts and traction history use Neon when `DATABASE_URL` is configured. SQLite is retained for local development and seeded fallback data.
 - **Testnet only**: All payments are Arc Testnet USDC with no real monetary value. Circle Gateway testnet settles on Arc chainId 5042002.
-- **Relevance scoring**: Claude Haiku scores relevance from title + description only (not full content fetch). Scores are probabilistic.
+- **Relevance scoring**: Claude Haiku informs semantic scoring. Deterministic policy code, not Claude, gates payable decisions and amounts.
 - **Bond withdrawal window**: Creator bond withdrawals are locked for 7 days after posting to allow challengers to act. Bonds can be slashed immediately on hash change via `CreatorBond.slashBond()`.
 
 ---
@@ -726,7 +738,7 @@ CitePay registered its 10th verified source on Tollgate — the Agent Commerce N
 |---|---|
 | Source ID | `citepay-agent-commerce-network-hire-specialized-ai-agents-with-u` |
 | Title | CitePay Agent Commerce Network — Hire Specialized AI Agents with USDC |
-| URL | `https://citepay-markets.vercel.app/agent-exchange` |
+| URL | `https://citepay-markets.vercel.app/labs/agent-exchange` |
 | Price | 1,000 µUSDC per citation |
 | Ownership proof | Wallet-signature (`0x769a5bb8…f7da`) verified on Tollgate Jul 2, 2026 |
 | Verified creator | ✅ `true` |
