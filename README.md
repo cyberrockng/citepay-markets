@@ -27,7 +27,7 @@ CitePay and Tollgate completed a **two-way agent settlement loop**: Tollgate had
 
 > Tollgate's confirmation, verbatim: *"Confirmed on our side — all on-chain: reader 0x5389… (you, not our wallet), x402-settled, 0.01 USDC, and all three payouts (CitePay / qdee / Indie Researcher) are success on Arc, blocks 50147160–50147177. This is Tollgate's first external paying reader."*
 
-Payout txs: [CitePay](https://testnet.arcscan.app/tx/0xcb617e0eda3bb4124abc41a06c2c313f42b8ea0aad2f90a6e7c4c73246a73629) · [qdee](https://testnet.arcscan.app/tx/0x97753f78df917b5175014e1323cc3b46435b8abb9f77ff213724af0d299c38b4) · [Indie Researcher](https://testnet.arcscan.app/tx/0x9d002cdb3735c023096065d6a5ee88892e00e00548538f9bd08a3282a68c8b28) · Full evidence: [`docs/evidence-tollgate-reader-2026-07-04.md`](docs/evidence-tollgate-reader-2026-07-04.md) · Plus: first external capital sponsor on Shadow Float V2 (section 20c below).
+Payout txs: [CitePay](https://testnet.arcscan.app/tx/0xcb617e0eda3bb4124abc41a06c2c313f42b8ea0aad2f90a6e7c4c73246a73629) · [qdee](https://testnet.arcscan.app/tx/0x97753f78df917b5175014e1323cc3b46435b8abb9f77ff213724af0d299c38b4) · [Indie Researcher](https://testnet.arcscan.app/tx/0x9d002cdb3735c023096065d6a5ee88892e00e00548538f9bd08a3282a68c8b28) · Plus: first external capital sponsor on Shadow Float V2 (section 20c below).
 
 ---
 
@@ -589,7 +589,7 @@ ARC_CREATOR_BOND_ADDRESS=0x7DBa1C67Fd9BA976aE09E744D8cbcC71F805D6C0
 ARC_CITATION_MANDATE_ADDRESS=0xBad090764dd720B5EdcD8B49e054D5d8Ce13C695
 
 # ── Security (optional) ───────────────────────────────────────
-SEED_KEY=...                        # Protects POST /api/seed (DB reset endpoint)
+SEED_KEY=...                        # Required in production for POST /api/seed
 REGISTER_API_KEY=...                # Protects POST /api/sources/register (spam guard)
 X402_DEV_MODE=false                 # Local-only x402 bypass; requires VERCEL_ENV=development/preview
 ```
@@ -618,7 +618,7 @@ X402_DEV_MODE=false                 # Local-only x402 bypass; requires VERCEL_EN
 | GET | `/api/traction` | Live traction metrics |
 | GET | `/api/onchain-stats` | On-chain stats from Arc Testnet Transfer events |
 | POST | `/api/challenge/:receiptId` | Submit objective hash-change challenge |
-| POST | `/api/seed` | Reset + re-seed DB (requires `SEED_KEY` if set) |
+| POST | `/api/seed` | Reset + re-seed local demo DB; production requires `SEED_KEY` |
 | GET | `/api/agent-exchange/register` | List registered labs agents |
 | POST | `/api/agent-exchange/register` | Register a new agent in the commerce network |
 | POST | `/api/agent-exchange/run` | Run Agent Commerce Demo (discovery → hire → pay → respond) |

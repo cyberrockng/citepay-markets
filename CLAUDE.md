@@ -28,14 +28,16 @@ AI agent citation marketplace where agents pay creators in USDC for sources they
 | `AGENT_PRIVATE_KEY` | Agent wallet — pays creators, anchors on-chain |
 | `ANTHROPIC_API_KEY` | Claude Haiku for scoring + orchestration |
 | `DEMO_BUYER_KEY` | Optional — defaults to `0x1111…1111` deterministic key |
-| `SEED_KEY` | Auth for `POST /api/seed` reset endpoint |
+| `DATABASE_URL` | Neon durable receipts/history in production |
+| `REPLAY_GUARD_SECRET` | Required outside explicit dev mode |
+| `SEED_KEY` | Required in production for `POST /api/seed` reset endpoint |
 | `REGISTER_API_KEY` | Auth for `POST /api/sources/register` |
 
 ## Database
 
-SQLite at `/tmp/citepay.db` on Vercel (ephemeral — resets on cold start).  
-`getDb()` in `src/lib/db.ts` auto-seeds 10 sources on every cold start via `seedIfEmpty()`.  
-Judges can manually reset via the `↺ Reset DB` button on `/demo` or `POST /api/seed`.
+Production receipts and history use Neon when `DATABASE_URL` is configured. SQLite is retained as a local-development fallback.  
+`getDb()` in `src/lib/db.ts` auto-seeds 10 sources into an empty local store via `seedIfEmpty()`.  
+`POST /api/seed` is for local demo reset; production requires `SEED_KEY`.
 
 ## Payment flow
 

@@ -329,10 +329,10 @@ function OpenBounties({ bounties, nowMs }: { bounties: Bounty[]; nowMs: number }
                 </div>
               </div>
               <Link
-                href={`/bounties`}
+                href={`/labs/economy`}
                 className="text-[10px] font-mono text-amber-400 hover:text-amber-300 underline flex-shrink-0"
               >
-                submit →
+                view →
               </Link>
             </div>
           );

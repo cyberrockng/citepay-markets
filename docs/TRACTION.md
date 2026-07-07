@@ -2,9 +2,9 @@
 
 ## Overview
 
-CitePay Markets tracks all economic activity in a `traction` table (SQLite key-value store). Metrics are aggregated in real time and exposed at `/api/traction` and `/traction`.
+CitePay Markets tracks economic activity in the canonical receipts/queries store. In production, receipts and traction history are persisted in Neon when `DATABASE_URL` is configured; SQLite is retained as the local-development fallback. Metrics are aggregated in real time and exposed at `/api/traction` and `/traction`.
 
-**All metrics are derived from real activity only — no fake traction, no synthetic data.**
+**All metrics are derived from real endpoint activity — no fabricated traction. Some volume can include demo traffic through the public endpoints; paid events remain on-chain and independently verifiable.**
 
 ---
 

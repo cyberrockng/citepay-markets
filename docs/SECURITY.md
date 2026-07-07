@@ -5,7 +5,7 @@
 CitePay Markets is built on three security principles:
 
 1. **No secrets in source** — all private keys and API keys are environment variables
-2. **No fake data** — all receipts, decisions, and payments reflect real activity
+2. **No fabricated data** — receipts, decisions, and payments reflect real endpoint activity; demo traffic is disclosed where shown
 3. **Objective enforcement** — slashing is hash-comparison only, no AI judgment
 
 ---
@@ -72,14 +72,9 @@ No AI model is involved. The comparison is deterministic and auditable. A succes
 
 ---
 
-## SQLite Security
+## Storage Security
 
-The database is a local SQLite file (`data/citepay.db`). It is:
-- Not exposed on any API endpoint directly
-- Accessed only through prepared statements (no string interpolation = no SQL injection)
-- Gitignored
-
-In production on Vercel, SQLite is not persistent across deployments. A production deployment should replace better-sqlite3 with a persistent store (Vercel KV, Postgres, etc.).
+Production receipts and history use Neon Postgres when `DATABASE_URL` is configured. SQLite is retained only as a local-development fallback. Both stores are accessed through structured query helpers rather than raw user-controlled SQL.
 
 ---
 

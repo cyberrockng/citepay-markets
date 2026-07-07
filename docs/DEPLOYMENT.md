@@ -22,7 +22,7 @@ cp .env.example .env.local   # fill in required vars (see below)
 npm run dev                  # http://localhost:3000
 ```
 
-First cold start auto-seeds 10 creator sources into SQLite at `/tmp/citepay.db`.
+First local cold start auto-seeds 10 creator sources into the local SQLite fallback. Production receipts and history use Neon when `DATABASE_URL` is configured.
 
 ---
 
@@ -35,6 +35,8 @@ First cold start auto-seeds 10 creator sources into SQLite at `/tmp/citepay.db`.
 | `ANTHROPIC_API_KEY` | Claude Haiku for source scoring + answer generation |
 | `AGENT_PRIVATE_KEY` | Agent wallet — pays creators, anchors on-chain. Must hold Arc USDC. |
 | `AGENT_WALLET_ADDRESS` | Public address matching `AGENT_PRIVATE_KEY` |
+| `DATABASE_URL` | Neon Postgres URL for durable receipts and traction history |
+| `REPLAY_GUARD_SECRET` | Random HMAC secret; required in production because replay protection fails closed if unset |
 
 ### Circle Gateway (x402)
 
@@ -48,7 +50,7 @@ First cold start auto-seeds 10 creator sources into SQLite at `/tmp/citepay.db`.
 | Variable | Description | Default |
 |---|---|---|
 | `ARC_RPC_URL` | Arc Testnet RPC | `https://rpc.testnet.arc.network` |
-| `ARC_CONTRACT_ADDRESS` | `CitePayMarket.sol` address | `0x396cf1646EbAeF85ee8428C2d9239C46Ae956085` |
+| `NEXT_PUBLIC_CONTRACT_ADDRESS` | `CitePayMarket.sol` address | `0x396cf1646EbAeF85ee8428C2d9239C46Ae956085` |
 | `ARC_CREATOR_BOND_ADDRESS` | `CreatorBond.sol` address | Set after deploy |
 | `ARC_CITATION_MANDATE_ADDRESS` | `CitationMandate.sol` address | Set after deploy |
 | `ARC_USDC_ADDRESS` | Arc USDC precompile | `0x3600000000000000000000000000000000000000` |
@@ -67,9 +69,8 @@ If DCW vars are missing, creator payments fall back to direct viem ERC-20 transf
 
 | Variable | Description |
 |---|---|
-| `SEED_KEY` | Authorization for `POST /api/seed` (DB reset) |
 | `REGISTER_API_KEY` | Authorization for `POST /api/sources/register` |
-| `AGENT_SIGNING_KEY` | Private key for EIP-191 receipt signing (defaults to `AGENT_PRIVATE_KEY`) |
+| `REPLAY_GUARD_SECRET` | Required HMAC secret for replay protection in production |
 
 ### Feature Flags
 
@@ -95,7 +96,7 @@ vercel env add AGENT_PRIVATE_KEY
 # ... repeat for each variable
 ```
 
-The project uses `force-dynamic` on all API routes — no edge caching. SQLite lives at `/tmp/citepay.db` and resets on cold start (by design — judges can reset via `/demo` → Reset DB button).
+The project uses `force-dynamic` on all API routes — no edge caching. Production receipts and traction history are durable in Neon when `DATABASE_URL` is configured; SQLite is only the local-development fallback.
 
 ---
 

@@ -80,7 +80,7 @@ POST /api/cctp/fund-creator
 
 SDK: \`@circle-fin/unified-balance-kit\` · \`spend()\` + CCTP domain 26 (Arc)
 
-🔗 https://citepay-markets.vercel.app/wallet`,
+🔗 https://citepay-markets.vercel.app/labs/wallet`,
   },
   "2026-06-26": {
     emoji: "📊",

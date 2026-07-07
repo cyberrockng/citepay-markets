@@ -106,8 +106,6 @@ export default function DemoPage() {
   const [running, setRunning] = useState(false);
   const [done, setDone]     = useState(false);
   const [walletBalance, setWalletBalance] = useState<number | null>(null);
-  const [seeding, setSeeding] = useState(false);
-  const [seedMsg, setSeedMsg] = useState("");
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [policyComparison, setPolicyComparison] = useState<any[] | null>(null);
   const [missedCitations, setMissedCitations] = useState<{
@@ -125,22 +123,6 @@ export default function DemoPage() {
       .then(d => { if (Array.isArray(d.citations)) setMissedCitations(d.citations); })
       .catch(() => {});
   }, []);
-
-  async function resetDemo() {
-    setSeeding(true);
-    setSeedMsg("");
-    try {
-      const res = await fetch("/api/seed", { method: "POST" });
-      const d = await res.json();
-      setSeedMsg(res.ok ? `✓ ${d.message}` : `✗ ${d.error}`);
-    } catch {
-      setSeedMsg("✗ Reset failed");
-    } finally {
-      setSeeding(false);
-      setSteps(INIT);
-      setDone(false);
-    }
-  }
 
   function set(key: string, status: Status, data?: Record<string, unknown>, error?: string) {
     setSteps(prev => ({ ...prev, [key]: { status, data, error } }));
@@ -388,33 +370,20 @@ export default function DemoPage() {
           </div>
         )}
 
-        {/* Run + Reset Buttons */}
+        {/* Run Button */}
         <div className="flex gap-3 mb-8">
           <button
             onClick={runDemo}
-            disabled={running || seeding}
+            disabled={running}
             className={`flex-1 py-4 rounded-xl font-bold text-lg transition-all ${
-              running || seeding
+              running
                 ? "bg-[var(--surface)] text-[var(--text-muted)] cursor-not-allowed border border-white/10"
                 : "bg-[#6366f1] hover:bg-indigo-500 text-white"
             }`}
           >
             {running ? "Running demo…" : done ? "▶ Run Demo Again" : "▶ Start Demo"}
           </button>
-          <button
-            onClick={resetDemo}
-            disabled={running || seeding}
-            title="Reset database to 10 seed sources"
-            className="px-4 py-4 rounded-xl border border-white/10 bg-[var(--surface)] hover:border-white/20 text-[var(--text-muted)] hover:text-[var(--text-secondary)] text-sm transition-all disabled:cursor-not-allowed"
-          >
-            {seeding ? "Resetting…" : "↺ Reset DB"}
-          </button>
         </div>
-        {seedMsg && (
-          <p className={`text-xs font-mono mb-4 ${seedMsg.startsWith("✓") ? "text-[#34D399]" : "text-red-400"}`}>
-            {seedMsg}
-          </p>
-        )}
 
         {/* Step Timeline */}
         <div className="space-y-3">

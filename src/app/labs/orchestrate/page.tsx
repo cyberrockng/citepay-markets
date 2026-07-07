@@ -476,10 +476,10 @@ export default function OrchestratePage() {
                 </div>
                 <div className="flex items-center gap-3 flex-wrap">
                   <a
-                    href={`/bounties`}
+                    href={`/labs/economy`}
                     className="text-xs font-mono text-amber-400 hover:text-amber-300 underline transition-colors"
                   >
-                    View open bounties →
+                    View labs economy →
                   </a>
                   <span className="text-[10px] font-mono text-[#4a4a5e]">48h deadline · open to all creators</span>
                 </div>
