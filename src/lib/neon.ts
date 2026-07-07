@@ -13,7 +13,7 @@
 
 import { neon } from "@neondatabase/serverless";
 import type { Receipt, EvidencePreimage, ScoreBreakdown } from "@/types";
-import type { ClaimClearance, ClearanceCertificate, ClearMandateConfig } from "@/lib/clear/types";
+import type { ClaimClearance, ClearanceCertificate, ClearMandateConfig, RecoveryReport } from "@/lib/clear/types";
 
 // Module-level singleton — avoids recreating the connection on every call
 let _sql: ReturnType<typeof neon> | null = null;
@@ -154,6 +154,16 @@ async function init() {
       unsupported_count INTEGER NOT NULL DEFAULT 0,
       total_paid_micro BIGINT NOT NULL DEFAULT 0,
       certificate_hash TEXT NOT NULL,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+  `;
+  await sql`
+    CREATE TABLE IF NOT EXISTS cp_recovery_reports (
+      id TEXT PRIMARY KEY,
+      answer_hash TEXT NOT NULL,
+      input_answer TEXT NOT NULL,
+      findings_json JSONB NOT NULL,
+      status TEXT NOT NULL DEFAULT 'audit_only',
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     )
   `;
@@ -635,5 +645,49 @@ export async function getNeonClaimClearancesByIds(ids: string[]): Promise<ClaimC
   } catch (err) {
     console.error("[neon] getNeonClaimClearancesByIds failed:", String(err).slice(0, 120));
     return [];
+  }
+}
+
+export function persistRecoveryReport(report: RecoveryReport): void {
+  const sql = getSql();
+  if (!sql) return;
+  void (async () => {
+    try {
+      await init();
+      await sql`
+        INSERT INTO cp_recovery_reports (id, answer_hash, input_answer, findings_json, status, created_at)
+        VALUES (${report.id}, ${report.answerHash}, ${report.inputAnswer}, ${JSON.stringify(report.findings)}, ${report.status}, ${report.createdAt})
+        ON CONFLICT (id) DO NOTHING
+      `;
+    } catch (err) {
+      console.error("[neon] persistRecoveryReport failed:", String(err).slice(0, 120));
+    }
+  })();
+}
+
+export async function getNeonRecoveryReportById(id: string): Promise<RecoveryReport | null> {
+  const sql = getSql();
+  if (!sql) return null;
+  try {
+    await init();
+    const rows = await sql`SELECT * FROM cp_recovery_reports WHERE id = ${id} LIMIT 1` as Record<string, unknown>[];
+    if (!rows[0]) return null;
+    const row = rows[0];
+    const findings = row.findings_json as RecoveryReport["findings"];
+    return {
+      id: row.id as string,
+      answerHash: row.answer_hash as string,
+      inputAnswer: row.input_answer as string,
+      findings,
+      recoverableCount: findings.filter((f) => f.decision === "CLEARED").length,
+      unsupportedCount: findings.filter((f) => f.decision === "UNSUPPORTED").length,
+      unmatchedCount: findings.filter((f) => f.decision === "UNMATCHED").length,
+      totalRecoverableMicro: findings.reduce((sum, f) => sum + (f.decision === "CLEARED" ? f.wouldBeAmountDueMicro : 0), 0),
+      status: "audit_only",
+      createdAt: row.created_at as string,
+    };
+  } catch (err) {
+    console.error("[neon] getNeonRecoveryReportById failed:", String(err).slice(0, 120));
+    return null;
   }
 }

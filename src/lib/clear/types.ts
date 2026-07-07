@@ -81,3 +81,29 @@ export interface ClearanceChallenge {
   createdAt: string;
   resolvedAt: string | null;
 }
+
+export interface RecoveryFinding {
+  claimText: string;
+  quoteText: string;
+  matchedSourceId: string | null;
+  matchedSourceTitle: string | null;
+  quoteVerified: boolean;
+  supportScore: number;
+  decision: ClaimDecision | "UNMATCHED";
+  wouldBeAmountDueMicro: number;
+  policyTrace: string | null;
+  note: string;
+}
+
+export interface RecoveryReport {
+  id: string;
+  answerHash: string;
+  inputAnswer: string;
+  findings: RecoveryFinding[];
+  recoverableCount: number;
+  unsupportedCount: number;
+  unmatchedCount: number;
+  totalRecoverableMicro: number;
+  status: "audit_only";
+  createdAt: string;
+}

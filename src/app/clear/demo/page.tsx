@@ -181,6 +181,16 @@ export default function ClearDemoPage() {
               <ProofPanel label="Certificate Hash" hash={result.certificate.certificateHash} />
             </div>
           </section>
+
+          <section className="rounded-xl border border-white/10 bg-[var(--surface)] p-5">
+            <h2 className="font-semibold text-[#f0f0f5] mb-2">Try it on an answer CitePay didn&apos;t generate</h2>
+            <p className="text-sm text-[#8b8b9e] max-w-2xl mb-3">
+              Paste any AI answer and CitePay Clear will audit it for citations that should have been paid — same deterministic checks, compute-only.
+            </p>
+            <Link href="/recover" className="text-sm font-mono text-[#6366f1] hover:text-indigo-300">
+              Audit an external answer →
+            </Link>
+          </section>
         </div>
       )}
     </PageShell>

@@ -5,6 +5,7 @@ import type { Source, ScoreBreakdown } from "@/types";
 import type { ClaimClearance, ClearanceCertificate, ClearMandateConfig } from "@/lib/clear/types";
 import { evaluateClaimClearance, buildCertificateHash, buildReceiptHash } from "@/lib/clear/evaluate";
 import { hashClearObject } from "@/lib/clear/hash";
+import { sourceText } from "@/lib/clear/source-text";
 import { buildEvidencePreimage, hashEvidence, sha256 } from "@/lib/evidence";
 import { getAllSources, insertClaimClearance, insertClearanceCertificate, insertClearMandateConfig, insertReceipt, updateSourceStats } from "@/lib/db";
 import { payCreator } from "@/lib/payments";
@@ -24,13 +25,6 @@ function firstSentence(text: string): string {
   const trimmed = text.replace(/\s+/g, " ").trim();
   const match = trimmed.match(/^.{40,220}?[.!?](\s|$)/);
   return (match?.[0] ?? trimmed.slice(0, 160)).trim();
-}
-
-function sourceText(source: Source): string {
-  const text = source.fullContent || source.description || `${source.title}. ${source.url}`;
-  return text.length >= 80
-    ? text
-    : `${text} CitePay Clear uses exact quote verification before creator payment can execute.`;
 }
 
 async function createPaidReceipt(opts: {

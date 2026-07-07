@@ -4,12 +4,13 @@ import fs from "fs";
 import { createHash } from "crypto";
 import { v4 as uuidv4 } from "uuid";
 import type { Source, Receipt, QueryRecord } from "@/types";
-import type { ClaimClearance, ClearanceCertificate, ClearMandateConfig } from "@/lib/clear/types";
+import type { ClaimClearance, ClearanceCertificate, ClearMandateConfig, RecoveryReport } from "@/lib/clear/types";
 import { redisIncrSourcePaid, redisIncrSourceRefused } from "@/lib/redis-stats";
 import {
   persistClearanceCertificate,
   persistClaimClearance,
   persistClearMandateConfig,
+  persistRecoveryReport,
   persistReceipt,
   updateNeonReceiptOnChain,
 } from "@/lib/neon";
@@ -603,6 +604,36 @@ export function insertClearanceCertificate(certificate: ClearanceCertificate): v
     certificate.unsupportedCount, certificate.totalPaidMicro, certificate.certificateHash, certificate.createdAt
   );
   persistClearanceCertificate(certificate);
+}
+
+export function insertRecoveryReport(report: RecoveryReport): void {
+  getDb().prepare(`
+    INSERT OR REPLACE INTO recovery_reports (
+      id, answer_hash, input_answer, findings_json, settlement_plan_json, status, created_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?)
+  `).run(
+    report.id, report.answerHash, report.inputAnswer, JSON.stringify(report.findings),
+    null, report.status, report.createdAt
+  );
+  persistRecoveryReport(report);
+}
+
+export function getRecoveryReportById(id: string): RecoveryReport | null {
+  const row = getDb().prepare("SELECT * FROM recovery_reports WHERE id = ?").get(id) as Record<string, unknown> | undefined;
+  if (!row) return null;
+  const findings = JSON.parse(row.findings_json as string) as RecoveryReport["findings"];
+  return {
+    id: row.id as string,
+    answerHash: row.answer_hash as string,
+    inputAnswer: row.input_answer as string,
+    findings,
+    recoverableCount: findings.filter((f) => f.decision === "CLEARED").length,
+    unsupportedCount: findings.filter((f) => f.decision === "UNSUPPORTED").length,
+    unmatchedCount: findings.filter((f) => f.decision === "UNMATCHED").length,
+    totalRecoverableMicro: findings.reduce((sum, f) => sum + (f.decision === "CLEARED" ? f.wouldBeAmountDueMicro : 0), 0),
+    status: "audit_only",
+    createdAt: row.created_at as string,
+  };
 }
 
 export function getClaimClearanceById(id: string): ClaimClearance | null {

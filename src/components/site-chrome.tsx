@@ -18,6 +18,7 @@ const FOOTER_GROUPS = [
     links: [
       { href: "/demo", label: "Demo" },
       { href: "/clear/demo", label: "Clear" },
+      { href: "/recover", label: "Recover" },
       { href: "/ask", label: "Ask" },
       { href: "/market", label: "Market" },
       { href: "/register", label: "Creators" },
