@@ -24,6 +24,11 @@ export interface Source {
   avgContributionWeight?: number; // running average of post-synthesis contribution scores (0–1)
   totalContributionQueries?: number; // number of PAY decisions that contributed to avg
   fullContent?: string | null; // indexed plain-text page content for scoring
+  assetType?: string;
+  licenseClass?: string;
+  unitTextHash?: string | null;
+  verificationStatus?: string;
+  riskScore?: number;
 }
 
 export interface ScoreBreakdown {

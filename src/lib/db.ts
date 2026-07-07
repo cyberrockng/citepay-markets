@@ -4,8 +4,15 @@ import fs from "fs";
 import { createHash } from "crypto";
 import { v4 as uuidv4 } from "uuid";
 import type { Source, Receipt, QueryRecord } from "@/types";
+import type { ClaimClearance, ClearanceCertificate, ClearMandateConfig } from "@/lib/clear/types";
 import { redisIncrSourcePaid, redisIncrSourceRefused } from "@/lib/redis-stats";
-import { persistReceipt, updateNeonReceiptOnChain } from "@/lib/neon";
+import {
+  persistClearanceCertificate,
+  persistClaimClearance,
+  persistClearMandateConfig,
+  persistReceipt,
+  updateNeonReceiptOnChain,
+} from "@/lib/neon";
 
 const DATA_DIR = process.env.NODE_ENV === "production"
   ? "/tmp"
@@ -123,6 +130,102 @@ function migrate(db: Database.Database) {
     db.exec("ALTER TABLE sources ADD COLUMN avg_contribution_weight REAL NOT NULL DEFAULT 0");
     db.exec("ALTER TABLE sources ADD COLUMN total_contribution_queries INTEGER NOT NULL DEFAULT 0");
   }
+  for (const ddl of [
+    "ALTER TABLE sources ADD COLUMN asset_type TEXT DEFAULT 'article'",
+    "ALTER TABLE sources ADD COLUMN license_class TEXT DEFAULT 'standard'",
+    "ALTER TABLE sources ADD COLUMN unit_text_hash TEXT DEFAULT NULL",
+    "ALTER TABLE sources ADD COLUMN verification_status TEXT DEFAULT 'unverified'",
+    "ALTER TABLE sources ADD COLUMN risk_score INTEGER DEFAULT 0",
+  ]) {
+    const col = ddl.match(/ADD COLUMN ([a-z_]+)/)?.[1];
+    if (col && !sourceCols.includes(col)) db.exec(ddl);
+  }
+
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS clear_mandate_configs (
+      mandate_config_id TEXT PRIMARY KEY,
+      on_chain_mandate_id INTEGER DEFAULT NULL,
+      operator_wallet TEXT NOT NULL,
+      agent_wallet TEXT NOT NULL,
+      policy_name TEXT NOT NULL,
+      budget_cap_micro INTEGER NOT NULL,
+      max_price_per_citation_micro INTEGER NOT NULL,
+      max_price_per_claim_micro INTEGER NOT NULL,
+      allowed_source_types TEXT DEFAULT NULL,
+      blocked_domains TEXT DEFAULT NULL,
+      blocked_wallets TEXT DEFAULT NULL,
+      required_license_class TEXT DEFAULT NULL,
+      require_publisher_verified INTEGER NOT NULL DEFAULT 0,
+      require_quote_span INTEGER NOT NULL DEFAULT 1,
+      min_support_score INTEGER NOT NULL DEFAULT 0,
+      challenge_window_seconds INTEGER NOT NULL DEFAULT 86400,
+      expires_at TEXT DEFAULT NULL,
+      mandate_hash TEXT NOT NULL,
+      operator_signature TEXT DEFAULT NULL,
+      created_at TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS claim_clearances (
+      clearance_id TEXT PRIMARY KEY,
+      mandate_config_id TEXT NOT NULL,
+      source_id TEXT NOT NULL,
+      on_chain_source_id INTEGER DEFAULT NULL,
+      answer_hash TEXT NOT NULL,
+      claim_hash TEXT NOT NULL,
+      claim_text TEXT NOT NULL,
+      quote_text TEXT NOT NULL,
+      quote_start INTEGER NOT NULL,
+      quote_end INTEGER NOT NULL,
+      quote_verified INTEGER NOT NULL DEFAULT 0,
+      support_score INTEGER NOT NULL DEFAULT 0,
+      license_class TEXT DEFAULT NULL,
+      amount_due_micro INTEGER NOT NULL DEFAULT 0,
+      amount_paid_micro INTEGER NOT NULL DEFAULT 0,
+      underlying_citation_receipt_id TEXT DEFAULT NULL,
+      on_chain_mandate_id INTEGER DEFAULT NULL,
+      decision TEXT NOT NULL,
+      policy_trace TEXT NOT NULL,
+      receipt_hash TEXT NOT NULL,
+      anchor_tx TEXT DEFAULT NULL,
+      challenge_status TEXT NOT NULL DEFAULT 'NONE',
+      challenge_deadline TEXT DEFAULT NULL,
+      created_at TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS clearance_certificates (
+      certificate_id TEXT PRIMARY KEY,
+      answer_hash TEXT NOT NULL,
+      mandate_config_id TEXT NOT NULL,
+      on_chain_mandate_id INTEGER DEFAULT NULL,
+      claim_clearance_ids TEXT NOT NULL,
+      cleared_count INTEGER NOT NULL DEFAULT 0,
+      blocked_count INTEGER NOT NULL DEFAULT 0,
+      unsupported_count INTEGER NOT NULL DEFAULT 0,
+      total_paid_micro INTEGER NOT NULL DEFAULT 0,
+      certificate_hash TEXT NOT NULL,
+      created_at TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS clearance_challenges (
+      id TEXT PRIMARY KEY,
+      clearance_id TEXT NOT NULL,
+      challenge_type TEXT NOT NULL,
+      status TEXT NOT NULL,
+      detail TEXT NOT NULL,
+      created_at TEXT NOT NULL,
+      resolved_at TEXT DEFAULT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS recovery_reports (
+      id TEXT PRIMARY KEY,
+      answer_hash TEXT NOT NULL,
+      input_answer TEXT NOT NULL,
+      findings_json TEXT NOT NULL,
+      settlement_plan_json TEXT DEFAULT NULL,
+      status TEXT NOT NULL DEFAULT 'audit_only',
+      created_at TEXT NOT NULL
+    );
+  `);
 
   // ── Bounties ────────────────────────────────────────────────────────────────
   db.exec(`
@@ -287,7 +390,7 @@ const SEED_SOURCES = [
   { onChainId: 20, category: "Protocol",       title: "HTTP 402 and the Future of Machine Payments", url: "https://docs.cdp.coinbase.com/x402/docs/welcome", creatorName: "Yuki Tanaka", creatorHandle: "@yuki_protocol", payoutWallet: "0xa20C8F958a31A78Be4bcf33CecA8B463636050ce", price: 2500, bond: 10000, contentHash: "327d0c9a1e2e214d2658b334afac90483ea11836b6676ef8035854a52a08d8b4", description: "HTTP 402 Payment Required has been dormant since the 1990s. x402 revives it as a machine-native payment protocol, enabling any HTTP endpoint to require payment before serving content — perfect for AI agent workflows." },
   { onChainId: 21, category: "Research",       title: "Content Addressing and Data Integrity in IPFS", url: "https://docs.ipfs.tech/concepts/content-addressing/", creatorName: "Sara Mensah", creatorHandle: "@sara_web3", payoutWallet: "0x578087F20dfF74e3dB0841C9514285648B4339DE", price: 2000, bond: 5000, contentHash: "77ed5dbce0e8699cf34d041e4db6af0b697821ea25094eca3ee328a4a3dde5d4", description: "IPFS content addressing uses cryptographic hashes to identify data by what it is, not where it is. This ensures content integrity — the same CID always resolves to the same bytes, making citations verifiable and tamper-evident." },
   { onChainId: 22, category: "Infrastructure", title: "USDC: The Dollar for the Internet", url: "https://www.circle.com/usdc", creatorName: "Leon Okafor", creatorHandle: "@leon_stables", payoutWallet: "0xa9EB31434d3eA3679f36f051492451f3f5912a7C", price: 1000, bond: 10000, contentHash: "fac45fcf9ee419e9010f1335ea6f744d2ccd9533f68babea3162e6412a3651df", description: "USDC is a fully reserved, dollar-backed stablecoin that settles instantly on Base. Its programmatic accessibility makes it the default currency for AI agent payments, enabling autonomous financial transactions at internet scale." },
-  { onChainId: 23, category: "AI/Agents",      title: "Model Cards for AI Accountability and Transparency", url: "https://huggingface.co/blog/model-cards", creatorName: "Abiola Adewale", creatorHandle: "@abiola_agents", payoutWallet: "0x9925e934B9aB91353F8525135A83112dF3FC567a", price: 3000, bond: 15000, contentHash: "5e49d22dddff4c0357ce8d8c5bf22a75665185ee6cd7c96cd5308b91dac26f13", description: "Model cards document AI systems' intended uses, performance characteristics, and limitations. The same accountability principle applies to AI agents — every decision, payment, and refusal should carry a verifiable audit trail." },
+  { onChainId: 23, category: "AI/Agents",      title: "Model Cards for AI Accountability and Transparency", url: "https://huggingface.co/blog/model-cards", creatorName: "CitePay Research", creatorHandle: "@citepay_research", payoutWallet: "0x9925e934B9aB91353F8525135A83112dF3FC567a", price: 3000, bond: 15000, contentHash: "5e49d22dddff4c0357ce8d8c5bf22a75665185ee6cd7c96cd5308b91dac26f13", description: "Model cards document AI systems' intended uses, performance characteristics, and limitations. The same accountability principle applies to AI agents — every decision, payment, and refusal should carry a verifiable audit trail." },
 ];
 
 export function reseedDb(): { sourcesInserted: number } {
@@ -424,6 +527,151 @@ function rowToSource(r: Record<string, unknown>): Source {
     avgContributionWeight: (r.avg_contribution_weight as number | null) ?? 0,
     totalContributionQueries: (r.total_contribution_queries as number | null) ?? 0,
     fullContent: (r.full_content as string | null) ?? null,
+    assetType: (r.asset_type as string | null) ?? "article",
+    licenseClass: (r.license_class as string | null) ?? "standard",
+    unitTextHash: (r.unit_text_hash as string | null) ?? null,
+    verificationStatus: (r.verification_status as string | null) ?? "unverified",
+    riskScore: (r.risk_score as number | null) ?? 0,
+  };
+}
+
+function parseJsonArray(value: unknown): string[] | null {
+  if (!value) return null;
+  try {
+    const parsed = JSON.parse(value as string);
+    return Array.isArray(parsed) ? parsed.filter((v): v is string => typeof v === "string") : null;
+  } catch {
+    return null;
+  }
+}
+
+function stringifyNullableArray(value: string[] | null): string | null {
+  return value ? JSON.stringify(value) : null;
+}
+
+export function insertClearMandateConfig(config: ClearMandateConfig): void {
+  getDb().prepare(`
+    INSERT OR REPLACE INTO clear_mandate_configs (
+      mandate_config_id, on_chain_mandate_id, operator_wallet, agent_wallet, policy_name,
+      budget_cap_micro, max_price_per_citation_micro, max_price_per_claim_micro,
+      allowed_source_types, blocked_domains, blocked_wallets, required_license_class,
+      require_publisher_verified, require_quote_span, min_support_score,
+      challenge_window_seconds, expires_at, mandate_hash, operator_signature, created_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `).run(
+    config.mandateConfigId, config.onChainMandateId, config.operatorWallet, config.agentWallet, config.policyName,
+    config.budgetCapMicro, config.maxPricePerCitationMicro, config.maxPricePerClaimMicro,
+    stringifyNullableArray(config.allowedSourceTypes), stringifyNullableArray(config.blockedDomains),
+    stringifyNullableArray(config.blockedWallets), config.requiredLicenseClass,
+    config.requirePublisherVerified ? 1 : 0, config.requireQuoteSpan ? 1 : 0, config.minSupportScore,
+    config.challengeWindowSeconds, config.expiresAt, config.mandateHash, config.operatorSignature, config.createdAt
+  );
+  persistClearMandateConfig(config);
+}
+
+export function insertClaimClearance(clearance: ClaimClearance): void {
+  getDb().prepare(`
+    INSERT OR REPLACE INTO claim_clearances (
+      clearance_id, mandate_config_id, source_id, on_chain_source_id, answer_hash, claim_hash,
+      claim_text, quote_text, quote_start, quote_end, quote_verified, support_score,
+      license_class, amount_due_micro, amount_paid_micro, underlying_citation_receipt_id,
+      on_chain_mandate_id, decision, policy_trace, receipt_hash, anchor_tx,
+      challenge_status, challenge_deadline, created_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `).run(
+    clearance.clearanceId, clearance.mandateConfigId, clearance.sourceId, clearance.onChainSourceId,
+    clearance.answerHash, clearance.claimHash, clearance.claimText, clearance.quoteText,
+    clearance.quoteStart, clearance.quoteEnd, clearance.quoteVerified ? 1 : 0, clearance.supportScore,
+    clearance.licenseClass, clearance.amountDueMicro, clearance.amountPaidMicro,
+    clearance.underlyingCitationReceiptId, clearance.onChainMandateId, clearance.decision,
+    clearance.policyTrace, clearance.receiptHash, clearance.anchorTx,
+    clearance.challengeStatus, clearance.challengeDeadline, clearance.createdAt
+  );
+  persistClaimClearance(clearance);
+}
+
+export function insertClearanceCertificate(certificate: ClearanceCertificate): void {
+  getDb().prepare(`
+    INSERT OR REPLACE INTO clearance_certificates (
+      certificate_id, answer_hash, mandate_config_id, on_chain_mandate_id,
+      claim_clearance_ids, cleared_count, blocked_count, unsupported_count,
+      total_paid_micro, certificate_hash, created_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `).run(
+    certificate.certificateId, certificate.answerHash, certificate.mandateConfigId, certificate.onChainMandateId,
+    JSON.stringify(certificate.claimClearanceIds), certificate.clearedCount, certificate.blockedCount,
+    certificate.unsupportedCount, certificate.totalPaidMicro, certificate.certificateHash, certificate.createdAt
+  );
+  persistClearanceCertificate(certificate);
+}
+
+export function getClaimClearanceById(id: string): ClaimClearance | null {
+  const row = getDb().prepare("SELECT * FROM claim_clearances WHERE clearance_id = ?").get(id) as Record<string, unknown> | undefined;
+  return row ? rowToClaimClearance(row) : null;
+}
+
+export function getClearanceCertificateById(id: string): ClearanceCertificate | null {
+  const row = getDb().prepare("SELECT * FROM clearance_certificates WHERE certificate_id = ?").get(id) as Record<string, unknown> | undefined;
+  return row ? rowToClearanceCertificate(row) : null;
+}
+
+export function getClearanceCertificateByClearanceId(clearanceId: string): ClearanceCertificate | null {
+  const row = getDb().prepare(
+    "SELECT * FROM clearance_certificates WHERE claim_clearance_ids LIKE ? ORDER BY created_at DESC LIMIT 1"
+  ).get(`%${clearanceId}%`) as Record<string, unknown> | undefined;
+  return row ? rowToClearanceCertificate(row) : null;
+}
+
+export function getClaimClearancesByCertificateId(certificateId: string): ClaimClearance[] {
+  const cert = getClearanceCertificateById(certificateId);
+  if (!cert) return [];
+  return cert.claimClearanceIds
+    .map((id) => getClaimClearanceById(id))
+    .filter((c): c is ClaimClearance => Boolean(c));
+}
+
+function rowToClaimClearance(r: Record<string, unknown>): ClaimClearance {
+  return {
+    clearanceId: r.clearance_id as string,
+    mandateConfigId: r.mandate_config_id as string,
+    sourceId: r.source_id as string,
+    onChainSourceId: (r.on_chain_source_id as number | null) ?? null,
+    answerHash: r.answer_hash as string,
+    claimHash: r.claim_hash as string,
+    claimText: r.claim_text as string,
+    quoteText: r.quote_text as string,
+    quoteStart: r.quote_start as number,
+    quoteEnd: r.quote_end as number,
+    quoteVerified: Boolean(r.quote_verified),
+    supportScore: r.support_score as number,
+    licenseClass: (r.license_class as string | null) ?? null,
+    amountDueMicro: r.amount_due_micro as number,
+    amountPaidMicro: r.amount_paid_micro as number,
+    underlyingCitationReceiptId: (r.underlying_citation_receipt_id as string | null) ?? null,
+    onChainMandateId: (r.on_chain_mandate_id as number | null) ?? null,
+    decision: r.decision as ClaimClearance["decision"],
+    policyTrace: r.policy_trace as string,
+    receiptHash: r.receipt_hash as string,
+    anchorTx: (r.anchor_tx as string | null) ?? null,
+    challengeStatus: r.challenge_status as ClaimClearance["challengeStatus"],
+    challengeDeadline: (r.challenge_deadline as string | null) ?? null,
+    createdAt: r.created_at as string,
+  };
+}
+
+function rowToClearanceCertificate(r: Record<string, unknown>): ClearanceCertificate {
+  return {
+    certificateId: r.certificate_id as string,
+    answerHash: r.answer_hash as string,
+    mandateConfigId: r.mandate_config_id as string,
+    onChainMandateId: (r.on_chain_mandate_id as number | null) ?? null,
+    claimClearanceIds: parseJsonArray(r.claim_clearance_ids) ?? [],
+    clearedCount: r.cleared_count as number,
+    blockedCount: r.blocked_count as number,
+    unsupportedCount: r.unsupported_count as number,
+    totalPaidMicro: r.total_paid_micro as number,
+    certificateHash: r.certificate_hash as string,
+    createdAt: r.created_at as string,
   };
 }
 

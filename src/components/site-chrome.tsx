@@ -6,6 +6,7 @@ import { BrandMark } from "@/components/brand-mark";
 
 const NAV_LINKS = [
   { href: "/demo", label: "Demo" },
+  { href: "/clear/demo", label: "Clear" },
   { href: "/market", label: "Market" },
   { href: "/proof", label: "Proof" },
   { href: "/traction", label: "Traction" },
@@ -16,6 +17,7 @@ const FOOTER_GROUPS = [
     title: "Product",
     links: [
       { href: "/demo", label: "Demo" },
+      { href: "/clear/demo", label: "Clear" },
       { href: "/ask", label: "Ask" },
       { href: "/market", label: "Market" },
       { href: "/register", label: "Creators" },

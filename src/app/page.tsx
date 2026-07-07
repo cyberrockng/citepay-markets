@@ -9,6 +9,7 @@ const CONTRACT_ADDRESS = "0x396cf1646EbAeF85ee8428C2d9239C46Ae956085";
 
 const PRODUCT_CARDS = [
   { href: "/demo", title: "Demo", body: "Run the judge path: query, x402 payment, source scoring, receipts." },
+  { href: "/clear/demo", title: "CitePay Clear", body: "Prove claims are licensed, quote-supported, policy-allowed, and paid only after clearance." },
   { href: "/market", title: "Market", body: "Browse registered creator sources and their payment policies." },
   { href: "/proof", title: "Proof Explorer", body: "Inspect receipts, hashes, creator payouts, and ArcScan links." },
   { href: "/traction", title: "Traction", body: "See live payment volume, decisions, and on-chain events." },
