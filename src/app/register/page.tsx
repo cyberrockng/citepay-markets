@@ -37,7 +37,7 @@ export default function RegisterPage() {
 
   function fillExample() {
     const suffix = Date.now().toString(36);
-    setCreatorName("Abiola Adewale");
+    setCreatorName("CitePay Demo Creator");
     setCreatorHandle("@cyberrockng");
     setUrl(`https://citepay-markets.vercel.app?ref=${suffix}`);
     setTitle("CitePay Markets — AI Agent Citation Marketplace on Arc");
