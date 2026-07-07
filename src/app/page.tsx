@@ -176,7 +176,7 @@ export default function LandingPage() {
               AI agents pay for what they cite.
             </h1>
             <p className="pretty-text mt-6 max-w-2xl break-words text-base leading-8 text-[var(--text-secondary)] sm:text-lg">
-              Every citation becomes a real USDC payment with a tamper-proof on-chain receipt, settled on Arc via Circle x402.
+              Every citation becomes a real USDC payment with a tamper-evident on-chain receipt, settled on Arc via Circle x402.
             </p>
             <div className="mt-9 flex min-w-0 flex-col gap-4 sm:flex-row sm:items-center">
               <PrimaryButton href="/demo">Run the live demo</PrimaryButton>

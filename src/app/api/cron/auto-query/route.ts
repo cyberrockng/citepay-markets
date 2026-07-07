@@ -12,7 +12,7 @@ const ROTATING_QUERIES = [
   "What role does USDC play in enabling trustless creator compensation?",
   "How do Agent Spend Policies protect budgets in autonomous AI systems?",
   "What is the economic model behind the AI citation economy?",
-  "How does on-chain evidence hashing make AI decisions verifiable and tamper-proof?",
+  "How does on-chain evidence hashing make AI decisions verifiable and tamper-evident?",
   "Why is Circle's x402 batching protocol important for agentic commerce at scale?",
 ];
 

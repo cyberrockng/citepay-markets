@@ -62,7 +62,7 @@ export default function Image() {
               AI agents pay for what they cite.
             </div>
             <div style={{ color: "#A6ADBB", fontSize: 28, lineHeight: 1.35, maxWidth: 880 }}>
-              USDC citation payments with tamper-proof receipts, settled on Arc via Circle x402.
+              USDC citation payments with tamper-evident receipts, settled on Arc via Circle x402.
             </div>
           </div>
 
