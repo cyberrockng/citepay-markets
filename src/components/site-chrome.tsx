@@ -54,6 +54,11 @@ const FOOTER_GROUPS = [
 
 export function SiteNav() {
   const pathname = usePathname();
+  const isClearSurface =
+    pathname.startsWith("/clear") || pathname.startsWith("/clearance") || pathname.startsWith("/recover");
+  const ctaHref = isClearSurface ? "/clear/demo" : "/demo";
+  const ctaLabel = isClearSurface ? "Run Clear" : "Run Demo";
+
   return (
     <header className="sticky top-0 z-40 border-b border-white/10 bg-[var(--bg)]/88 backdrop-blur-xl">
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
@@ -87,10 +92,10 @@ export function SiteNav() {
         </nav>
 
         <Link
-          href="/demo"
+          href={ctaHref}
           className="inline-flex h-10 items-center justify-center rounded-lg bg-[#34D399] px-4 text-sm font-semibold text-[#07110D] transition-colors hover:bg-[#6EE7B7] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--bg)]"
         >
-          Run Demo
+          {ctaLabel}
         </Link>
       </div>
     </header>
