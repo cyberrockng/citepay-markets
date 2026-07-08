@@ -7,6 +7,7 @@ import { Badge, DataRow, PageShell, ProofPanel, StatCard } from "@/components/ui
 import type { ClaimClearance, ClearanceCertificate, ClearMandateConfig } from "@/lib/clear/types";
 
 type RunState = "idle" | "running" | "done" | "error";
+type RunMode = "full" | "adversarial";
 
 interface DemoEvent {
   label: string;
@@ -38,10 +39,12 @@ function decisionClass(decision: string) {
 
 export default function ClearDemoPage() {
   const [state, setState] = useState<RunState>("idle");
+  const [mode, setMode] = useState<RunMode>("full");
   const [result, setResult] = useState<DemoResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  async function runDemo() {
+  async function runDemo(nextMode: RunMode = "full") {
+    setMode(nextMode);
     setState("running");
     setError(null);
     setResult(null);
@@ -57,6 +60,9 @@ export default function ClearDemoPage() {
     }
   }
 
+  const unsupported = result?.clearances.find((clearance) => clearance.decision === "UNSUPPORTED");
+  const cleared = result?.clearances.find((clearance) => clearance.decision === "CLEARED");
+
   return (
     <PageShell maxWidth="max-w-6xl">
       <BackButton />
@@ -66,21 +72,55 @@ export default function ClearDemoPage() {
         <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div>
             <h1 className="text-3xl sm:text-4xl font-semibold tracking-tight text-[var(--text-primary)]">
-              Pre-payment citation clearance
+              CitePay blocks bad citations before paying good ones
             </h1>
             <p className="text-[var(--text-secondary)] max-w-2xl mt-3">
-              This demo pays only after a claim passes license, exact-quote, policy, and budget checks. Failed claims are refused before money moves.
+              An AI tries to cite a quote that does not exist. CitePay catches it with deterministic span verification, pays nothing, then clears only the supported licensed claim.
             </p>
           </div>
-          <button
-            onClick={runDemo}
-            disabled={state === "running"}
-            className="rounded-lg bg-[#f0f0f5] text-[#0a0a0f] px-5 py-3 text-sm font-semibold disabled:opacity-60"
-          >
-            {state === "running" ? "Running clearance..." : "Run 90-second proof"}
-          </button>
+          <div className="flex flex-col gap-2 sm:flex-row lg:flex-col xl:flex-row">
+            <button
+              onClick={() => runDemo("adversarial")}
+              disabled={state === "running"}
+              className="rounded-lg bg-red-300 text-[#240a0a] px-5 py-3 text-sm font-semibold disabled:opacity-60"
+            >
+              {state === "running" && mode === "adversarial" ? "Testing fake quote..." : "Run fake quote test"}
+            </button>
+            <button
+              onClick={() => runDemo("full")}
+              disabled={state === "running"}
+              className="rounded-lg bg-[#f0f0f5] text-[#0a0a0f] px-5 py-3 text-sm font-semibold disabled:opacity-60"
+            >
+              {state === "running" && mode === "full" ? "Running clearance..." : "Run full proof"}
+            </button>
+          </div>
         </div>
       </div>
+
+      <section className="mb-6 rounded-xl border border-red-700/50 bg-red-950/25 p-5">
+        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+          <div>
+            <div className="text-xs font-mono uppercase tracking-[0.2em] text-red-300">Adversarial guarantee</div>
+            <p className="mt-2 max-w-3xl text-sm text-red-100">
+              A normal paid-citation system may have paid this because the AI score is high. CitePay Clear refuses because the exact quote is absent from the source.
+            </p>
+          </div>
+          <div className="grid grid-cols-3 gap-2 text-center text-xs">
+            <div className="rounded-lg border border-red-700/40 bg-black/20 px-3 py-2">
+              <div className="font-mono text-lg text-red-200">96</div>
+              <div className="text-red-200/70">AI score</div>
+            </div>
+            <div className="rounded-lg border border-red-700/40 bg-black/20 px-3 py-2">
+              <div className="font-mono text-lg text-red-200">no</div>
+              <div className="text-red-200/70">quote found</div>
+            </div>
+            <div className="rounded-lg border border-red-700/40 bg-black/20 px-3 py-2">
+              <div className="font-mono text-lg text-red-200">$0</div>
+              <div className="text-red-200/70">paid</div>
+            </div>
+          </div>
+        </div>
+      </section>
 
       {error && (
         <div className="mb-6 rounded-xl border border-red-800 bg-red-950/30 p-4 text-sm text-red-200">
@@ -99,6 +139,39 @@ export default function ClearDemoPage() {
 
       {result && (
         <div className="space-y-6">
+          {unsupported && (
+            <section className="rounded-xl border border-red-700/60 bg-red-950/30 p-5">
+              <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                <div>
+                  <div className="mb-2 flex flex-wrap items-center gap-2">
+                    <Badge type="BLOCKED_BY_POLICY" label="fake quote blocked" />
+                    <span className="rounded border border-red-700/50 bg-black/20 px-2 py-0.5 text-xs font-mono text-red-200">
+                      support score {unsupported.supportScore}/100
+                    </span>
+                    <span className="rounded border border-red-700/50 bg-black/20 px-2 py-0.5 text-xs font-mono text-red-200">
+                      paid {micro(unsupported.amountPaidMicro)}
+                    </span>
+                  </div>
+                  <h2 className="text-xl font-semibold text-red-100">
+                    CitePay refused the confident but fabricated citation.
+                  </h2>
+                  <p className="mt-2 max-w-3xl text-sm text-red-100/80">
+                    The AI advisory score was high, but deterministic quote verification returned no span. That failure alone was enough to block settlement.
+                  </p>
+                </div>
+                <Link
+                  href={`/clearance/${unsupported.clearanceId}`}
+                  className="rounded-lg border border-red-400/40 px-4 py-2 text-sm font-mono text-red-200 hover:bg-red-300/10"
+                >
+                  Open refusal receipt
+                </Link>
+              </div>
+              <blockquote className="mt-4 rounded-lg border border-red-800/60 bg-[#0a0a0f] p-4 text-sm text-red-100">
+                &ldquo;{unsupported.quoteText}&rdquo;
+              </blockquote>
+            </section>
+          )}
+
           <div className="grid gap-4 md:grid-cols-4">
             <StatCard label="Cleared" value={result.certificate.clearedCount} accent="text-[#34D399]" />
             <StatCard label="Blocked" value={result.certificate.blockedCount} accent="text-orange-300" />
@@ -129,6 +202,9 @@ export default function ClearDemoPage() {
 
             <section className="rounded-xl border border-white/10 bg-[var(--surface)] p-5">
               <h2 className="font-semibold mb-4">Claim Decisions</h2>
+              <p className="mb-4 text-xs text-[#8b8b9e]">
+                The agent evaluates multiple candidate source outcomes: fake quote, wrong license, over price cap, and cleared payment.
+              </p>
               <div className="space-y-3">
                 {result.clearances.map((clearance) => (
                   <Link
@@ -143,6 +219,15 @@ export default function ClearDemoPage() {
                       <span className="text-xs font-mono text-[#8b8b9e]">{micro(clearance.amountPaidMicro)}</span>
                     </div>
                     <p className="text-sm text-[#f0f0f5]">{clearance.claimText}</p>
+                    <div className="mt-2 flex flex-wrap gap-2 text-[11px] font-mono">
+                      <span className={clearance.quoteVerified ? "text-[#34D399]" : "text-red-300"}>
+                        quote: {clearance.quoteVerified ? "verified" : "missing"}
+                      </span>
+                      <span className="text-[#8b8b9e]">score: {clearance.supportScore}/100</span>
+                      <span className={clearance.amountPaidMicro > 0 ? "text-[#34D399]" : "text-[#8b8b9e]"}>
+                        paid: {micro(clearance.amountPaidMicro)}
+                      </span>
+                    </div>
                     <p className="mt-2 text-xs text-[#8b8b9e] line-clamp-2">&ldquo;{clearance.quoteText}&rdquo;</p>
                   </Link>
                 ))}
@@ -173,9 +258,18 @@ export default function ClearDemoPage() {
                   One answer-level artifact summarizes cleared, blocked, unsupported, paid, and hash-committed claim decisions.
                 </p>
               </div>
-              <Link href={result.primaryClearanceUrl} className="rounded-lg border border-[#34D399]/40 px-4 py-2 text-sm text-[#34D399] hover:bg-[#34D399]/10">
-                Open primary receipt
-              </Link>
+              <div className="flex flex-col gap-2 sm:flex-row">
+                {cleared && (
+                  <Link href={`/clearance/${cleared.clearanceId}`} className="rounded-lg border border-[#34D399]/40 px-4 py-2 text-sm text-[#34D399] hover:bg-[#34D399]/10">
+                    Open paid receipt
+                  </Link>
+                )}
+                {unsupported && (
+                  <Link href={`/clearance/${unsupported.clearanceId}`} className="rounded-lg border border-red-400/40 px-4 py-2 text-sm text-red-200 hover:bg-red-300/10">
+                    Open refusal receipt
+                  </Link>
+                )}
+              </div>
             </div>
             <div className="mt-4">
               <ProofPanel label="Certificate Hash" hash={result.certificate.certificateHash} />
