@@ -86,6 +86,7 @@ export interface RecoveryFinding {
   claimText: string;
   quoteText: string;
   matchedSourceId: string | null;
+  matchedSourceOnChainId: number | null;
   matchedSourceTitle: string | null;
   quoteVerified: boolean;
   supportScore: number;

@@ -48,6 +48,10 @@ describe("recovery audit", () => {
     expect(finding.decision).toBe("CLEARED");
     expect(finding.quoteVerified).toBe(true);
     expect(finding.wouldBeAmountDueMicro).toBe(2_000);
+    // Settlement looks the source up by onChainId, not the ephemeral local
+    // id (regenerated on every cold-start reseed) — this must be populated
+    // whenever a source is matched, or /recover/settle can never find it.
+    expect(finding.matchedSourceOnChainId).toBe(14);
   });
 
   it("marks a claim unsupported when the quote is not present in the matched source, even with a high score", () => {
@@ -87,6 +91,7 @@ describe("recovery audit", () => {
     );
     expect(finding.decision).toBe("UNMATCHED");
     expect(finding.matchedSourceId).toBeNull();
+    expect(finding.matchedSourceOnChainId).toBeNull();
     expect(finding.wouldBeAmountDueMicro).toBe(0);
   });
 
