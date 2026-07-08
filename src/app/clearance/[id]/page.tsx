@@ -194,7 +194,7 @@ export default function ClearanceReceiptPage({ params }: { params: Promise<{ id:
           <div>
             <h2 className="font-semibold">Creator Payout</h2>
             <p className="mt-1 text-sm text-[#8b8b9e]">
-              This panel shows what the creator earned from this claim-level clearance.
+              This panel shows whether the creator was paid from this claim-level clearance.
             </p>
           </div>
           <Badge
@@ -212,7 +212,9 @@ export default function ClearanceReceiptPage({ params }: { params: Promise<{ id:
           <DataRow label="Underlying Receipt" value={clearance.underlyingCitationReceiptId ?? "none"} mono />
         </div>
         <div className="mt-4 rounded-lg border border-white/10 bg-[#0a0a0f] p-4">
-          <div className="text-xs font-mono uppercase tracking-[0.18em] text-[#34D399] mb-2">Why this creator earned</div>
+          <div className="text-xs font-mono uppercase tracking-[0.18em] text-[#34D399] mb-2">
+            {clearance.decision === "CLEARED" ? "Why this creator was paid" : "Why this creator was not paid"}
+          </div>
           <p className="text-sm text-[#d6d6e7]">
             {clearance.decision === "CLEARED"
               ? "The quote span was found in the source, the license matched the mandate, policy checks passed, and the claim stayed within budget. Payment executed only after those gates passed."
