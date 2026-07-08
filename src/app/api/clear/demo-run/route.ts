@@ -12,9 +12,12 @@ import { getAllSources, insertClaimClearance, insertClearanceCertificate, insert
 import { getAgentAddress } from "@/lib/agent";
 import { resolvePolicy } from "@/lib/policy";
 import { createMandateOnChain, closeMandateOnChain } from "@/lib/anchor";
+import { createRateLimiter } from "@/lib/rate-limit";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
+
+const _checkRateLimit = createRateLimiter({ windowMs: 15_000, lifetimeCap: 10 });
 
 function cloneSource(source: Source, overrides: Partial<Source>): Source {
   return { ...source, ...overrides };
@@ -29,6 +32,10 @@ function firstSentence(text: string): string {
 export async function POST(req: NextRequest) {
   const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
   if (!ip) return NextResponse.json({ error: "Missing request identity" }, { status: 400 });
+  const rl = _checkRateLimit(ip);
+  if (!rl.allowed) {
+    return NextResponse.json({ error: rl.reason }, { status: 429 });
+  }
 
   const policy = resolvePolicy("balanced");
   const baseSource = getAllSources()[0];
