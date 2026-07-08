@@ -36,6 +36,12 @@ function decisionClass(decision: string) {
   return "border-orange-700 bg-orange-900/20 text-orange-300";
 }
 
+const VERIFIED_PROOFS = {
+  paid: "/clearance/c9cfcd45-d8e5-4ead-b37b-b5dae2e5f4fa",
+  refused: "/clearance/71239ecb-0d6a-4cd2-9616-78d5b3e981c1",
+  recovery: "/recover",
+};
+
 export default function ClearDemoPage() {
   const [state, setState] = useState<RunState>("idle");
   const [result, setResult] = useState<DemoResponse | null>(null);
@@ -59,6 +65,8 @@ export default function ClearDemoPage() {
 
   const unsupported = result?.clearances.find((clearance) => clearance.decision === "UNSUPPORTED");
   const cleared = result?.clearances.find((clearance) => clearance.decision === "CLEARED");
+  const paidClaims = result?.clearances.filter((clearance) => clearance.amountPaidMicro > 0) ?? [];
+  const blockedClaims = result?.clearances.filter((clearance) => clearance.amountPaidMicro === 0) ?? [];
 
   return (
     <PageShell maxWidth="max-w-6xl">
@@ -74,6 +82,9 @@ export default function ClearDemoPage() {
             <p className="text-[var(--text-secondary)] max-w-2xl mt-3">
               An AI tries to cite a quote that does not exist. CitePay catches it with deterministic span verification, pays nothing, then clears only the supported licensed claim.
             </p>
+            <p className="mt-3 max-w-2xl text-sm font-medium text-[#d6d6e7]">
+              Access and payment systems prove an agent paid. CitePay Clear proves a specific claim deserved payment before money moved.
+            </p>
           </div>
           <div>
             <button
@@ -86,6 +97,36 @@ export default function ClearDemoPage() {
           </div>
         </div>
       </div>
+
+      <section className="mb-6 rounded-xl border border-[#6366f1]/35 bg-[#6366f1]/5 p-5">
+        <div className="mb-4 flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
+          <div>
+            <div className="text-xs font-mono uppercase tracking-[0.2em] text-[#a5b4fc]">Clear Trust Center</div>
+            <h2 className="mt-2 text-lg font-semibold text-[#f0f0f5]">Claim clearance, not just source access</h2>
+            <p className="mt-2 max-w-3xl text-sm text-[#bfc0d4]">
+              The judge path checks three things competitors often separate: pre-payment refusal, creator payout, and post-answer recovery for citations generated outside CitePay.
+            </p>
+          </div>
+          <Badge type="PROOF" label="judge path" size="sm" />
+        </div>
+        <div className="grid gap-3 md:grid-cols-3">
+          <Link href={unsupported ? `/clearance/${unsupported.clearanceId}` : VERIFIED_PROOFS.refused} className="rounded-lg border border-red-700/45 bg-red-950/20 p-4 transition-colors hover:border-red-300/70">
+            <div className="text-xs font-mono uppercase tracking-[0.16em] text-red-300">Proof 1</div>
+            <div className="mt-2 text-sm font-semibold text-red-100">Fake quote refused</div>
+            <p className="mt-1 text-xs leading-5 text-red-100/70">High AI confidence cannot override a missing source span.</p>
+          </Link>
+          <Link href={cleared ? `/clearance/${cleared.clearanceId}` : VERIFIED_PROOFS.paid} className="rounded-lg border border-[#34D399]/35 bg-[#34D399]/5 p-4 transition-colors hover:border-[#34D399]/80">
+            <div className="text-xs font-mono uppercase tracking-[0.16em] text-[#34D399]">Proof 2</div>
+            <div className="mt-2 text-sm font-semibold text-[#d1fae5]">Valid claim paid</div>
+            <p className="mt-1 text-xs leading-5 text-[#b8d8c8]">Creator payment appears only after quote, license, policy, and budget pass.</p>
+          </Link>
+          <Link href={VERIFIED_PROOFS.recovery} className="rounded-lg border border-white/10 bg-[#0a0a0f] p-4 transition-colors hover:border-[#6366f1]/70">
+            <div className="text-xs font-mono uppercase tracking-[0.16em] text-[#a5b4fc]">Proof 3</div>
+            <div className="mt-2 text-sm font-semibold text-[#f0f0f5]">Missed citation recovery</div>
+            <p className="mt-1 text-xs leading-5 text-[#8b8b9e]">External answers can be audited without settlement, then settled only under a real mandate.</p>
+          </Link>
+        </div>
+      </section>
 
       <section className="mb-6 rounded-xl border border-red-700/50 bg-red-950/25 p-5">
         <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
@@ -168,6 +209,36 @@ export default function ClearDemoPage() {
             <StatCard label="Unsupported" value={result.certificate.unsupportedCount} accent="text-red-300" />
             <StatCard label="Paid" value={micro(result.certificate.totalPaidMicro)} accent="text-[#34D399]" />
           </div>
+
+          <section className="rounded-xl border border-[#34D399]/25 bg-[#34D399]/5 p-5">
+            <div className="mb-4 flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
+              <div>
+                <div className="text-xs font-mono uppercase tracking-[0.2em] text-[#34D399]">Creator economics</div>
+                <h2 className="mt-2 font-semibold text-[#f0f0f5]">Only cleared claims create earnings</h2>
+                <p className="mt-1 max-w-2xl text-sm text-[#b8d8c8]">
+                  This run paid {paidClaims.length} claim and withheld payment from {blockedClaims.length} claim{blockedClaims.length === 1 ? "" : "s"}. The paid receipt shows the creator wallet, source, amount, payment status, and Arc transfer proof.
+                </p>
+              </div>
+              <div className="rounded-lg border border-[#34D399]/25 bg-black/20 px-4 py-3 text-right">
+                <div className="font-mono text-lg text-[#34D399]">{micro(result.certificate.totalPaidMicro)}</div>
+                <div className="text-xs text-[#b8d8c8]">earned in this proof</div>
+              </div>
+            </div>
+            <div className="grid gap-3 sm:grid-cols-3">
+              <div className="rounded-lg border border-white/10 bg-[#0a0a0f] p-3">
+                <div className="text-xs text-[#8b8b9e]">Earning rule</div>
+                <div className="mt-1 text-sm font-semibold text-[#f0f0f5]">clear first, pay second</div>
+              </div>
+              <div className="rounded-lg border border-white/10 bg-[#0a0a0f] p-3">
+                <div className="text-xs text-[#8b8b9e]">Creator proof</div>
+                <div className="mt-1 text-sm font-semibold text-[#f0f0f5]">wallet + receipt + tx</div>
+              </div>
+              <div className="rounded-lg border border-white/10 bg-[#0a0a0f] p-3">
+                <div className="text-xs text-[#8b8b9e]">Blocked value</div>
+                <div className="mt-1 text-sm font-semibold text-[#f0f0f5]">no quote, no funds</div>
+              </div>
+            </div>
+          </section>
 
           <div className="grid gap-5 lg:grid-cols-[1fr_1.15fr_0.9fr]">
             <section className="rounded-xl border border-white/10 bg-[var(--surface)] p-5">
@@ -269,10 +340,10 @@ export default function ClearDemoPage() {
           <section className="rounded-xl border border-white/10 bg-[var(--surface)] p-5">
             <h2 className="font-semibold text-[#f0f0f5] mb-2">Try it on an answer CitePay didn&apos;t generate</h2>
             <p className="text-sm text-[#8b8b9e] max-w-2xl mb-3">
-              Paste any AI answer and CitePay Clear will audit it for citations that should have been paid — same deterministic checks, compute-only.
+              Paste any AI answer and CitePay Clear will audit it for citations that should have been paid — same deterministic checks, compute-only. Settlement is a separate mandate-scoped action with replay protection and budget caps.
             </p>
             <Link href="/recover" className="text-sm font-mono text-[#6366f1] hover:text-indigo-300">
-              Audit an external answer →
+              Open post-answer recovery audit →
             </Link>
           </section>
         </div>

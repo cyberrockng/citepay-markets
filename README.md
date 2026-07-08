@@ -19,6 +19,8 @@
 
 **One sentence:** CitePay Clear proves a citation was authorized, quote-supported, licensed, paid when valid, refused when unsupported, and preserved in a challengeable receipt.
 
+**Category distinction:** access and payment systems prove an agent paid; CitePay Clear proves a specific claim deserved payment before money moved.
+
 For the shortest judge path, see [`docs/CLEAR_JUDGE_HANDOFF.md`](docs/CLEAR_JUDGE_HANDOFF.md).
 
 ---

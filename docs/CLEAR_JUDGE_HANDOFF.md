@@ -15,11 +15,11 @@ The core claim is not "AI pays creators when cited." The core claim is:
 ## 90-Second Path
 
 1. Open `/clear/demo`.
-2. Click `Run fake quote test`.
+2. Click `Run clearance proof`.
 3. Confirm the fabricated quote is refused even though the advisory AI support score is high.
-4. Click `Run full clearance demo`.
-5. Open the paid clearance receipt.
-6. Check the creator payout, evidence span, policy trace, hash integrity, and underlying payment receipt.
+4. Open the paid clearance receipt.
+5. Check the creator payout, evidence span, policy trace, hash integrity, and underlying payment receipt.
+6. Open `/recover` to show post-answer enforcement for citations generated outside CitePay.
 
 ## What To Look For
 
@@ -49,7 +49,11 @@ Each claim receives its own clearance decision. The receipt shows:
 
 The clearance receipt shows the creator wallet, source, amount due, amount paid, payment status, and underlying payment receipt. This keeps creator compensation visible without adding a broad creator dashboard.
 
-### 4. Existing on-chain foundation
+### 4. Post-answer enforcement
+
+The recovery surface audits answers CitePay did not generate. It is compute-only by default; settlement is separate, mandate-scoped, budget-capped, and duplicate-claim guarded.
+
+### 5. Existing on-chain foundation
 
 CitePay Clear extends the already-deployed `CitationMandate.sol` instead of replacing it.
 
@@ -76,6 +80,8 @@ Refused clearance:
 ## How This Differs From Access Toll Projects
 
 Access tolls prove that an agent paid to read content. CitePay Clear proves a narrower and stronger thing: a specific claim was authorized, supported by an exact source span, licensed, policy-approved, paid if valid, refused if invalid, and preserved in a challengeable receipt.
+
+Access and payment systems prove an agent paid. CitePay Clear proves a specific claim deserved payment before money moved.
 
 ## Scope Discipline
 

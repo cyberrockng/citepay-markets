@@ -57,6 +57,9 @@ export default function RecoverPage() {
         <p className="text-[var(--text-secondary)] max-w-2xl mt-3">
           Every candidate runs through the same deterministic clearance check as the live demo — no relaxed standard for content from outside CitePay. Compute-only: nothing is settled.
         </p>
+        <p className="mt-3 max-w-2xl text-sm font-medium text-[#d6d6e7]">
+          This is post-answer enforcement: audit first, then settle only under a real mandate with budget caps, replay protection, and duplicate-claim protection.
+        </p>
       </div>
 
       <textarea
@@ -116,7 +119,7 @@ export default function RecoverPage() {
 
           <div className="rounded-xl border border-white/10 bg-white/[0.02] p-4 flex items-center gap-2">
             <Badge type="PROOF" label="Audit only" size="xs" />
-            <span className="text-xs text-[#8b8b9e]">No payment executed. This report identifies what would clear — settlement is a separate, mandate-scoped step.</span>
+            <span className="text-xs text-[#8b8b9e]">No payment executed. This report identifies what would clear — settlement is a separate, mandate-scoped step with replay protection.</span>
           </div>
         </div>
       )}
