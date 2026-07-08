@@ -5,11 +5,13 @@ import Link from "next/link";
 import { BackButton } from "@/components/back-button";
 import { Badge, DataRow, PageShell, ProofPanel, ScoreBar } from "@/components/ui";
 import type { ClaimClearance, ClearanceCertificate } from "@/lib/clear/types";
+import type { Receipt } from "@/types";
 
 interface ClearanceResponse {
   clearance: ClaimClearance;
   certificate: ClearanceCertificate | null;
   certificateClearances: ClaimClearance[];
+  underlyingReceipt: Receipt | null;
 }
 
 function micro(v: number) {
@@ -52,7 +54,7 @@ export default function ClearanceReceiptPage({ params }: { params: Promise<{ id:
     );
   }
 
-  const { clearance, certificate, certificateClearances } = data;
+  const { clearance, certificate, certificateClearances, underlyingReceipt } = data;
   const trace = (() => {
     try {
       return JSON.parse(clearance.policyTrace) as Array<{ rule: string; passed: boolean; detail: string }>;
@@ -123,6 +125,47 @@ export default function ClearanceReceiptPage({ params }: { params: Promise<{ id:
             </div>
           ))}
         </div>
+      </section>
+
+      <section className="rounded-xl border border-[#34D399]/25 bg-[#34D399]/5 p-6 mb-5">
+        <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <h2 className="font-semibold">Creator Payout</h2>
+            <p className="mt-1 text-sm text-[#8b8b9e]">
+              This panel shows what the creator earned from this claim-level clearance.
+            </p>
+          </div>
+          <Badge
+            type={clearance.amountPaidMicro > 0 ? "PROOF" : "BLOCKED_BY_POLICY"}
+            label={clearance.amountPaidMicro > 0 ? "creator paid" : "no payment"}
+            size="sm"
+          />
+        </div>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <DataRow label="Creator Wallet" value={underlyingReceipt?.creatorWallet ?? "not paid"} mono />
+          <DataRow label="Source" value={underlyingReceipt?.sourceTitle ?? clearance.sourceId} />
+          <DataRow label="Amount Due" value={micro(clearance.amountDueMicro)} mono accent="text-[#f0f0f5]" />
+          <DataRow label="Amount Paid" value={micro(clearance.amountPaidMicro)} mono accent={clearance.amountPaidMicro > 0 ? "text-[#34D399]" : "text-[#8b8b9e]"} />
+          <DataRow label="Payment Status" value={underlyingReceipt?.paymentStatus ?? (clearance.amountPaidMicro > 0 ? "receipt unavailable" : "not executed")} mono />
+          <DataRow label="Underlying Receipt" value={clearance.underlyingCitationReceiptId ?? "none"} mono />
+        </div>
+        <div className="mt-4 rounded-lg border border-white/10 bg-[#0a0a0f] p-4">
+          <div className="text-xs font-mono uppercase tracking-[0.18em] text-[#34D399] mb-2">Why this creator earned</div>
+          <p className="text-sm text-[#d6d6e7]">
+            {clearance.decision === "CLEARED"
+              ? "The quote span was found in the source, the license matched the mandate, policy checks passed, and the claim stayed within budget. Payment executed only after those gates passed."
+              : "This claim did not clear every required gate, so CitePay did not move creator funds for it."}
+          </p>
+        </div>
+        {underlyingReceipt?.txHash && (
+          <div className="mt-4">
+            <ProofPanel
+              label="Creator USDC Transfer"
+              baseScanTx={underlyingReceipt.txHash}
+              baseScanTxLabel={underlyingReceipt.txHash.slice(0, 20) + "…"}
+            />
+          </div>
+        )}
       </section>
 
       <section className="rounded-xl border border-white/10 bg-[var(--surface)] p-6 mb-5">
