@@ -11,13 +11,15 @@
 
 ## ⏱️ If You Only Have 5 Minutes
 
-1. **[/demo](https://citepay-markets.vercel.app/demo)** — auto-runs 4 live proofs: tamper detection → x402 payment → paid query → objective challenge. No wallet needed.
-2. **[/ask](https://citepay-markets.vercel.app/ask)** — run one real paid query and watch PAY / REFUSE / SKIP decisions settle in USDC.
-3. **Click any PAY receipt** — hash-recomputable evidence, Arcscan-linked when anchored.
-4. **[/proof](https://citepay-markets.vercel.app/proof)** — recent `CitationPaid` events read straight from Arc RPC. No database to trust.
-5. **[/traction](https://citepay-markets.vercel.app/traction)** — the live economy: reconciled queries, decisions, USDC routed, and creator counts.
+1. **[/clear/demo](https://citepay-markets.vercel.app/clear/demo)** — strongest first stop: a fake quote is refused before payment, then one valid claim is cleared, paid, and issued a claim-level clearance receipt.
+2. **Open the paid clearance receipt** — creator payout, exact quote span, license decision, mandate trace, hash integrity, and underlying payment receipt are all visible.
+3. **Open the refused clearance receipt** — advisory AI support can be high, but deterministic quote verification still blocks payment when the quote is absent.
+4. **[/demo](https://citepay-markets.vercel.app/demo)** — legacy market proof: tamper detection → x402 payment → paid query → objective challenge. No wallet needed.
+5. **[/proof](https://citepay-markets.vercel.app/proof)** and **[/traction](https://citepay-markets.vercel.app/traction)** — on-chain events and reconciled live economy metrics.
 
-**One sentence:** every AI citation becomes a real USDC payment with a tamper-evident receipt — and this week, money completed a full loop between two independent agent networks in three blocks (proof directly below).
+**One sentence:** CitePay Clear proves a citation was authorized, quote-supported, licensed, paid when valid, refused when unsupported, and preserved in a challengeable receipt.
+
+For the shortest judge path, see [`docs/CLEAR_JUDGE_HANDOFF.md`](docs/CLEAR_JUDGE_HANDOFF.md).
 
 ---
 
@@ -64,12 +66,14 @@ CitePay separates semantic judgment from payment authority.
 
 **Live app:** [citepay-markets.vercel.app](https://citepay-markets.vercel.app)
 
-> **Start here:** `/demo` → `/ask` → any receipt → `/proof` → `/traction`. Everything below is deep-dive material.
+> **Start here:** `/clear/demo` → paid `/clearance/:id` → refused `/clearance/:id` → `/proof` → `/traction`. Everything below is deep-dive material.
 > Receipts and traction history are persisted durably in Neon when `DATABASE_URL` is configured, with SQLite used only as the local-development fallback. On-chain settlement remains the source of truth for confirmed USDC movement.
 
 | Path | What to show |
 |---|---|
-| `/demo` | Best first stop — auto-runs 4 proofs: tamper → x402 pay → query → challenge. No wallet needed. |
+| `/clear/demo` | Best first stop — fake quote refusal, valid claim clearance, creator payout, and challengeable claim-level receipt. |
+| `/clearance/:id` | Claim-level clearance receipt: mandate, quote span, license, policy trace, creator payout, hash integrity. |
+| `/demo` | Legacy market proof — auto-runs 4 proofs: tamper → x402 pay → query → challenge. No wallet needed. |
 | `/ask` | Agent workbench with configurable spend policy, Circle Programmable Wallet, live proof console |
 | `/register` | Public creator onboarding — register content, set price per citation, earn USDC instantly |
 | `/audit` | On-chain audit — reads Arc RPC directly, no database; verify wallet balance + every tx |
