@@ -641,6 +641,43 @@ export function getClaimClearanceById(id: string): ClaimClearance | null {
   return row ? rowToClaimClearance(row) : null;
 }
 
+export function getClearMandateConfigById(id: string): ClearMandateConfig | null {
+  const row = getDb().prepare("SELECT * FROM clear_mandate_configs WHERE mandate_config_id = ?").get(id) as Record<string, unknown> | undefined;
+  return row ? rowToClearMandateConfig(row) : null;
+}
+
+export function getSpentMicroByMandateConfigId(mandateConfigId: string): number {
+  const row = getDb().prepare(
+    "SELECT COALESCE(SUM(amount_paid_micro), 0) as spent FROM claim_clearances WHERE mandate_config_id = ?"
+  ).get(mandateConfigId) as { spent: number };
+  return row.spent;
+}
+
+function rowToClearMandateConfig(r: Record<string, unknown>): ClearMandateConfig {
+  return {
+    mandateConfigId: r.mandate_config_id as string,
+    onChainMandateId: (r.on_chain_mandate_id as number | null) ?? null,
+    operatorWallet: r.operator_wallet as string,
+    agentWallet: r.agent_wallet as string,
+    policyName: r.policy_name as string,
+    budgetCapMicro: r.budget_cap_micro as number,
+    maxPricePerCitationMicro: r.max_price_per_citation_micro as number,
+    maxPricePerClaimMicro: r.max_price_per_claim_micro as number,
+    allowedSourceTypes: parseJsonArray(r.allowed_source_types),
+    blockedDomains: parseJsonArray(r.blocked_domains),
+    blockedWallets: parseJsonArray(r.blocked_wallets),
+    requiredLicenseClass: (r.required_license_class as string | null) ?? null,
+    requirePublisherVerified: Boolean(r.require_publisher_verified),
+    requireQuoteSpan: Boolean(r.require_quote_span),
+    minSupportScore: r.min_support_score as number,
+    challengeWindowSeconds: r.challenge_window_seconds as number,
+    expiresAt: (r.expires_at as string | null) ?? null,
+    mandateHash: r.mandate_hash as string,
+    operatorSignature: (r.operator_signature as string | null) ?? null,
+    createdAt: r.created_at as string,
+  };
+}
+
 export function getClearanceCertificateById(id: string): ClearanceCertificate | null {
   const row = getDb().prepare("SELECT * FROM clearance_certificates WHERE certificate_id = ?").get(id) as Record<string, unknown> | undefined;
   return row ? rowToClearanceCertificate(row) : null;

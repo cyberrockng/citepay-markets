@@ -1,0 +1,135 @@
+/**
+ * POST /api/clear/recover/settle — pay a specific finding from a prior
+ * /recover/audit report.
+ *
+ * This is the only place recovery touches real money, so it is deliberately
+ * the most guarded route in the Clear surface:
+ *   - requires an existing, persisted, budget-bearing mandateConfigId
+ *     (never the unlimited audit-only mandate used by /recover/audit)
+ *   - re-evaluates the finding against that REAL mandate's actual rules —
+ *     the audit's optimistic result is never trusted directly, because a
+ *     different mandate can have a different license/price/budget policy
+ *   - checks remaining budget against everything already spent under that
+ *     mandateConfigId, not just this one call
+ *   - replay-guarded on (reportId, findingIndex, mandateConfigId) so the
+ *     same finding can never be paid twice
+ *   - requires an explicit confirm: true — nothing settles by accident
+ */
+import { NextRequest, NextResponse } from "next/server";
+import { v4 as uuidv4 } from "uuid";
+import { evaluateClaimClearance } from "@/lib/clear/evaluate";
+import { sourceText } from "@/lib/clear/source-text";
+import { createPaidReceipt } from "@/lib/clear/settle";
+import {
+  getAllSources,
+  getClearMandateConfigById,
+  getRecoveryReportById,
+  getSpentMicroByMandateConfigId,
+  insertClaimClearance,
+} from "@/lib/db";
+import { isReplayed, recordSignature } from "@/lib/replay-guard";
+import { createRateLimiter } from "@/lib/rate-limit";
+
+export const dynamic = "force-dynamic";
+
+// Settlement is rarer and higher-stakes than audit — still rate-limited,
+// but the binding protections here are the mandate/budget/replay checks,
+// not this alone.
+const _checkRateLimit = createRateLimiter({ windowMs: 10_000, lifetimeCap: 20 });
+
+export async function POST(req: NextRequest) {
+  const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
+  const rl = _checkRateLimit(ip);
+  if (!rl.allowed) {
+    return NextResponse.json({ error: rl.reason }, { status: 429 });
+  }
+
+  let body: { reportId?: string; findingIndex?: number; mandateConfigId?: string; confirm?: boolean } = {};
+  try {
+    body = await req.json();
+  } catch {
+    return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
+  }
+
+  const { reportId, findingIndex, mandateConfigId, confirm } = body;
+  if (!reportId || findingIndex === undefined || !mandateConfigId) {
+    return NextResponse.json({ error: "reportId, findingIndex, and mandateConfigId are required" }, { status: 400 });
+  }
+  if (confirm !== true) {
+    return NextResponse.json({ error: "Explicit confirm: true is required to settle a recovered citation" }, { status: 400 });
+  }
+
+  const idempotencyKey = `recover-settle:${reportId}:${findingIndex}:${mandateConfigId}`;
+  if (await isReplayed(idempotencyKey)) {
+    return NextResponse.json({ error: "This finding has already been settled." }, { status: 409 });
+  }
+
+  const mandate = getClearMandateConfigById(mandateConfigId);
+  if (!mandate) {
+    return NextResponse.json({ error: "mandateConfigId does not reference a known mandate." }, { status: 404 });
+  }
+
+  const report = getRecoveryReportById(reportId);
+  const finding = report?.findings[findingIndex];
+  if (!report || !finding) {
+    return NextResponse.json({ error: "reportId/findingIndex does not reference a known recovery finding." }, { status: 404 });
+  }
+  if (!finding.matchedSourceId) {
+    return NextResponse.json({ error: "This finding has no matched source and cannot be settled." }, { status: 400 });
+  }
+
+  const source = getAllSources().find((s) => s.id === finding.matchedSourceId);
+  if (!source) {
+    return NextResponse.json({ error: "Matched source is no longer registered." }, { status: 404 });
+  }
+
+  const spentSoFar = getSpentMicroByMandateConfigId(mandateConfigId);
+
+  // Re-evaluate against the REAL mandate's actual rules — the audit result
+  // used an unlimited, permissive mandate and is never trusted directly here.
+  const clearance = evaluateClaimClearance({
+    clearanceId: uuidv4(),
+    mandate,
+    source,
+    answerHash: report.answerHash,
+    claimText: finding.claimText,
+    quoteText: finding.quoteText,
+    sourceFullText: sourceText(source),
+    supportScore: finding.supportScore,
+    sessionSpentMicro: spentSoFar,
+  });
+
+  if (clearance.decision !== "CLEARED") {
+    insertClaimClearance(clearance);
+    return NextResponse.json(
+      { error: `Would not clear under this mandate: ${clearance.decision}`, clearance },
+      { status: 422 }
+    );
+  }
+
+  const payment = await createPaidReceipt({
+    source,
+    queryId: `recover-${reportId}`,
+    query: `[Recovery] ${finding.claimText}`,
+    answerHash: report.answerHash,
+    claim: clearance,
+    budgetBefore: mandate.budgetCapMicro - spentSoFar,
+  });
+
+  const settled = {
+    ...clearance,
+    amountPaidMicro: payment.amountPaid,
+    underlyingCitationReceiptId: payment.receiptId,
+  };
+  insertClaimClearance(settled);
+  await recordSignature(idempotencyKey);
+
+  return NextResponse.json({
+    settled: true,
+    clearance: settled,
+    receiptId: payment.receiptId,
+    txHash: payment.txHash,
+    paymentStatus: payment.paymentStatus,
+    remainingBudgetMicro: mandate.budgetCapMicro - spentSoFar - payment.amountPaid,
+  });
+}

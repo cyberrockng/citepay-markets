@@ -1,18 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
 import { v4 as uuidv4 } from "uuid";
 import { waitUntil } from "@vercel/functions";
-import type { Source, ScoreBreakdown } from "@/types";
+import type { Source } from "@/types";
 import type { ClaimClearance, ClearanceCertificate, ClearMandateConfig } from "@/lib/clear/types";
 import { evaluateClaimClearance, buildCertificateHash, buildReceiptHash } from "@/lib/clear/evaluate";
 import { hashClearObject } from "@/lib/clear/hash";
 import { sourceText } from "@/lib/clear/source-text";
-import { buildEvidencePreimage, hashEvidence, sha256 } from "@/lib/evidence";
-import { getAllSources, insertClaimClearance, insertClearanceCertificate, insertClearMandateConfig, insertReceipt, updateSourceStats } from "@/lib/db";
-import { payCreator } from "@/lib/payments";
+import { createPaidReceipt } from "@/lib/clear/settle";
+import { sha256 } from "@/lib/evidence";
+import { getAllSources, insertClaimClearance, insertClearanceCertificate, insertClearMandateConfig } from "@/lib/db";
 import { getAgentAddress } from "@/lib/agent";
 import { resolvePolicy } from "@/lib/policy";
 import { createMandateOnChain, closeMandateOnChain } from "@/lib/anchor";
-import { signReceiptHash } from "@/lib/signature";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -25,88 +24,6 @@ function firstSentence(text: string): string {
   const trimmed = text.replace(/\s+/g, " ").trim();
   const match = trimmed.match(/^.{40,220}?[.!?](\s|$)/);
   return (match?.[0] ?? trimmed.slice(0, 160)).trim();
-}
-
-async function createPaidReceipt(opts: {
-  source: Source;
-  queryId: string;
-  query: string;
-  answerHash: string;
-  claim: ClaimClearance;
-  budgetBefore: number;
-}): Promise<{ receiptId: string; txHash: string | null; paymentStatus: "confirmed" | "simulated" | null; amountPaid: number }> {
-  const receiptId = uuidv4();
-  const queryHash = sha256(opts.query);
-  const scores: ScoreBreakdown = {
-    relevance: opts.claim.supportScore,
-    price: 90,
-    bond: opts.source.bonded ? 20 : 0,
-    reputation: Math.max(0, Math.min(30, opts.source.reputation * 3 + 15)),
-    total: Math.min(100, Math.round(opts.claim.supportScore * 0.75 + 20)),
-  };
-  const preimage = buildEvidencePreimage({
-    query: opts.query,
-    queryHash,
-    sourceUrl: opts.source.url,
-    excerptUsed: opts.claim.quoteText,
-    decision: "PAY",
-    scores,
-    budgetBefore: opts.budgetBefore,
-    reason: "Claim cleared: exact quote, license, support, price, and budget checks passed before payment.",
-    price: opts.claim.amountDueMicro,
-    bonded: opts.source.bonded,
-    reputation: opts.source.reputation,
-    contributionWeight: 1,
-    weightedAmount: opts.claim.amountDueMicro,
-  });
-  const evidenceHash = hashEvidence(preimage);
-  const agentSignature = await signReceiptHash(evidenceHash);
-  const payment = await payCreator({
-    creatorWallet: opts.source.payoutWallet,
-    amountMicroUsdc: opts.claim.amountDueMicro,
-    sourceId: opts.source.id,
-    receiptId,
-  });
-
-  insertReceipt({
-    id: receiptId,
-    sourceId: opts.source.id,
-    queryId: opts.queryId,
-    agentAddress: getAgentAddress(),
-    creatorWallet: opts.source.payoutWallet,
-    decision: "PAY",
-    query: opts.query,
-    queryHash,
-    sourceTitle: opts.source.title,
-    sourceUrl: opts.source.url,
-    amountPaid: opts.claim.amountDueMicro,
-    evidenceHash,
-    evidencePreimage: preimage,
-    contentHashAtDecision: opts.source.contentHash,
-    scores,
-    reason: "Claim cleared before payment.",
-    txHash: payment.txHash,
-    paymentStatus: payment.status,
-    policyProfile: "Clear Demo",
-    policyRulesPassed: ["license_allowed", "quote_verified", "support_score", "price_and_budget"],
-    policyRulesFailed: [],
-    policyReason: null,
-    agentSignature,
-    budgetBefore: opts.budgetBefore,
-    budgetAfter: opts.budgetBefore - opts.claim.amountDueMicro,
-    challenged: false,
-    createdAt: new Date().toISOString(),
-    purposeCode: payment.status === "confirmed" ? "CITE" : "CITE_SIMULATED",
-    contributionWeight: 1,
-  });
-  updateSourceStats(opts.source.id, "PAY", 1);
-
-  return {
-    receiptId,
-    txHash: payment.txHash,
-    paymentStatus: payment.status,
-    amountPaid: opts.claim.amountDueMicro,
-  };
 }
 
 export async function POST(req: NextRequest) {
