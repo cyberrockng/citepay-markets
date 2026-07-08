@@ -23,6 +23,8 @@
 
 For the shortest judge path, see [`docs/CLEAR_JUDGE_HANDOFF.md`](docs/CLEAR_JUDGE_HANDOFF.md).
 
+> Looking past the hackathon? [`docs/POST_HACKATHON_PLAN.md`](docs/POST_HACKATHON_PLAN.md) covers the product, GTM, and roadmap plan — not required for judging, see §22 below.
+
 ---
 
 ## Cross-Network Proof — Two Agent Networks Paying Each Other
@@ -804,6 +806,16 @@ Shadow ran 5 autonomous paid queries into CitePay using the DirectTransfer payme
 **CitePay confirmed:** all 5 queries received, scored, answered, creators paid, receipts anchored on `CitePayMarket.sol`.
 
 This is a verifiable autonomous agent-to-agent payment flow — no human intermediary, no mock data, settled on-chain.
+
+---
+
+## 22. Post-Hackathon Plan
+
+Everything above this line is the hackathon submission — live, tested, and judged as-is. **This section is forward-looking and not part of the judge path.**
+
+CitePay Clear's post-hackathon direction is documented in full at [`docs/POST_HACKATHON_PLAN.md`](docs/POST_HACKATHON_PLAN.md): the real-world problem it solves, how it differs from Cloudflare Pay Per Crawl, TollBit, ProRata, C2PA, and RSL, a repo-grounded technical roadmap (Phases 0–6), a sharpened first wedge (open-source documentation maintainers whose work is cited by coding agents), a product-and-trust layer above the API — a public **Clear Badge**, creator-facing **CitePay Watch**, a non-crypto **proof-only mode**, and a machine-readable **publisher policy file** (`/.well-known/citepay.json`) — plus an honest backlog of what to build next, what to avoid, and why.
+
+**One sentence:** *the clearance and trust layer for AI citations — giving creators proof, payment, and protection whenever AI systems use their work.*
 
 ---
 
