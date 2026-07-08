@@ -7,7 +7,6 @@ import { Badge, DataRow, PageShell, ProofPanel, StatCard } from "@/components/ui
 import type { ClaimClearance, ClearanceCertificate, ClearMandateConfig } from "@/lib/clear/types";
 
 type RunState = "idle" | "running" | "done" | "error";
-type RunMode = "full" | "adversarial";
 
 interface DemoEvent {
   label: string;
@@ -39,12 +38,10 @@ function decisionClass(decision: string) {
 
 export default function ClearDemoPage() {
   const [state, setState] = useState<RunState>("idle");
-  const [mode, setMode] = useState<RunMode>("full");
   const [result, setResult] = useState<DemoResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  async function runDemo(nextMode: RunMode = "full") {
-    setMode(nextMode);
+  async function runDemo() {
     setState("running");
     setError(null);
     setResult(null);
@@ -78,20 +75,13 @@ export default function ClearDemoPage() {
               An AI tries to cite a quote that does not exist. CitePay catches it with deterministic span verification, pays nothing, then clears only the supported licensed claim.
             </p>
           </div>
-          <div className="flex flex-col gap-2 sm:flex-row lg:flex-col xl:flex-row">
+          <div>
             <button
-              onClick={() => runDemo("adversarial")}
-              disabled={state === "running"}
-              className="rounded-lg bg-red-300 text-[#240a0a] px-5 py-3 text-sm font-semibold disabled:opacity-60"
-            >
-              {state === "running" && mode === "adversarial" ? "Testing fake quote..." : "Run fake quote test"}
-            </button>
-            <button
-              onClick={() => runDemo("full")}
+              onClick={() => runDemo()}
               disabled={state === "running"}
               className="rounded-lg bg-[#f0f0f5] text-[#0a0a0f] px-5 py-3 text-sm font-semibold disabled:opacity-60"
             >
-              {state === "running" && mode === "full" ? "Running clearance..." : "Run full proof"}
+              {state === "running" ? "Running clearance proof..." : "Run clearance proof"}
             </button>
           </div>
         </div>
