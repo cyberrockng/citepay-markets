@@ -153,6 +153,46 @@ export default function ClearDemoPage() {
         </div>
       </section>
 
+      <section className="mb-6 rounded-xl border border-white/10 bg-[var(--surface)] p-5">
+        <div className="mb-4">
+          <div className="text-xs font-mono uppercase tracking-[0.2em] text-[#f0f0f5]">Payment is not clearance</div>
+          <h2 className="mt-2 text-lg font-semibold text-[#f0f0f5]">Same fake citation, two different outcomes</h2>
+          <p className="mt-2 max-w-3xl text-sm text-[#8b8b9e]">
+            A payment-only citation flow can prove money moved. CitePay Clear proves the claim cleared evidence rules before money moved.
+          </p>
+        </div>
+        <div className="grid gap-4 lg:grid-cols-2">
+          <div className="rounded-xl border border-orange-700/40 bg-orange-950/15 p-4">
+            <div className="mb-3 flex items-center justify-between gap-3">
+              <h3 className="text-sm font-semibold text-orange-100">Basic citation payment</h3>
+              <Badge type="BLOCKED_BY_POLICY" label="risk" size="xs" />
+            </div>
+            <div className="space-y-2 text-sm">
+              {["AI cites source", "Support score looks high: 96/100", "Payment can execute", "Fake quote may still pass unnoticed"].map((item) => (
+                <div key={item} className="flex items-center gap-2 rounded-lg border border-orange-800/30 bg-black/20 px-3 py-2 text-orange-100/85">
+                  <span className="h-1.5 w-1.5 rounded-full bg-orange-300" />
+                  <span>{item}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+          <div className="rounded-xl border border-[#34D399]/40 bg-[#34D399]/5 p-4">
+            <div className="mb-3 flex items-center justify-between gap-3">
+              <h3 className="text-sm font-semibold text-[#d1fae5]">CitePay Clear</h3>
+              <Badge type="PROOF" label="cleared or refused" size="xs" />
+            </div>
+            <div className="space-y-2 text-sm">
+              {["AI cites source", "Support score is advisory only", "Exact quote is missing", "Payment blocked: $0 and a refusal receipt"].map((item) => (
+                <div key={item} className="flex items-center gap-2 rounded-lg border border-[#34D399]/20 bg-black/20 px-3 py-2 text-[#d1fae5]">
+                  <span className="h-1.5 w-1.5 rounded-full bg-[#34D399]" />
+                  <span>{item}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </section>
+
       {error && (
         <div className="mb-6 rounded-xl border border-red-800 bg-red-950/30 p-4 text-sm text-red-200">
           {error}

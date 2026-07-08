@@ -112,6 +112,34 @@ export default function ClearanceReceiptPage({ params }: { params: Promise<{ id:
         </div>
       </section>
 
+      <section className={`rounded-xl border p-5 mb-5 ${
+        clearance.decision === "CLEARED"
+          ? "border-[#34D399]/35 bg-[#34D399]/5"
+          : "border-red-700/50 bg-red-950/25"
+      }`}>
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <div className={`text-xs font-mono uppercase tracking-[0.2em] ${
+              clearance.decision === "CLEARED" ? "text-[#34D399]" : "text-red-300"
+            }`}>
+              {clearance.decision === "CLEARED" ? "Why payment was allowed" : "Why payment was blocked"}
+            </div>
+            <p className={`mt-2 max-w-3xl text-sm ${
+              clearance.decision === "CLEARED" ? "text-[#b8d8c8]" : "text-red-100"
+            }`}>
+              {clearance.decision === "CLEARED"
+                ? "Creator earned because the exact quote was found, the license was allowed, policy passed, and the claim stayed inside budget."
+                : "A payment-only system could have paid this. CitePay paid $0 because the quote, license, policy, or budget checks did not clear."}
+            </p>
+          </div>
+          <Badge
+            type={clearance.decision === "CLEARED" ? "PROOF" : "BLOCKED_BY_POLICY"}
+            label={clearance.decision === "CLEARED" ? "earned" : "$0 paid"}
+            size="sm"
+          />
+        </div>
+      </section>
+
       <div className="grid gap-4 md:grid-cols-3 mb-5">
         <div className="rounded-xl border border-white/10 bg-[var(--surface)] p-5">
           <div className="text-2xl font-bold font-mono text-[#34D399]">{micro(clearance.amountPaidMicro)}</div>

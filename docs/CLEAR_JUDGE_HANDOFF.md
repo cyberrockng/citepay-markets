@@ -15,11 +15,12 @@ The core claim is not "AI pays creators when cited." The core claim is:
 ## 90-Second Path
 
 1. Open `/clear/demo`.
-2. Click `Run clearance proof`.
-3. Confirm the fabricated quote is refused even though the advisory AI support score is high.
-4. Open the paid clearance receipt.
-5. Check the creator payout, evidence span, policy trace, hash integrity, and underlying payment receipt.
-6. Open `/recover` to show post-answer enforcement for citations generated outside CitePay.
+2. Point out `Payment is not clearance`: a basic payment flow can move money, while CitePay refuses unsupported claims.
+3. Click `Run clearance proof`.
+4. Confirm the fabricated quote is refused even though the advisory AI support score is high.
+5. Open the paid clearance receipt and show why payment was allowed.
+6. Open the refused clearance receipt and show why payment was blocked.
+7. Open `/recover` to show post-answer enforcement for citations generated outside CitePay.
 
 ## What To Look For
 
