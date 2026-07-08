@@ -27,6 +27,7 @@ import {
   getSpentMicroByMandateConfigId,
   insertClaimClearance,
 } from "@/lib/db";
+import { getNeonClearMandateConfigById, getNeonRecoveryReportById, getNeonSpentMicroByMandateConfigId } from "@/lib/neon";
 import { isReplayed, recordSignature } from "@/lib/replay-guard";
 import { createRateLimiter } from "@/lib/rate-limit";
 
@@ -64,12 +65,15 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "This finding has already been settled." }, { status: 409 });
   }
 
-  const mandate = getClearMandateConfigById(mandateConfigId);
+  // SQLite is ephemeral per serverless instance — the mandate/report that
+  // demo-run or /recover/audit created may live in a different instance's
+  // local store, so every lookup here falls back to the Neon durable copy.
+  const mandate = getClearMandateConfigById(mandateConfigId) ?? await getNeonClearMandateConfigById(mandateConfigId);
   if (!mandate) {
     return NextResponse.json({ error: "mandateConfigId does not reference a known mandate." }, { status: 404 });
   }
 
-  const report = getRecoveryReportById(reportId);
+  const report = getRecoveryReportById(reportId) ?? await getNeonRecoveryReportById(reportId);
   const finding = report?.findings[findingIndex];
   if (!report || !finding) {
     return NextResponse.json({ error: "reportId/findingIndex does not reference a known recovery finding." }, { status: 404 });
@@ -83,7 +87,12 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Matched source is no longer registered." }, { status: 404 });
   }
 
-  const spentSoFar = getSpentMicroByMandateConfigId(mandateConfigId);
+  // Take the max of both stores: under-counting either would let spend
+  // exceed the mandate's real budget cap across cold serverless instances.
+  const spentSoFar = Math.max(
+    getSpentMicroByMandateConfigId(mandateConfigId),
+    await getNeonSpentMicroByMandateConfigId(mandateConfigId)
+  );
 
   // Re-evaluate against the REAL mandate's actual rules — the audit result
   // used an unlimited, permissive mandate and is never trusted directly here.

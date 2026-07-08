@@ -613,6 +613,65 @@ export async function getNeonClaimClearanceById(id: string): Promise<ClaimCleara
   }
 }
 
+function rowToNeonClearMandateConfig(r: Record<string, unknown>): ClearMandateConfig {
+  return {
+    mandateConfigId: r.mandate_config_id as string,
+    onChainMandateId: (r.on_chain_mandate_id as number | null) ?? null,
+    operatorWallet: r.operator_wallet as string,
+    agentWallet: r.agent_wallet as string,
+    policyName: r.policy_name as string,
+    budgetCapMicro: Number(r.budget_cap_micro),
+    maxPricePerCitationMicro: Number(r.max_price_per_citation_micro),
+    maxPricePerClaimMicro: Number(r.max_price_per_claim_micro),
+    allowedSourceTypes: (r.allowed_source_types as string[] | null) ?? null,
+    blockedDomains: (r.blocked_domains as string[] | null) ?? null,
+    blockedWallets: (r.blocked_wallets as string[] | null) ?? null,
+    requiredLicenseClass: (r.required_license_class as string | null) ?? null,
+    requirePublisherVerified: Boolean(r.require_publisher_verified),
+    requireQuoteSpan: Boolean(r.require_quote_span),
+    minSupportScore: Number(r.min_support_score),
+    challengeWindowSeconds: Number(r.challenge_window_seconds),
+    expiresAt: r.expires_at ? String(r.expires_at) : null,
+    mandateHash: r.mandate_hash as string,
+    operatorSignature: (r.operator_signature as string | null) ?? null,
+    createdAt: String(r.created_at),
+  };
+}
+
+export async function getNeonClearMandateConfigById(id: string): Promise<ClearMandateConfig | null> {
+  const sql = getSql();
+  if (!sql) return null;
+  try {
+    await init();
+    const rows = await sql`
+      SELECT * FROM cp_clear_mandate_configs
+      WHERE mandate_config_id = ${id}
+      LIMIT 1
+    ` as Record<string, unknown>[];
+    return rows[0] ? rowToNeonClearMandateConfig(rows[0]) : null;
+  } catch (err) {
+    console.error("[neon] getNeonClearMandateConfigById failed:", String(err).slice(0, 120));
+    return null;
+  }
+}
+
+export async function getNeonSpentMicroByMandateConfigId(mandateConfigId: string): Promise<number> {
+  const sql = getSql();
+  if (!sql) return 0;
+  try {
+    await init();
+    const rows = await sql`
+      SELECT COALESCE(SUM(amount_paid_micro), 0) as spent
+      FROM cp_claim_clearances
+      WHERE mandate_config_id = ${mandateConfigId}
+    ` as { spent: string | number }[];
+    return Number(rows[0]?.spent ?? 0);
+  } catch (err) {
+    console.error("[neon] getNeonSpentMicroByMandateConfigId failed:", String(err).slice(0, 120));
+    return 0;
+  }
+}
+
 export async function getNeonClearanceCertificateByClearanceId(clearanceId: string): Promise<ClearanceCertificate | null> {
   const sql = getSql();
   if (!sql) return null;
