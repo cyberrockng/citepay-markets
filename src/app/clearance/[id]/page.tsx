@@ -62,6 +62,15 @@ export default function ClearanceReceiptPage({ params }: { params: Promise<{ id:
       return [];
     }
   })();
+  const tracePassed = (rule: string) => trace.some((item) => item.rule === rule && item.passed);
+  const proofChecks = [
+    { label: "Authorized by mandate", passed: tracePassed("mandate_active") },
+    { label: "Quote span verified", passed: clearance.quoteVerified },
+    { label: "License allowed", passed: tracePassed("license_allowed") },
+    { label: "Policy passed", passed: tracePassed("source_policy_allowed") },
+    { label: "Creator paid", passed: clearance.amountPaidMicro > 0 },
+    { label: "Challenge window open", passed: Boolean(clearance.challengeDeadline) },
+  ];
 
   return (
     <PageShell maxWidth="max-w-4xl">
@@ -72,11 +81,36 @@ export default function ClearanceReceiptPage({ params }: { params: Promise<{ id:
           <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight text-[#f0f0f5]">
             Claim #{clearance.clearanceId.slice(0, 8)}
           </h1>
+          <p className="mt-2 max-w-2xl text-sm text-[#8b8b9e]">
+            This citation was evaluated before payment: authorization, quote support, license, policy, payout, and challenge status are shown below.
+          </p>
         </div>
         <span className={`w-fit rounded border px-3 py-1 text-sm font-mono ${decisionClass(clearance.decision)}`}>
           {clearance.decision}
         </span>
       </div>
+
+      <section className="rounded-xl border border-[#6366f1]/30 bg-[#6366f1]/5 p-5 mb-5">
+        <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <h2 className="font-semibold text-[#f0f0f5]">Clearance Summary</h2>
+            <p className="mt-1 text-sm text-[#8b8b9e]">
+              A cleared citation is authorized, supported, licensed, paid, and challengeable. Failed checks explain why money did not move.
+            </p>
+          </div>
+          <Badge type={clearance.decision === "CLEARED" ? "PROOF" : "BLOCKED_BY_POLICY"} label={clearance.decision === "CLEARED" ? "cleared" : "not cleared"} size="sm" />
+        </div>
+        <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+          {proofChecks.map((check) => (
+            <div key={check.label} className="flex items-center justify-between gap-3 rounded-lg border border-white/10 bg-[#0a0a0f] px-3 py-2">
+              <span className="text-xs text-[#d6d6e7]">{check.label}</span>
+              <span className={check.passed ? "text-xs font-mono text-[#34D399]" : "text-xs font-mono text-[#8b8b9e]"}>
+                {check.passed ? "yes" : "no"}
+              </span>
+            </div>
+          ))}
+        </div>
+      </section>
 
       <div className="grid gap-4 md:grid-cols-3 mb-5">
         <div className="rounded-xl border border-white/10 bg-[var(--surface)] p-5">
@@ -94,7 +128,7 @@ export default function ClearanceReceiptPage({ params }: { params: Promise<{ id:
       </div>
 
       <section className="rounded-xl border border-white/10 bg-[var(--surface)] p-6 mb-5">
-        <h2 className="font-semibold mb-4">Claim And Evidence</h2>
+        <h2 className="font-semibold mb-4">Claim-Level Evidence</h2>
         <div className="space-y-4">
           <DataRow label="Claim" value={clearance.claimText} />
           <div>
@@ -113,7 +147,7 @@ export default function ClearanceReceiptPage({ params }: { params: Promise<{ id:
       </section>
 
       <section className="rounded-xl border border-white/10 bg-[var(--surface)] p-6 mb-5">
-        <h2 className="font-semibold mb-4">Policy Trace</h2>
+        <h2 className="font-semibold mb-4">Mandate And Policy Trace</h2>
         <div className="space-y-3">
           {trace.map((item) => (
             <div key={item.rule} className="rounded-lg border border-white/10 bg-[#0a0a0f] p-4">
@@ -169,7 +203,7 @@ export default function ClearanceReceiptPage({ params }: { params: Promise<{ id:
       </section>
 
       <section className="rounded-xl border border-white/10 bg-[var(--surface)] p-6 mb-5">
-        <h2 className="font-semibold mb-4">Integrity</h2>
+        <h2 className="font-semibold mb-4">Hash Integrity</h2>
         <div className="space-y-3">
           <ProofPanel label="Claim Hash" hash={clearance.claimHash} />
           <ProofPanel label="Receipt Hash" hash={clearance.receiptHash} />
@@ -179,7 +213,7 @@ export default function ClearanceReceiptPage({ params }: { params: Promise<{ id:
 
       {clearance.underlyingCitationReceiptId && (
         <section className="rounded-xl border border-[#34D399]/30 bg-[#34D399]/5 p-6 mb-5">
-          <h2 className="font-semibold mb-3">Payment Receipt</h2>
+          <h2 className="font-semibold mb-3">Underlying Payment Receipt</h2>
           <p className="text-sm text-[#8b8b9e] mb-3">
             Payment was executed only after clearance checks passed.
           </p>
@@ -191,7 +225,10 @@ export default function ClearanceReceiptPage({ params }: { params: Promise<{ id:
 
       {certificate && (
         <section className="rounded-xl border border-white/10 bg-[var(--surface)] p-6">
-          <h2 className="font-semibold mb-4">Answer-Level Certificate</h2>
+          <h2 className="font-semibold mb-1">Answer-Level Clearance Certificate</h2>
+          <p className="mb-4 text-sm text-[#8b8b9e]">
+            One certificate binds this claim to the full answer: cleared claims, blocked claims, unsupported claims, total paid, and proof hashes.
+          </p>
           <div className="grid gap-4 sm:grid-cols-2 mb-5">
             <DataRow label="Certificate ID" value={certificate.certificateId} mono />
             <DataRow label="Answer Hash" value={certificate.answerHash} mono />

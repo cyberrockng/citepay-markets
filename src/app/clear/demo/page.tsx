@@ -251,11 +251,11 @@ export default function ClearDemoPage() {
             <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
               <div>
                 <div className="flex items-center gap-2 mb-2">
-                  <h2 className="font-semibold text-[#f0f0f5]">Clearance Certificate</h2>
+                  <h2 className="font-semibold text-[#f0f0f5]">Answer-Level Clearance Certificate</h2>
                   <Badge type="PROOF" label="Issued" />
                 </div>
                 <p className="text-sm text-[#8b8b9e] max-w-2xl">
-                  One answer-level artifact summarizes cleared, blocked, unsupported, paid, and hash-committed claim decisions.
+                  One artifact binds the answer to every claim decision: authorized, quote-supported, licensed, paid, blocked, unsupported, and hash-committed.
                 </p>
               </div>
               <div className="flex flex-col gap-2 sm:flex-row">
