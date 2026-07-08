@@ -672,6 +672,27 @@ export async function getNeonSpentMicroByMandateConfigId(mandateConfigId: string
   }
 }
 
+export async function getNeonHasSettledClaim(mandateConfigId: string, claimHash: string): Promise<boolean> {
+  const sql = getSql();
+  if (!sql) return false;
+  try {
+    await init();
+    const rows = await sql`
+      SELECT 1
+      FROM cp_claim_clearances
+      WHERE mandate_config_id = ${mandateConfigId}
+        AND claim_hash = ${claimHash}
+        AND decision = 'CLEARED'
+        AND amount_paid_micro > 0
+      LIMIT 1
+    ` as Record<string, unknown>[];
+    return rows.length > 0;
+  } catch (err) {
+    console.error("[neon] getNeonHasSettledClaim failed:", String(err).slice(0, 120));
+    return false;
+  }
+}
+
 export async function getNeonClearanceCertificateByClearanceId(clearanceId: string): Promise<ClearanceCertificate | null> {
   const sql = getSql();
   if (!sql) return null;

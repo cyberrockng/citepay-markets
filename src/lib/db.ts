@@ -653,6 +653,19 @@ export function getSpentMicroByMandateConfigId(mandateConfigId: string): number 
   return row.spent;
 }
 
+export function hasSettledClaim(mandateConfigId: string, claimHash: string): boolean {
+  const row = getDb().prepare(`
+    SELECT 1
+    FROM claim_clearances
+    WHERE mandate_config_id = ?
+      AND claim_hash = ?
+      AND decision = 'CLEARED'
+      AND amount_paid_micro > 0
+    LIMIT 1
+  `).get(mandateConfigId, claimHash) as { 1: number } | undefined;
+  return Boolean(row);
+}
+
 function rowToClearMandateConfig(r: Record<string, unknown>): ClearMandateConfig {
   return {
     mandateConfigId: r.mandate_config_id as string,

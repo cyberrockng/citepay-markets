@@ -25,9 +25,16 @@ import {
   getClearMandateConfigById,
   getRecoveryReportById,
   getSpentMicroByMandateConfigId,
+  hasSettledClaim,
   insertClaimClearance,
 } from "@/lib/db";
-import { getNeonClearMandateConfigById, getNeonRecoveryReportById, getNeonSpentMicroByMandateConfigId } from "@/lib/neon";
+import { sha256 } from "@/lib/evidence";
+import {
+  getNeonClearMandateConfigById,
+  getNeonHasSettledClaim,
+  getNeonRecoveryReportById,
+  getNeonSpentMicroByMandateConfigId,
+} from "@/lib/neon";
 import { isReplayed, recordSignature } from "@/lib/replay-guard";
 import { createRateLimiter } from "@/lib/rate-limit";
 
@@ -80,6 +87,13 @@ export async function POST(req: NextRequest) {
   }
   if (!finding.matchedSourceOnChainId) {
     return NextResponse.json({ error: "This finding has no matched source and cannot be settled." }, { status: 400 });
+  }
+
+  const claimHash = sha256(finding.claimText);
+  const alreadySettled =
+    hasSettledClaim(mandateConfigId, claimHash) || await getNeonHasSettledClaim(mandateConfigId, claimHash);
+  if (alreadySettled) {
+    return NextResponse.json({ error: "This claim has already been settled under this mandate." }, { status: 409 });
   }
 
   // Look up by onChainId, not the local sources.id: local ids are fresh
