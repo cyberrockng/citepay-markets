@@ -4,13 +4,15 @@ import fs from "fs";
 import { createHash } from "crypto";
 import { v4 as uuidv4 } from "uuid";
 import type { Source, Receipt, QueryRecord } from "@/types";
-import type { ClaimClearance, ClearanceCertificate, ClearApiKeyRecord, ClearMandateConfig, RecoveryReport } from "@/lib/clear/types";
+import type { ClaimClearance, ClearanceCertificate, ClearApiKeyRecord, ClearMandateConfig, ClearSettlementIdempotencyRecord, RecoveryReport } from "@/lib/clear/types";
 import { redisIncrSourcePaid, redisIncrSourceRefused } from "@/lib/redis-stats";
 import {
   persistClearanceCertificate,
   persistClaimClearance,
   persistClearApiKey,
+  persistClearSettlementIdempotency,
   persistClearMandateConfig,
+  persistClearSettlementLock,
   persistRecoveryReport,
   persistReceipt,
   updateNeonReceiptOnChain,
@@ -150,6 +152,25 @@ function migrate(db: Database.Database) {
       owner_label TEXT NOT NULL,
       tier TEXT NOT NULL DEFAULT 'stage2',
       revoked_at TEXT DEFAULT NULL,
+      created_at TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS clear_settlement_idempotency (
+      idempotency_key_hash TEXT PRIMARY KEY,
+      owner_key_hash TEXT NOT NULL,
+      clearance_id TEXT NOT NULL,
+      mandate_config_id TEXT NOT NULL,
+      receipt_id TEXT DEFAULT NULL,
+      response_json TEXT NOT NULL,
+      created_at TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS clear_settlement_locks (
+      lock_key TEXT PRIMARY KEY,
+      owner_key_hash TEXT NOT NULL,
+      clearance_id TEXT NOT NULL,
+      mandate_config_id TEXT NOT NULL,
+      claim_hash TEXT NOT NULL,
       created_at TEXT NOT NULL
     );
 
@@ -586,6 +607,18 @@ function rowToClearApiKey(r: Record<string, unknown>): ClearApiKeyRecord {
   };
 }
 
+function rowToClearSettlementIdempotency(r: Record<string, unknown>): ClearSettlementIdempotencyRecord {
+  return {
+    idempotencyKeyHash: r.idempotency_key_hash as string,
+    ownerKeyHash: r.owner_key_hash as string,
+    clearanceId: r.clearance_id as string,
+    mandateConfigId: r.mandate_config_id as string,
+    receiptId: (r.receipt_id as string | null) ?? null,
+    responseJson: r.response_json as string,
+    createdAt: r.created_at as string,
+  };
+}
+
 export function insertClearApiKey(record: ClearApiKeyRecord): void {
   getDb().prepare(`
     INSERT OR REPLACE INTO clear_api_keys (
@@ -605,6 +638,49 @@ export function getClearApiKeyByHash(keyHash: string): ClearApiKeyRecord | null 
 
 export function revokeClearApiKey(keyHash: string, revokedAt = new Date().toISOString()): void {
   getDb().prepare("UPDATE clear_api_keys SET revoked_at = ? WHERE key_hash = ?").run(revokedAt, keyHash);
+}
+
+export function getClearSettlementIdempotencyByHash(idempotencyKeyHash: string): ClearSettlementIdempotencyRecord | null {
+  const row = getDb().prepare(
+    "SELECT * FROM clear_settlement_idempotency WHERE idempotency_key_hash = ?"
+  ).get(idempotencyKeyHash) as Record<string, unknown> | undefined;
+  return row ? rowToClearSettlementIdempotency(row) : null;
+}
+
+export function insertClearSettlementIdempotency(record: ClearSettlementIdempotencyRecord): void {
+  getDb().prepare(`
+    INSERT OR REPLACE INTO clear_settlement_idempotency (
+      idempotency_key_hash, owner_key_hash, clearance_id, mandate_config_id,
+      receipt_id, response_json, created_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?)
+  `).run(
+    record.idempotencyKeyHash, record.ownerKeyHash, record.clearanceId,
+    record.mandateConfigId, record.receiptId, record.responseJson, record.createdAt
+  );
+  persistClearSettlementIdempotency(record);
+}
+
+export function reserveClearSettlementLock(opts: {
+  lockKey: string;
+  ownerKeyHash: string;
+  clearanceId: string;
+  mandateConfigId: string;
+  claimHash: string;
+  createdAt?: string;
+}): boolean {
+  const info = getDb().prepare(`
+    INSERT OR IGNORE INTO clear_settlement_locks (
+      lock_key, owner_key_hash, clearance_id, mandate_config_id, claim_hash, created_at
+    ) VALUES (?, ?, ?, ?, ?, ?)
+  `).run(
+    opts.lockKey, opts.ownerKeyHash, opts.clearanceId, opts.mandateConfigId,
+    opts.claimHash, opts.createdAt ?? new Date().toISOString()
+  );
+  if (info.changes > 0) {
+    persistClearSettlementLock(opts);
+    return true;
+  }
+  return false;
 }
 
 export function insertClearMandateConfig(config: ClearMandateConfig): void {

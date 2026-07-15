@@ -5,7 +5,9 @@ import { evaluateClaimClearance } from "../src/lib/clear/evaluate";
 import { authenticateClearApiRequest, buildClearApiKeyRecord } from "../src/lib/clear/auth";
 import { runClearCheck } from "../src/lib/clear/check";
 import { createClearMandate } from "../src/lib/clear/mandate";
-import { getClearMandateConfigById, insertClearApiKey } from "../src/lib/db";
+import { runClearSettle } from "../src/lib/clear/settle-api";
+import { hashClearApiKey } from "../src/lib/clear/auth";
+import { getClearMandateConfigById, insertClearApiKey, insertClearSettlementIdempotency } from "../src/lib/db";
 import { GET as getClearance } from "../src/app/api/clear/[id]/route";
 
 const SOURCE_TEXT = "Exact source evidence supports the cleared claim. Additional context follows.";
@@ -280,5 +282,146 @@ describe("Clear API auth and check handler", () => {
     }, auth);
     expect(badBudget.status).toBe(400);
     if (badBudget.status !== 201) expect(badBudget.body.field).toBe("maxPricePerCitationMicro");
+  });
+
+  it("requires explicit confirmation before settlement", async () => {
+    const auth = { keyHash: "settle-confirm-owner", keyPrefix: "cpk_settle", ownerLabel: "owner", tier: "stage2" };
+    const result = await runClearSettle({
+      clearanceId: "clr_missing_confirm",
+      mandateConfigId: "mnd_missing_confirm",
+      idempotencyKey: "settle-1",
+    }, auth, "https://citepay.test");
+
+    expect(result.status).toBe(400);
+    if (result.status !== 200) expect(result.body.field).toBe("confirm");
+  });
+
+  it("does not settle inline clearances as paid registered-source settlements", async () => {
+    const record = buildClearApiKeyRecord("cpk_test_settle_inline_key_1234567890", "settle-inline-owner", "2026-07-15T00:00:00.000Z");
+    insertClearApiKey(record);
+    const auth = { keyHash: record.keyHash, keyPrefix: record.keyPrefix, ownerLabel: record.ownerLabel, tier: record.tier };
+    const mandateResult = await createClearMandate({
+      name: "settle policy",
+      requiredLicenseClass: "standard",
+      maxPricePerCitationMicro: 100_000,
+      totalBudgetMicro: 5_000_000,
+    }, auth);
+    if (mandateResult.status !== 201) throw new Error(mandateResult.body.error);
+    const checkResult = await runClearCheck({
+      claim: "Exact source evidence supports the cleared claim.",
+      quote: "Exact source evidence supports the cleared claim.",
+      source: { text: SOURCE_TEXT, label: "Inline source", licenseClass: "standard" },
+      policy: { mandateConfigId: mandateResult.body.mandateConfigId },
+      visibility: "public",
+    }, auth, "https://citepay.test");
+    if (checkResult.status !== 200) throw new Error(checkResult.body.error);
+    expect(checkResult.body.decision).toBe("CLEARED");
+
+    const settleResult = await runClearSettle({
+      clearanceId: checkResult.body.clearanceId,
+      mandateConfigId: mandateResult.body.mandateConfigId,
+      idempotencyKey: "settle-inline-1",
+      confirm: true,
+    }, auth, "https://citepay.test");
+
+    expect(settleResult.status).toBe(422);
+    if (settleResult.status !== 200) {
+      expect(settleResult.body.error).toContain("registered source");
+    }
+  });
+
+  it("enforces settlement ownership before any payment attempt", async () => {
+    const ownerRecord = buildClearApiKeyRecord("cpk_test_settle_owner_key_1234567890", "settle-owner", "2026-07-15T00:00:00.000Z");
+    insertClearApiKey(ownerRecord);
+    const owner = { keyHash: ownerRecord.keyHash, keyPrefix: ownerRecord.keyPrefix, ownerLabel: ownerRecord.ownerLabel, tier: ownerRecord.tier };
+    const other = { keyHash: "different-owner-hash", keyPrefix: "cpk_other", ownerLabel: "other", tier: "stage2" };
+    const mandateResult = await createClearMandate({
+      name: "ownership policy",
+      requiredLicenseClass: "standard",
+      maxPricePerCitationMicro: 100_000,
+      totalBudgetMicro: 5_000_000,
+    }, owner);
+    if (mandateResult.status !== 201) throw new Error(mandateResult.body.error);
+    const checkResult = await runClearCheck({
+      claim: "Exact source evidence supports the cleared claim.",
+      quote: "Exact source evidence supports the cleared claim.",
+      source: { text: SOURCE_TEXT, label: "Inline source", licenseClass: "standard" },
+      policy: { mandateConfigId: mandateResult.body.mandateConfigId },
+    }, owner, "https://citepay.test");
+    if (checkResult.status !== 200) throw new Error(checkResult.body.error);
+
+    const settleResult = await runClearSettle({
+      clearanceId: checkResult.body.clearanceId,
+      mandateConfigId: mandateResult.body.mandateConfigId,
+      idempotencyKey: "settle-owner-1",
+      confirm: true,
+    }, other, "https://citepay.test");
+
+    expect(settleResult.status).toBe(403);
+    if (settleResult.status !== 200) expect(settleResult.body.field).toBe("clearanceId");
+  });
+
+  it("refuses settlement for unsupported clearances", async () => {
+    const auth = { keyHash: "settle-unsupported-owner", keyPrefix: "cpk_unsup", ownerLabel: "owner", tier: "stage2" };
+    const mandateResult = await createClearMandate({
+      name: "unsupported policy",
+      requiredLicenseClass: "standard",
+      maxPricePerCitationMicro: 100_000,
+      totalBudgetMicro: 5_000_000,
+    }, auth);
+    if (mandateResult.status !== 201) throw new Error(mandateResult.body.error);
+    const checkResult = await runClearCheck({
+      claim: "Exact source evidence supports the cleared claim.",
+      quote: "This fabricated quote is not present.",
+      source: { text: SOURCE_TEXT, label: "Inline source", licenseClass: "standard" },
+      policy: { mandateConfigId: mandateResult.body.mandateConfigId },
+    }, auth, "https://citepay.test");
+    if (checkResult.status !== 200) throw new Error(checkResult.body.error);
+    expect(checkResult.body.decision).toBe("UNSUPPORTED");
+
+    const settleResult = await runClearSettle({
+      clearanceId: checkResult.body.clearanceId,
+      mandateConfigId: mandateResult.body.mandateConfigId,
+      idempotencyKey: "settle-unsupported-1",
+      confirm: true,
+    }, auth, "https://citepay.test");
+
+    expect(settleResult.status).toBe(422);
+    if (settleResult.status !== 200) expect(settleResult.body.error).toContain("UNSUPPORTED");
+  });
+
+  it("rejects reused idempotency keys for different clearances", async () => {
+    const auth = { keyHash: "settle-idempotency-owner", keyPrefix: "cpk_idem", ownerLabel: "owner", tier: "stage2" };
+    const idempotencyKey = "same-key";
+    insertClearSettlementIdempotency({
+      idempotencyKeyHash: hashClearApiKey(`${auth.keyHash}:${idempotencyKey}`),
+      ownerKeyHash: auth.keyHash,
+      clearanceId: "clr_original",
+      mandateConfigId: "mnd_original",
+      receiptId: "receipt_original",
+      responseJson: JSON.stringify({
+        settled: true,
+        clearanceId: "clr_original",
+        mandateConfigId: "mnd_original",
+        receiptId: "receipt_original",
+        txHash: null,
+        paymentStatus: "simulated",
+        chainSettlement: false,
+        amountMicro: 0,
+        receiptUrl: "https://citepay.test/clearance/clr_original",
+        remainingBudgetMicro: 0,
+      }),
+      createdAt: "2026-07-15T00:00:00.000Z",
+    });
+
+    const result = await runClearSettle({
+      clearanceId: "clr_different",
+      mandateConfigId: "mnd_different",
+      idempotencyKey,
+      confirm: true,
+    }, auth, "https://citepay.test");
+
+    expect(result.status).toBe(409);
+    if (result.status !== 200) expect(result.body.field).toBe("idempotencyKey");
   });
 });

@@ -7,6 +7,16 @@ import { payCreator } from "@/lib/payments";
 import { getAgentAddress } from "@/lib/agent";
 import { signReceiptHash } from "@/lib/signature";
 
+export class PaymentNotConfirmedError extends Error {
+  payment: Awaited<ReturnType<typeof payCreator>>;
+
+  constructor(payment: Awaited<ReturnType<typeof payCreator>>) {
+    super("Payment did not confirm; settlement was not recorded.");
+    this.name = "PaymentNotConfirmedError";
+    this.payment = payment;
+  }
+}
+
 /**
  * Real settlement path shared by /clear/demo-run and /clear/recover/settle.
  * Only called after a claim has already cleared every deterministic gate in
@@ -20,6 +30,7 @@ export async function createPaidReceipt(opts: {
   answerHash: string;
   claim: ClaimClearance;
   budgetBefore: number;
+  requireConfirmed?: boolean;
 }): Promise<{ receiptId: string; txHash: string | null; paymentStatus: "confirmed" | "simulated" | null; amountPaid: number }> {
   const receiptId = uuidv4();
   const queryHash = sha256(opts.query);
@@ -53,6 +64,9 @@ export async function createPaidReceipt(opts: {
     sourceId: opts.source.id,
     receiptId,
   });
+  if (opts.requireConfirmed && payment.status !== "confirmed") {
+    throw new PaymentNotConfirmedError(payment);
+  }
 
   insertReceipt({
     id: receiptId,

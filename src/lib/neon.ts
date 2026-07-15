@@ -13,7 +13,7 @@
 
 import { neon } from "@neondatabase/serverless";
 import type { Receipt, EvidencePreimage, ScoreBreakdown } from "@/types";
-import type { ClaimClearance, ClearanceCertificate, ClearApiKeyRecord, ClearMandateConfig, RecoveryReport } from "@/lib/clear/types";
+import type { ClaimClearance, ClearanceCertificate, ClearApiKeyRecord, ClearMandateConfig, ClearSettlementIdempotencyRecord, RecoveryReport } from "@/lib/clear/types";
 
 // Module-level singleton — avoids recreating the connection on every call
 let _sql: ReturnType<typeof neon> | null = null;
@@ -97,6 +97,27 @@ async function init() {
       owner_label TEXT NOT NULL,
       tier TEXT NOT NULL DEFAULT 'stage2',
       revoked_at TIMESTAMPTZ,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+  `;
+  await sql`
+    CREATE TABLE IF NOT EXISTS cp_clear_settlement_idempotency (
+      idempotency_key_hash TEXT PRIMARY KEY,
+      owner_key_hash TEXT NOT NULL,
+      clearance_id TEXT NOT NULL,
+      mandate_config_id TEXT NOT NULL,
+      receipt_id TEXT,
+      response_json JSONB NOT NULL,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+  `;
+  await sql`
+    CREATE TABLE IF NOT EXISTS cp_clear_settlement_locks (
+      lock_key TEXT PRIMARY KEY,
+      owner_key_hash TEXT NOT NULL,
+      clearance_id TEXT NOT NULL,
+      mandate_config_id TEXT NOT NULL,
+      claim_hash TEXT NOT NULL,
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     )
   `;
@@ -297,6 +318,104 @@ export async function getNeonClearApiKeyByHash(keyHash: string): Promise<ClearAp
     console.error("[neon] getNeonClearApiKeyByHash failed:", String(err).slice(0, 120));
     return null;
   }
+}
+
+export function persistClearSettlementIdempotency(record: ClearSettlementIdempotencyRecord): void {
+  const sql = getSql();
+  if (!sql) return;
+  void (async () => {
+    try {
+      await upsertNeonClearSettlementIdempotency(record);
+    } catch (err) {
+      console.error("[neon] persistClearSettlementIdempotency failed:", String(err).slice(0, 120));
+    }
+  })();
+}
+
+export async function upsertNeonClearSettlementIdempotency(record: ClearSettlementIdempotencyRecord): Promise<void> {
+  const sql = getSql();
+  if (!sql) return;
+  await init();
+  await sql`
+    INSERT INTO cp_clear_settlement_idempotency (
+      idempotency_key_hash, owner_key_hash, clearance_id, mandate_config_id,
+      receipt_id, response_json, created_at
+    ) VALUES (
+      ${record.idempotencyKeyHash}, ${record.ownerKeyHash}, ${record.clearanceId},
+      ${record.mandateConfigId}, ${record.receiptId}, ${record.responseJson}, ${record.createdAt}
+    )
+    ON CONFLICT (idempotency_key_hash) DO UPDATE SET
+      receipt_id = EXCLUDED.receipt_id,
+      response_json = EXCLUDED.response_json
+  `;
+}
+
+function rowToNeonClearSettlementIdempotency(r: Record<string, unknown>): ClearSettlementIdempotencyRecord {
+  return {
+    idempotencyKeyHash: r.idempotency_key_hash as string,
+    ownerKeyHash: r.owner_key_hash as string,
+    clearanceId: r.clearance_id as string,
+    mandateConfigId: r.mandate_config_id as string,
+    receiptId: (r.receipt_id as string | null) ?? null,
+    responseJson: typeof r.response_json === "string" ? r.response_json : JSON.stringify(r.response_json),
+    createdAt: String(r.created_at),
+  };
+}
+
+export async function getNeonClearSettlementIdempotencyByHash(idempotencyKeyHash: string): Promise<ClearSettlementIdempotencyRecord | null> {
+  const sql = getSql();
+  if (!sql) return null;
+  try {
+    await init();
+    const rows = await sql`
+      SELECT * FROM cp_clear_settlement_idempotency
+      WHERE idempotency_key_hash = ${idempotencyKeyHash}
+      LIMIT 1
+    ` as Record<string, unknown>[];
+    return rows[0] ? rowToNeonClearSettlementIdempotency(rows[0]) : null;
+  } catch (err) {
+    console.error("[neon] getNeonClearSettlementIdempotencyByHash failed:", String(err).slice(0, 120));
+    return null;
+  }
+}
+
+export function persistClearSettlementLock(opts: {
+  lockKey: string;
+  ownerKeyHash: string;
+  clearanceId: string;
+  mandateConfigId: string;
+  claimHash: string;
+  createdAt?: string;
+}): void {
+  const sql = getSql();
+  if (!sql) return;
+  void tryReserveNeonClearSettlementLock(opts).catch((err) => {
+    console.error("[neon] persistClearSettlementLock failed:", String(err).slice(0, 120));
+  });
+}
+
+export async function tryReserveNeonClearSettlementLock(opts: {
+  lockKey: string;
+  ownerKeyHash: string;
+  clearanceId: string;
+  mandateConfigId: string;
+  claimHash: string;
+  createdAt?: string;
+}): Promise<boolean> {
+  const sql = getSql();
+  if (!sql) return true;
+  await init();
+  const rows = await sql`
+    INSERT INTO cp_clear_settlement_locks (
+      lock_key, owner_key_hash, clearance_id, mandate_config_id, claim_hash, created_at
+    ) VALUES (
+      ${opts.lockKey}, ${opts.ownerKeyHash}, ${opts.clearanceId}, ${opts.mandateConfigId},
+      ${opts.claimHash}, ${opts.createdAt ?? new Date().toISOString()}
+    )
+    ON CONFLICT (lock_key) DO NOTHING
+    RETURNING lock_key
+  ` as Record<string, unknown>[];
+  return rows.length > 0;
 }
 
 export function persistReceipt(r: NeonReceipt): void {

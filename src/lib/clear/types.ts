@@ -18,6 +18,16 @@ export interface ClearApiKeyRecord {
   createdAt: string;
 }
 
+export interface ClearSettlementIdempotencyRecord {
+  idempotencyKeyHash: string;
+  ownerKeyHash: string;
+  clearanceId: string;
+  mandateConfigId: string;
+  receiptId: string | null;
+  responseJson: string;
+  createdAt: string;
+}
+
 export interface ClearMandateConfig {
   mandateConfigId: string;
   ownerKeyHash?: string | null;
