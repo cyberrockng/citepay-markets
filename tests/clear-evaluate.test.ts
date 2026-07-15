@@ -1,18 +1,23 @@
+import { randomUUID } from "crypto";
 import { describe, expect, it } from "vitest";
 import type { Receipt, Source } from "../src/types";
-import type { ClearMandateConfig } from "../src/lib/clear/types";
-import { evaluateClaimClearance } from "../src/lib/clear/evaluate";
+import type { ClaimClearance, ClearMandateConfig } from "../src/lib/clear/types";
+import { buildReceiptHash, evaluateClaimClearance } from "../src/lib/clear/evaluate";
 import { authenticateClearApiRequest, buildClearApiKeyRecord } from "../src/lib/clear/auth";
 import { runClearCheck } from "../src/lib/clear/check";
 import { createClearMandate } from "../src/lib/clear/mandate";
 import { runClearSettle } from "../src/lib/clear/settle-api";
 import { hashClearApiKey } from "../src/lib/clear/auth";
-import { getClearMandateConfigById, insertClearApiKey, insertClearSettlementIdempotency } from "../src/lib/db";
+import { getClearMandateConfigById, insertClaimClearance, insertClearApiKey, insertClearSettlementIdempotency, insertReceipt } from "../src/lib/db";
 import { GET as getClearance } from "../src/app/api/clear/[id]/route";
 import { badgeState, GET as getClearBadge } from "../src/app/api/clear/[id]/badge/route";
+import { clearBadgeEmbedSnippet } from "../src/lib/clear/embed";
 
 const SOURCE_TEXT = "Exact source evidence supports the cleared claim. Additional context follows.";
 const QUOTE = "Exact source evidence supports the cleared claim.";
+
+// Unit fixtures must never be persisted to durable project storage.
+delete process.env.DATABASE_URL;
 
 function mandate(overrides: Partial<ClearMandateConfig> = {}): ClearMandateConfig {
   return {
@@ -117,6 +122,7 @@ function receipt(overrides: Partial<Receipt> = {}): Receipt {
 }
 
 function evaluate(opts: {
+  clearanceId?: string;
   mandate?: Partial<ClearMandateConfig>;
   source?: Partial<Source>;
   quoteText?: string;
@@ -124,7 +130,7 @@ function evaluate(opts: {
   sessionSpentMicro?: number;
 }) {
   return evaluateClaimClearance({
-    clearanceId: "clearance-1",
+    clearanceId: opts.clearanceId ?? "clearance-1",
     mandate: mandate(opts.mandate),
     source: source(opts.source),
     answerHash: "answer-hash",
@@ -135,6 +141,13 @@ function evaluate(opts: {
     sessionSpentMicro: opts.sessionSpentMicro ?? 0,
     nowIso: "2026-07-07T00:00:00.000Z",
   });
+}
+
+function rehashClearance(clearance: ClaimClearance): ClaimClearance {
+  const withoutHash = Object.fromEntries(
+    Object.entries(clearance).filter(([key]) => key !== "receiptHash")
+  ) as Omit<ClaimClearance, "receiptHash">;
+  return { ...withoutHash, receiptHash: buildReceiptHash(withoutHash) };
 }
 
 describe("evaluateClaimClearance", () => {
@@ -541,5 +554,100 @@ describe("Clear badge state", () => {
       status: "paid",
       text: "Cleared Paid",
     });
+  });
+});
+
+describe("Clear public receipt API", () => {
+  it("returns top-level receipt fields and public claim evidence", async () => {
+    const clearance = evaluate({ clearanceId: "clearance-public-receipt-api" });
+    insertClaimClearance(clearance);
+
+    const res = await getClearance(new Request("https://citepay.test"), {
+      params: Promise.resolve({ id: clearance.clearanceId }),
+    });
+    const json = await res.json() as {
+      decision: string;
+      contentHash: string;
+      visibility: string;
+      settlement: null;
+      clearance: ClaimClearance;
+    };
+
+    expect(res.status).toBe(200);
+    expect(json.decision).toBe("CLEARED");
+    expect(json.contentHash).toBe(`sha256:${clearance.receiptHash}`);
+    expect(json.visibility).toBe("public");
+    expect(json.settlement).toBeNull();
+    expect(json.clearance.claimText).toBe(clearance.claimText);
+    expect(json.clearance.quoteText).toBe(clearance.quoteText);
+  });
+
+  it("redacts private-hash claim and quote text, including receipt preimage excerpts", async () => {
+    const receiptId = `receipt-private-receipt-api-${randomUUID()}`;
+    const clearance = rehashClearance({
+      ...evaluate({ clearanceId: "clearance-private-receipt-api" }),
+      visibility: "private_hash_only",
+      amountPaidMicro: 1_000,
+      underlyingCitationReceiptId: receiptId,
+    });
+    insertReceipt(receipt({
+      id: receiptId,
+      query: `[Clear] ${clearance.claimText}`,
+      txHash: "0xprivateconfirmed",
+      paymentStatus: "confirmed",
+    }));
+    insertClaimClearance(clearance);
+
+    const res = await getClearance(new Request("https://citepay.test"), {
+      params: Promise.resolve({ id: clearance.clearanceId }),
+    });
+    const json = await res.json() as {
+      settlement: { txHash: string; paymentStatus: "confirmed"; amountMicro: number } | null;
+      clearance: ClaimClearance;
+      underlyingReceipt: Receipt;
+    };
+
+    expect(res.status).toBe(200);
+    expect(json.clearance.visibility).toBe("private_hash_only");
+    expect(json.clearance.claimText).toBe("[private_hash_only]");
+    expect(json.clearance.quoteText).toBe("[private_hash_only]");
+    expect(json.underlyingReceipt.query).toBe("[private_hash_only]");
+    expect(json.underlyingReceipt.evidencePreimage.query).toBe("[private_hash_only]");
+    expect(json.underlyingReceipt.evidencePreimage.excerptUsed).toBe("[private_hash_only]");
+    expect(json.settlement).toMatchObject({
+      txHash: "0xprivateconfirmed",
+      paymentStatus: "confirmed",
+      amountMicro: 1_000,
+    });
+  });
+
+  it("does not populate settlement for simulated receipts", async () => {
+    const receiptId = `receipt-simulated-receipt-api-${randomUUID()}`;
+    const clearance = rehashClearance({
+      ...evaluate({ clearanceId: "clearance-simulated-receipt-api" }),
+      amountPaidMicro: 1_000,
+      underlyingCitationReceiptId: receiptId,
+    });
+    insertReceipt(receipt({
+      id: receiptId,
+      txHash: "0xsimulatednotsettled",
+      paymentStatus: "simulated",
+    }));
+    insertClaimClearance(clearance);
+
+    const res = await getClearance(new Request("https://citepay.test"), {
+      params: Promise.resolve({ id: clearance.clearanceId }),
+    });
+    const json = await res.json() as { settlement: unknown };
+
+    expect(res.status).toBe(200);
+    expect(json.settlement).toBeNull();
+  });
+
+  it("builds badge embed snippets with the requested clearance id", () => {
+    const snippet = clearBadgeEmbedSnippet("https://citepay.test/", "clearance-embed-receipt-api");
+
+    expect(snippet).toContain("https://citepay.test/clearance/clearance-embed-receipt-api");
+    expect(snippet).toContain("https://citepay.test/api/clear/clearance-embed-receipt-api/badge");
   });
 });

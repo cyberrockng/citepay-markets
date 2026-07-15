@@ -6,8 +6,20 @@ import { BackButton } from "@/components/back-button";
 import { Badge, DataRow, PageShell, ProofPanel, ScoreBar } from "@/components/ui";
 import type { ClaimClearance, ClearanceCertificate } from "@/lib/clear/types";
 import type { Receipt } from "@/types";
+import { clearBadgeEmbedSnippet, clearBadgePath, clearBadgeUrl } from "@/lib/clear/embed";
 
 interface ClearanceResponse {
+  decision: string;
+  contentHash: string;
+  visibility: "public" | "private_hash_only";
+  settlement: {
+    receiptId: string;
+    txHash: string;
+    amountMicro: number;
+    paymentStatus: "confirmed";
+    settledAt: string;
+    explorerUrl: string;
+  } | null;
   clearance: ClaimClearance;
   certificate: ClearanceCertificate | null;
   certificateClearances: ClaimClearance[];
@@ -54,7 +66,15 @@ export default function ClearanceReceiptPage({ params }: { params: Promise<{ id:
     );
   }
 
-  const { clearance, certificate, certificateClearances, underlyingReceipt } = data;
+  const { clearance, certificate, certificateClearances, underlyingReceipt, settlement } = data;
+  const visibility = data.visibility ?? clearance.visibility ?? "public";
+  const isPrivateHashOnly = visibility === "private_hash_only";
+  const hasConfirmedSettlement = Boolean(settlement?.txHash);
+  const confirmedPaidMicro = settlement?.amountMicro ?? 0;
+  const baseUrl = typeof window !== "undefined" ? window.location.origin : "https://citepay-markets.vercel.app";
+  const badgePath = clearBadgePath(clearance.clearanceId);
+  const badgeUrl = clearBadgeUrl(baseUrl, clearance.clearanceId);
+  const badgeSnippet = clearBadgeEmbedSnippet(baseUrl, clearance.clearanceId);
   const trace = (() => {
     try {
       return JSON.parse(clearance.policyTrace) as Array<{ rule: string; passed: boolean; detail: string }>;
@@ -68,7 +88,7 @@ export default function ClearanceReceiptPage({ params }: { params: Promise<{ id:
     { label: "Quote span verified", passed: clearance.quoteVerified },
     { label: "License allowed", passed: tracePassed("license_allowed") },
     { label: "Policy passed", passed: tracePassed("source_policy_allowed") },
-    { label: "Creator paid", passed: clearance.amountPaidMicro > 0 },
+    { label: "Confirmed settlement", passed: hasConfirmedSettlement },
     { label: "Challenge window open", passed: Boolean(clearance.challengeDeadline) },
   ];
 
@@ -82,7 +102,7 @@ export default function ClearanceReceiptPage({ params }: { params: Promise<{ id:
             Claim #{clearance.clearanceId.slice(0, 8)}
           </h1>
           <p className="mt-2 max-w-2xl text-sm text-[#8b8b9e]">
-            This citation was evaluated before payment: authorization, quote support, license, policy, payout, and challenge status are shown below.
+            This citation was evaluated before any settlement claim: authorization, quote support, license, policy, confirmed payment evidence, and challenge status are shown below.
           </p>
         </div>
         <span className={`w-fit rounded border px-3 py-1 text-sm font-mono ${decisionClass(clearance.decision)}`}>
@@ -95,7 +115,7 @@ export default function ClearanceReceiptPage({ params }: { params: Promise<{ id:
           <div>
             <h2 className="font-semibold text-[#f0f0f5]">Clearance Summary</h2>
             <p className="mt-1 text-sm text-[#8b8b9e]">
-              A cleared citation is authorized, supported, licensed, paid, and challengeable. Failed checks explain why money did not move.
+              A clearance receipt shows whether a claim was authorized, quote-supported, licensed, inside policy, and later settled by a confirmed transaction.
             </p>
           </div>
           <Badge type={clearance.decision === "CLEARED" ? "PROOF" : "BLOCKED_BY_POLICY"} label={clearance.decision === "CLEARED" ? "cleared" : "not cleared"} size="sm" />
@@ -122,19 +142,19 @@ export default function ClearanceReceiptPage({ params }: { params: Promise<{ id:
             <div className={`text-xs font-mono uppercase tracking-[0.2em] ${
               clearance.decision === "CLEARED" ? "text-[#34D399]" : "text-red-300"
             }`}>
-              {clearance.decision === "CLEARED" ? "Why payment was allowed" : "Why payment was blocked"}
+              {clearance.decision === "CLEARED" ? "Why this claim cleared" : "Why this claim was blocked"}
             </div>
             <p className={`mt-2 max-w-3xl text-sm ${
               clearance.decision === "CLEARED" ? "text-[#b8d8c8]" : "text-red-100"
             }`}>
               {clearance.decision === "CLEARED"
-                ? "Creator earned because the exact quote was found, the license was allowed, policy passed, and the claim stayed inside budget."
-                : "A payment-only system could have paid this. CitePay paid $0 because the quote, license, policy, or budget checks did not clear."}
+                ? "The exact quote was found, the license was allowed, policy passed, and the claim stayed inside budget. Confirmed payment is shown separately when a real transaction is linked."
+                : "A payment-only system could have paid this. CitePay shows no confirmed settlement because the quote, license, policy, or budget checks did not clear."}
             </p>
           </div>
           <Badge
             type={clearance.decision === "CLEARED" ? "PROOF" : "BLOCKED_BY_POLICY"}
-            label={clearance.decision === "CLEARED" ? "earned" : "$0 paid"}
+            label={clearance.decision === "CLEARED" ? "cleared" : "$0 confirmed"}
             size="sm"
           />
         </div>
@@ -142,8 +162,8 @@ export default function ClearanceReceiptPage({ params }: { params: Promise<{ id:
 
       <div className="grid gap-4 md:grid-cols-3 mb-5">
         <div className="rounded-xl border border-white/10 bg-[var(--surface)] p-5">
-          <div className="text-2xl font-bold font-mono text-[#34D399]">{micro(clearance.amountPaidMicro)}</div>
-          <div className="text-xs text-[#8b8b9e] mt-1">Amount paid</div>
+          <div className="text-2xl font-bold font-mono text-[#34D399]">{micro(confirmedPaidMicro)}</div>
+          <div className="text-xs text-[#8b8b9e] mt-1">Confirmed settlement</div>
         </div>
         <div className="rounded-xl border border-white/10 bg-[var(--surface)] p-5">
           <div className="text-2xl font-bold font-mono text-[#f0f0f5]">{clearance.quoteVerified ? "yes" : "no"}</div>
@@ -154,6 +174,15 @@ export default function ClearanceReceiptPage({ params }: { params: Promise<{ id:
           <div className="text-xs text-[#8b8b9e] mt-1">Advisory support score</div>
         </div>
       </div>
+
+      {isPrivateHashOnly && (
+        <section className="rounded-xl border border-yellow-700/50 bg-yellow-950/20 p-5 mb-5">
+          <div className="text-xs font-mono uppercase tracking-[0.2em] text-yellow-300">Private hash-only visibility</div>
+          <p className="mt-2 text-sm leading-6 text-yellow-100">
+            The public receipt keeps the verdict, hashes, policy trace, badge, and settlement evidence visible, but redacts the full claim and quote text.
+          </p>
+        </section>
+      )}
 
       <section className="rounded-xl border border-white/10 bg-[var(--surface)] p-6 mb-5">
         <h2 className="font-semibold mb-4">Claim-Level Evidence</h2>
@@ -192,41 +221,44 @@ export default function ClearanceReceiptPage({ params }: { params: Promise<{ id:
       <section className="rounded-xl border border-[#34D399]/25 bg-[#34D399]/5 p-6 mb-5">
         <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
           <div>
-            <h2 className="font-semibold">Creator Payout</h2>
+            <h2 className="font-semibold">Settlement Evidence</h2>
             <p className="mt-1 text-sm text-[#8b8b9e]">
-              This panel shows whether the creator was paid from this claim-level clearance.
+              This panel shows whether this claim-level clearance has a confirmed creator-payment transaction.
             </p>
           </div>
           <Badge
-            type={clearance.amountPaidMicro > 0 ? "PROOF" : "BLOCKED_BY_POLICY"}
-            label={clearance.amountPaidMicro > 0 ? "creator paid" : "no payment"}
+            type={hasConfirmedSettlement ? "PROOF" : "BLOCKED_BY_POLICY"}
+            label={hasConfirmedSettlement ? "confirmed tx" : "no confirmed tx"}
             size="sm"
           />
         </div>
         <div className="grid gap-4 sm:grid-cols-2">
-          <DataRow label="Creator Wallet" value={underlyingReceipt?.creatorWallet ?? "not paid"} mono />
+          <DataRow label="Creator Wallet" value={underlyingReceipt?.creatorWallet ?? "not settled"} mono />
           <DataRow label="Source" value={underlyingReceipt?.sourceTitle ?? clearance.sourceId} />
           <DataRow label="Amount Due" value={micro(clearance.amountDueMicro)} mono accent="text-[#f0f0f5]" />
-          <DataRow label="Amount Paid" value={micro(clearance.amountPaidMicro)} mono accent={clearance.amountPaidMicro > 0 ? "text-[#34D399]" : "text-[#8b8b9e]"} />
-          <DataRow label="Payment Status" value={underlyingReceipt?.paymentStatus ?? (clearance.amountPaidMicro > 0 ? "receipt unavailable" : "not executed")} mono />
+          <DataRow label="Confirmed Paid" value={micro(confirmedPaidMicro)} mono accent={hasConfirmedSettlement ? "text-[#34D399]" : "text-[#8b8b9e]"} />
+          <DataRow label="Payment Status" value={settlement?.paymentStatus ?? underlyingReceipt?.paymentStatus ?? "not confirmed"} mono />
           <DataRow label="Underlying Receipt" value={clearance.underlyingCitationReceiptId ?? "none"} mono />
+          <DataRow label="Settlement Tx" value={settlement?.txHash ?? "none"} mono />
         </div>
         <div className="mt-4 rounded-lg border border-white/10 bg-[#0a0a0f] p-4">
           <div className="text-xs font-mono uppercase tracking-[0.18em] text-[#34D399] mb-2">
-            {clearance.decision === "CLEARED" ? "Why this creator was paid" : "Why this creator was not paid"}
+            {hasConfirmedSettlement ? "Why this settlement is confirmed" : "Why no confirmed settlement is shown"}
           </div>
           <p className="text-sm text-[#d6d6e7]">
-            {clearance.decision === "CLEARED"
-              ? "The quote span was found in the source, the license matched the mandate, policy checks passed, and the claim stayed within budget. Payment executed only after those gates passed."
-              : "This claim did not clear every required gate, so CitePay did not move creator funds for it."}
+            {hasConfirmedSettlement
+              ? "The linked receipt is confirmed and includes a transaction hash. The badge may therefore show a paid state."
+              : clearance.decision === "CLEARED"
+                ? "This claim cleared the deterministic checks, but this public receipt does not show a confirmed settlement transaction yet."
+                : "This claim did not clear every required gate, so this public receipt shows no confirmed settlement."}
           </p>
         </div>
-        {underlyingReceipt?.txHash && (
+        {settlement?.txHash && (
           <div className="mt-4">
             <ProofPanel
               label="Creator USDC Transfer"
-              baseScanTx={underlyingReceipt.txHash}
-              baseScanTxLabel={underlyingReceipt.txHash.slice(0, 20) + "…"}
+              baseScanTx={settlement.txHash}
+              baseScanTxLabel={settlement.txHash.slice(0, 20) + "…"}
             />
           </div>
         )}
@@ -237,15 +269,42 @@ export default function ClearanceReceiptPage({ params }: { params: Promise<{ id:
         <div className="space-y-3">
           <ProofPanel label="Claim Hash" hash={clearance.claimHash} />
           <ProofPanel label="Receipt Hash" hash={clearance.receiptHash} />
+          <ProofPanel label="Content Hash" hash={data.contentHash} />
           {certificate && <ProofPanel label="Certificate Hash" hash={certificate.certificateHash} />}
+        </div>
+      </section>
+
+      <section className="rounded-xl border border-white/10 bg-[var(--surface)] p-6 mb-5">
+        <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <h2 className="font-semibold">Badge Embed</h2>
+            <p className="mt-1 text-sm text-[#8b8b9e]">
+              Use this public SVG badge to link directly to this clearance receipt.
+            </p>
+          </div>
+          <div className="rounded border border-white/10 bg-[#0a0a0f] px-3 py-2">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={badgePath} alt="CitePay clearance badge" width={180} height={20} />
+          </div>
+        </div>
+        <div className="space-y-3">
+          <DataRow label="Badge URL" value={badgeUrl} link={badgeUrl} mono />
+          <div>
+            <div className="text-[#8b8b9e] text-xs mb-1">HTML Embed</div>
+            <pre className="overflow-x-auto rounded-lg border border-white/10 bg-[#0a0a0f] p-4 text-xs leading-6 text-[#d6d6e7]">
+              <code>{badgeSnippet}</code>
+            </pre>
+          </div>
         </div>
       </section>
 
       {clearance.underlyingCitationReceiptId && (
         <section className="rounded-xl border border-[#34D399]/30 bg-[#34D399]/5 p-6 mb-5">
-          <h2 className="font-semibold mb-3">Underlying Payment Receipt</h2>
+          <h2 className="font-semibold mb-3">{hasConfirmedSettlement ? "Underlying Payment Receipt" : "Underlying Receipt Record"}</h2>
           <p className="text-sm text-[#8b8b9e] mb-3">
-            Payment was executed only after clearance checks passed.
+            {hasConfirmedSettlement
+              ? "Payment was confirmed only after clearance checks passed."
+              : "A receipt record is linked, but this page does not show a confirmed payment transaction."}
           </p>
           <Link href={`/receipt/${clearance.underlyingCitationReceiptId}`} className="text-sm font-mono text-[#34D399] hover:text-green-200">
             Open underlying CitePay receipt ↗
@@ -257,7 +316,7 @@ export default function ClearanceReceiptPage({ params }: { params: Promise<{ id:
         <section className="rounded-xl border border-white/10 bg-[var(--surface)] p-6">
           <h2 className="font-semibold mb-1">Answer-Level Clearance Certificate</h2>
           <p className="mb-4 text-sm text-[#8b8b9e]">
-            One certificate binds this claim to the full answer: cleared claims, blocked claims, unsupported claims, total paid, and proof hashes.
+            One certificate binds this claim to the full answer: cleared claims, blocked claims, unsupported claims, recorded amount, and proof hashes.
           </p>
           <div className="grid gap-4 sm:grid-cols-2 mb-5">
             <DataRow label="Certificate ID" value={certificate.certificateId} mono />

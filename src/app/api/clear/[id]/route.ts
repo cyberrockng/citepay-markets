@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getClaimClearanceById, getClearanceCertificateByClearanceId, getClaimClearancesByCertificateId, getReceiptById } from "@/lib/db";
 import { getNeonClaimClearanceById, getNeonClearanceCertificateByClearanceId, getNeonClaimClearancesByIds, getNeonReceiptById } from "@/lib/neon";
 import type { ClaimClearance } from "@/lib/clear/types";
+import type { Receipt } from "@/types";
 
 export const dynamic = "force-dynamic";
 
@@ -11,6 +12,40 @@ function redactClearance(clearance: ClaimClearance): ClaimClearance {
     ...clearance,
     claimText: "[private_hash_only]",
     quoteText: "[private_hash_only]",
+  };
+}
+
+function redactUnderlyingReceipt(clearance: ClaimClearance, receipt: Receipt | null): Receipt | null {
+  if (!receipt || clearance.visibility !== "private_hash_only") return receipt;
+  return {
+    ...receipt,
+    query: "[private_hash_only]",
+    evidencePreimage: {
+      ...receipt.evidencePreimage,
+      query: "[private_hash_only]",
+      excerptUsed: "[private_hash_only]",
+    },
+  };
+}
+
+function confirmedSettlement(clearance: ClaimClearance, receipt: Receipt | null) {
+  if (
+    clearance.decision !== "CLEARED"
+    || clearance.amountPaidMicro <= 0
+    || !clearance.underlyingCitationReceiptId
+    || receipt?.paymentStatus !== "confirmed"
+    || !receipt.txHash
+  ) {
+    return null;
+  }
+
+  return {
+    receiptId: receipt.id,
+    txHash: receipt.txHash,
+    amountMicro: clearance.amountPaidMicro,
+    paymentStatus: "confirmed",
+    settledAt: receipt.createdAt,
+    explorerUrl: `https://testnet.arcscan.app/tx/${receipt.txHash}`,
   };
 }
 
@@ -29,14 +64,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
   const underlyingReceipt = clearance.underlyingCitationReceiptId
     ? getReceiptById(clearance.underlyingCitationReceiptId) ?? await getNeonReceiptById(clearance.underlyingCitationReceiptId)
     : null;
-  const settlement = underlyingReceipt?.txHash
-    ? {
-      txHash: underlyingReceipt.txHash,
-      amountMicro: clearance.amountPaidMicro,
-      settledAt: underlyingReceipt.createdAt,
-      explorerUrl: `https://testnet.arcscan.app/tx/${underlyingReceipt.txHash}`,
-    }
-    : null;
+  const settlement = confirmedSettlement(clearance, underlyingReceipt);
 
   return NextResponse.json({
     decision: clearance.decision,
@@ -46,6 +74,6 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
     clearance: redactClearance(clearance),
     certificate,
     certificateClearances: certificateClearances.map(redactClearance),
-    underlyingReceipt,
+    underlyingReceipt: redactUnderlyingReceipt(clearance, underlyingReceipt),
   });
 }
