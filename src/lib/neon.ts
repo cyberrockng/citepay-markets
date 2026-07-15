@@ -412,6 +412,36 @@ export function persistClearMandateConfig(config: ClearMandateConfig): void {
   })();
 }
 
+export async function upsertNeonClearMandateConfig(config: ClearMandateConfig): Promise<void> {
+  const sql = getSql();
+  if (!sql) return;
+  await init();
+  await sql`
+    INSERT INTO cp_clear_mandate_configs (
+      mandate_config_id, owner_key_hash, on_chain_mandate_id, operator_wallet, agent_wallet, policy_name,
+      budget_cap_micro, max_price_per_citation_micro, max_price_per_claim_micro,
+      allowed_source_types, blocked_domains, blocked_wallets, required_license_class,
+      require_publisher_verified, require_quote_span, min_support_score,
+      challenge_window_seconds, expires_at, mandate_hash, operator_signature, created_at
+    ) VALUES (
+      ${config.mandateConfigId}, ${config.ownerKeyHash ?? null}, ${config.onChainMandateId}, ${config.operatorWallet}, ${config.agentWallet}, ${config.policyName},
+      ${config.budgetCapMicro}, ${config.maxPricePerCitationMicro}, ${config.maxPricePerClaimMicro},
+      ${JSON.stringify(config.allowedSourceTypes)}, ${JSON.stringify(config.blockedDomains)}, ${JSON.stringify(config.blockedWallets)}, ${config.requiredLicenseClass},
+      ${config.requirePublisherVerified}, ${config.requireQuoteSpan}, ${config.minSupportScore},
+      ${config.challengeWindowSeconds}, ${config.expiresAt}, ${config.mandateHash}, ${config.operatorSignature}, ${config.createdAt}
+    )
+    ON CONFLICT (mandate_config_id) DO UPDATE SET
+      owner_key_hash = EXCLUDED.owner_key_hash,
+      on_chain_mandate_id = EXCLUDED.on_chain_mandate_id,
+      policy_name = EXCLUDED.policy_name,
+      budget_cap_micro = EXCLUDED.budget_cap_micro,
+      max_price_per_citation_micro = EXCLUDED.max_price_per_citation_micro,
+      max_price_per_claim_micro = EXCLUDED.max_price_per_claim_micro,
+      required_license_class = EXCLUDED.required_license_class,
+      mandate_hash = EXCLUDED.mandate_hash
+  `;
+}
+
 export function persistClaimClearance(clearance: ClaimClearance): void {
   const sql = getSql();
   if (!sql) return;

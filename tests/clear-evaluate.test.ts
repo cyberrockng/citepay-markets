@@ -4,7 +4,8 @@ import type { ClearMandateConfig } from "../src/lib/clear/types";
 import { evaluateClaimClearance } from "../src/lib/clear/evaluate";
 import { authenticateClearApiRequest, buildClearApiKeyRecord } from "../src/lib/clear/auth";
 import { runClearCheck } from "../src/lib/clear/check";
-import { insertClearApiKey } from "../src/lib/db";
+import { createClearMandate } from "../src/lib/clear/mandate";
+import { getClearMandateConfigById, insertClearApiKey } from "../src/lib/db";
 import { GET as getClearance } from "../src/app/api/clear/[id]/route";
 
 const SOURCE_TEXT = "Exact source evidence supports the cleared claim. Additional context follows.";
@@ -208,5 +209,76 @@ describe("Clear API auth and check handler", () => {
     if (result.status !== 200) throw new Error(result.body.error);
     expect(result.body.decision).toBe("UNSUPPORTED");
     expect(result.body.checks.quoteVerified).toBe(false);
+  });
+
+  it("creates a real persisted off-chain mandate owned by the API key", async () => {
+    const rawKey = "cpk_test_mandate_key_1234567890";
+    const record = buildClearApiKeyRecord(rawKey, "mandate-owner", "2026-07-15T00:00:00.000Z");
+    insertClearApiKey(record);
+    const auth = { keyHash: record.keyHash, keyPrefix: record.keyPrefix, ownerLabel: record.ownerLabel, tier: record.tier };
+
+    const result = await createClearMandate({
+      name: "standard docs policy",
+      requiredLicenseClass: "standard",
+      maxPricePerCitationMicro: 100_000,
+      totalBudgetMicro: 5_000_000,
+    }, auth);
+
+    expect(result.status).toBe(201);
+    if (result.status !== 201) throw new Error(result.body.error);
+    expect(result.body.mandateConfigId).toMatch(/^mnd_/);
+    expect(result.body.onChainMandateId).toBeNull();
+    expect(result.body.anchoring).toBe("not_anchored");
+
+    const stored = getClearMandateConfigById(result.body.mandateConfigId);
+    expect(stored?.ownerKeyHash).toBe(record.keyHash);
+    expect(stored?.requiredLicenseClass).toBe("standard");
+    expect(stored?.budgetCapMicro).toBe(5_000_000);
+  });
+
+  it("lets a created mandate be used immediately by clear check", async () => {
+    const record = buildClearApiKeyRecord("cpk_test_mandate_check_key_1234567890", "mandate-check-owner", "2026-07-15T00:00:00.000Z");
+    insertClearApiKey(record);
+    const auth = { keyHash: record.keyHash, keyPrefix: record.keyPrefix, ownerLabel: record.ownerLabel, tier: record.tier };
+    const mandateResult = await createClearMandate({
+      name: "standard check policy",
+      requiredLicenseClass: "standard",
+      maxPricePerCitationMicro: 100_000,
+      totalBudgetMicro: 5_000_000,
+    }, auth);
+    if (mandateResult.status !== 201) throw new Error(mandateResult.body.error);
+
+    const checkResult = await runClearCheck({
+      claim: "Exact source evidence supports the cleared claim.",
+      quote: "Exact source evidence supports the cleared claim.",
+      source: { text: SOURCE_TEXT, label: "Inline source", licenseClass: "standard" },
+      policy: { mandateConfigId: mandateResult.body.mandateConfigId },
+      visibility: "public",
+    }, auth, "https://citepay.test");
+
+    expect(checkResult.status).toBe(200);
+    if (checkResult.status !== 200) throw new Error(checkResult.body.error);
+    expect(checkResult.body.decision).toBe("CLEARED");
+  });
+
+  it("rejects invalid mandate license and budget values", async () => {
+    const auth = { keyHash: "mandate-invalid-owner", keyPrefix: "cpk_invalid", ownerLabel: "owner", tier: "stage2" };
+    const badLicense = await createClearMandate({
+      name: "bad license",
+      requiredLicenseClass: "fake-license",
+      maxPricePerCitationMicro: 100,
+      totalBudgetMicro: 100,
+    }, auth);
+    expect(badLicense.status).toBe(400);
+    if (badLicense.status !== 201) expect(badLicense.body.field).toBe("requiredLicenseClass");
+
+    const badBudget = await createClearMandate({
+      name: "bad budget",
+      requiredLicenseClass: "standard",
+      maxPricePerCitationMicro: 200,
+      totalBudgetMicro: 100,
+    }, auth);
+    expect(badBudget.status).toBe(400);
+    if (badBudget.status !== 201) expect(badBudget.body.field).toBe("maxPricePerCitationMicro");
   });
 });
