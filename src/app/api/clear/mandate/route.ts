@@ -1,15 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { authenticateClearApiRequest } from "@/lib/clear/auth";
 import { createClearMandate } from "@/lib/clear/mandate";
-import { createRateLimiter } from "@/lib/rate-limit";
+import { clearMandateRateLimiter as _checkRateLimit } from "@/lib/clear/rate-limiters";
 
 export const dynamic = "force-dynamic";
-
-const _checkRateLimit = createRateLimiter({
-  windowMs: 60_000,
-  maxPerWindow: 10,
-  lifetimeCap: 100,
-});
 
 export async function POST(req: NextRequest) {
   const auth = await authenticateClearApiRequest(req);

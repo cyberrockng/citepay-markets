@@ -7,12 +7,19 @@
  * HTTP transport (no SSE required — stateless request/response).
  *
  * Tools:
- *   cite_query   — run a full citation query: score sources, pay creators, return answer
- *   get_receipt  — fetch a stored receipt by ID
- *   check_policy — evaluate a query/source setup against a named policy preset
+ *   cite_query       — run a full citation query: score sources, pay creators, return answer
+ *   get_receipt      — fetch a stored receipt by ID
+ *   check_policy     — evaluate a query/source setup against a named policy preset
+ *   probe_source     — check an x402-gated URL's price before paying
+ *   clear_claim      — check a claim/quote/source citation for CitePay Clear (auth required)
+ *   get_clearance    — fetch a public Clear clearance receipt by ID
+ *   settle_clearance — settle a CLEARED clearance against a mandate (auth required)
  *
  * Authentication:
- *   Set MCP_API_KEY env var to require X-API-KEY header. Omit for open access.
+ *   MCP_API_KEY env var (server-side) gates the whole route via X-API-KEY, optional.
+ *   clear_claim/settle_clearance additionally require a per-caller CitePay Clear API
+ *   key (cpk_...) as an `Authorization: Bearer` header on this request — the
+ *   citepay-mcp npm client forwards its CITEPAY_API_KEY env var as that header.
  */
 
 import { NextRequest, NextResponse } from "next/server";
@@ -31,6 +38,7 @@ import { anchorPAY } from "@/lib/anchor";
 import { resolvePolicy, POLICY_PRESETS } from "@/lib/policy";
 import { signReceiptHash } from "@/lib/signature";
 import { probeX402 } from "@/lib/fetch-with-budget";
+import { CLEAR_MCP_TOOL_DEFS, CLEAR_MCP_TOOL_NAMES, handleClearMcpToolCall } from "@/lib/clear/mcp-tools";
 
 export const dynamic = "force-dynamic";
 
@@ -106,6 +114,7 @@ const TOOLS = [
       required: ["url"],
     },
   },
+  ...CLEAR_MCP_TOOL_DEFS,
 ];
 
 // ── Tool handlers ─────────────────────────────────────────────────────────────
@@ -320,6 +329,14 @@ export async function POST(req: NextRequest) {
     const name = params.name as string;
     const args = (params.arguments as Record<string, unknown>) ?? {};
 
+    if (CLEAR_MCP_TOOL_NAMES.has(name)) {
+      const result = await handleClearMcpToolCall(name, args, req, req.nextUrl.origin);
+      return ok(id, {
+        content: [{ type: "text", text: JSON.stringify(result.body, null, 2) }],
+        isError: result.status >= 400,
+      });
+    }
+
     // cite_query requires a $0.001 USDC payment via x402 — get_receipt and check_policy are free
     if (name === "cite_query") {
       const rawSig = req.headers.get("payment-signature") ?? req.headers.get("x-payment") ?? "";
@@ -392,7 +409,7 @@ export async function POST(req: NextRequest) {
 export async function GET() {
   return NextResponse.json({
     name: "CitePay Markets MCP Server",
-    version: "1.1.0",
+    version: "1.2.0",
     protocol: "MCP 2024-11-05",
     transport: "HTTP JSON-RPC 2.0",
     endpoint: "POST /api/mcp",
