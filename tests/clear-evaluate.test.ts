@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { Source } from "../src/types";
+import type { Receipt, Source } from "../src/types";
 import type { ClearMandateConfig } from "../src/lib/clear/types";
 import { evaluateClaimClearance } from "../src/lib/clear/evaluate";
 import { authenticateClearApiRequest, buildClearApiKeyRecord } from "../src/lib/clear/auth";
@@ -9,6 +9,7 @@ import { runClearSettle } from "../src/lib/clear/settle-api";
 import { hashClearApiKey } from "../src/lib/clear/auth";
 import { getClearMandateConfigById, insertClearApiKey, insertClearSettlementIdempotency } from "../src/lib/db";
 import { GET as getClearance } from "../src/app/api/clear/[id]/route";
+import { badgeState, GET as getClearBadge } from "../src/app/api/clear/[id]/badge/route";
 
 const SOURCE_TEXT = "Exact source evidence supports the cleared claim. Additional context follows.";
 const QUOTE = "Exact source evidence supports the cleared claim.";
@@ -64,6 +65,53 @@ function source(overrides: Partial<Source> = {}): Source {
     licenseClass: "clear-demo",
     verificationStatus: "verified",
     riskScore: 0,
+    ...overrides,
+  };
+}
+
+function receipt(overrides: Partial<Receipt> = {}): Receipt {
+  return {
+    id: "receipt-1",
+    sourceId: "source-1",
+    queryId: "query-1",
+    agentAddress: "0xagent",
+    creatorWallet: "0xcreator",
+    decision: "PAY",
+    query: "query",
+    queryHash: "query-hash",
+    sourceTitle: "Source",
+    sourceUrl: "https://example.com/source",
+    amountPaid: 1_000,
+    evidenceHash: "evidence-hash",
+    evidencePreimage: {
+      query: "query",
+      queryHash: "query-hash",
+      sourceUrl: "https://example.com/source",
+      excerptUsed: QUOTE,
+      decision: "PAY",
+      scoreInputs: {
+        relevance: 90,
+        price: "0.001000 USDC",
+        bonded: true,
+        creatorReputation: 1,
+        budgetRemainingBefore: "0.010000 USDC",
+      },
+      reason: "test fixture",
+      timestamp: "2026-07-07T00:00:00.000Z",
+    },
+    contentHashAtDecision: "content-hash",
+    scores: { relevance: 90, price: 90, bond: 20, reputation: 1, total: 90 },
+    reason: "test fixture",
+    txHash: "0xconfirmed",
+    paymentStatus: "confirmed",
+    policyProfile: "Clear",
+    policyRulesPassed: [],
+    policyRulesFailed: [],
+    policyReason: null,
+    budgetBefore: 10_000,
+    budgetAfter: 9_000,
+    challenged: false,
+    createdAt: "2026-07-07T00:00:00.000Z",
     ...overrides,
   };
 }
@@ -423,5 +471,75 @@ describe("Clear API auth and check handler", () => {
 
     expect(result.status).toBe(409);
     if (result.status !== 200) expect(result.body.field).toBe("idempotencyKey");
+  });
+});
+
+describe("Clear badge state", () => {
+  it("returns a cacheable svg badge for unknown clearances", async () => {
+    const res = await getClearBadge(new Request("https://citepay.test/api/clear/missing/badge"), {
+      params: Promise.resolve({ id: "missing-badge-clearance" }),
+    });
+
+    expect(res.status).toBe(200);
+    expect(res.headers.get("content-type")).toContain("image/svg+xml");
+    expect(res.headers.get("cache-control")).toBe("public, max-age=300");
+    expect(await res.text()).toContain("Not found");
+  });
+
+  it("renders unknown clearances as not found without failing embed layout", () => {
+    expect(badgeState(null, null)).toMatchObject({
+      status: "not_found",
+      text: "Not found",
+    });
+  });
+
+  it("renders unsupported clearances as not cleared", () => {
+    const unsupported = evaluate({ quoteText: "A fabricated quote.", supportScore: 99 });
+
+    expect(badgeState(unsupported, null)).toMatchObject({
+      status: "not_cleared",
+      text: "Not cleared: UNSUPPORTED",
+    });
+  });
+
+  it("renders cleared unpaid clearances as cleared", () => {
+    expect(badgeState(evaluate({}), null)).toMatchObject({
+      status: "cleared",
+      text: "Cleared",
+    });
+  });
+
+  it("does not render paid for simulated receipts", () => {
+    const clearance = {
+      ...evaluate({}),
+      amountPaidMicro: 1_000,
+      underlyingCitationReceiptId: "receipt-simulated",
+    };
+
+    expect(badgeState(clearance, receipt({
+      id: "receipt-simulated",
+      paymentStatus: "simulated",
+      txHash: "0xsimulated",
+    }))).toMatchObject({
+      status: "cleared",
+      text: "Cleared",
+    });
+  });
+
+  it("renders paid only for confirmed linked receipt with tx hash", () => {
+    const clearance = {
+      ...evaluate({}),
+      amountPaidMicro: 1_000,
+      underlyingCitationReceiptId: "receipt-confirmed",
+    };
+
+    expect(badgeState(clearance, receipt({
+      id: "receipt-confirmed",
+      paymentStatus: "confirmed",
+      txHash: "0xconfirmed",
+    }))).toMatchObject({
+      status: "paid",
+      text: "Cleared Paid",
+    });
   });
 });
