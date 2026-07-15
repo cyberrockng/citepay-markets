@@ -15,16 +15,23 @@
  * Usage (Claude Code):
  *   claude mcp add citepay -- npx -y citepay-mcp
  *
+ * Tools include CitePay Clear: clear_claim, get_clearance, settle_clearance.
+ * clear_claim and settle_clearance require a Clear API key (cpk_...) — set
+ * CITEPAY_API_KEY and it's forwarded as an Authorization: Bearer header on
+ * every request. get_clearance and the original citation tools are public.
+ *
  * Env vars:
- *   CITEPAY_API  — override the CitePay API URL (default: https://citepay-markets.vercel.app/api/mcp)
+ *   CITEPAY_API      — override the CitePay API URL (default: https://citepay-markets.vercel.app/api/mcp)
+ *   CITEPAY_API_KEY  — Clear API key (cpk_...), required for clear_claim / settle_clearance
  */
 
 const API_URL = process.env.CITEPAY_API ?? "https://citepay-markets.vercel.app/api/mcp";
+const API_KEY = process.env.CITEPAY_API_KEY;
 
 // Server capabilities advertised during MCP handshake
 const SERVER_INFO = {
   name: "citepay",
-  version: "1.0.0",
+  version: "1.1.0",
 };
 
 const CAPABILITIES = {
@@ -90,7 +97,10 @@ async function handleLine(raw) {
   try {
     const res = await fetch(API_URL, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        ...(API_KEY ? { Authorization: `Bearer ${API_KEY}` } : {}),
+      },
       body: JSON.stringify(msg),
       signal: AbortSignal.timeout(30_000),
     });

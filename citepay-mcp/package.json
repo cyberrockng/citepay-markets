@@ -1,7 +1,7 @@
 {
   "name": "citepay-mcp",
-  "version": "0.1.0",
-  "description": "MCP server for CitePay Markets — AI agents pay creators in USDC per citation on Arc Testnet",
+  "version": "0.2.0",
+  "description": "MCP server for CitePay Markets and CitePay Clear — AI agents pay creators in USDC per citation, and check/settle citation clearances, on Arc Testnet",
   "main": "index.js",
   "bin": {
     "citepay-mcp": "index.js"
@@ -20,7 +20,8 @@
     "x402",
     "usdc",
     "arc",
-    "citation"
+    "citation",
+    "clear"
   ],
   "license": "MIT",
   "repository": {
