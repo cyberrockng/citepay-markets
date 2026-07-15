@@ -9,12 +9,40 @@ export function createRateLimiter(opts: {
   lifetimeCap?: number;
 }) {
   const timestamps = new Map<string, number>();
+  const windows = new Map<string, { startedAt: number; count: number }>();
   const counts = new Map<string, number>();
 
   return function check(ip: string): { allowed: boolean; retryAfterMs?: number; reason?: string } {
     const now = Date.now();
-    const last = timestamps.get(ip) ?? 0;
     const count = counts.get(ip) ?? 0;
+
+    const cap = opts.lifetimeCap ?? 50;
+    if (count >= cap) {
+      return { allowed: false, reason: "Session request limit reached" };
+    }
+
+    if (opts.maxPerWindow !== undefined) {
+      const existing = windows.get(ip);
+      const windowState = !existing || now - existing.startedAt >= opts.windowMs
+        ? { startedAt: now, count: 0 }
+        : existing;
+
+      if (windowState.count >= opts.maxPerWindow) {
+        const wait = Math.max(0, opts.windowMs - (now - windowState.startedAt));
+        return {
+          allowed: false,
+          retryAfterMs: wait,
+          reason: `Rate limit: wait ${Math.ceil(wait / 1000)}s`,
+        };
+      }
+
+      windowState.count += 1;
+      windows.set(ip, windowState);
+      counts.set(ip, count + 1);
+      return { allowed: true };
+    }
+
+    const last = timestamps.get(ip) ?? 0;
     const elapsed = now - last;
 
     if (opts.windowMs > 0 && elapsed < opts.windowMs) {
@@ -24,11 +52,6 @@ export function createRateLimiter(opts: {
         retryAfterMs: wait,
         reason: `Rate limit: wait ${Math.ceil(wait / 1000)}s`,
       };
-    }
-
-    const cap = opts.lifetimeCap ?? 50;
-    if (count >= cap) {
-      return { allowed: false, reason: "Session request limit reached" };
     }
 
     timestamps.set(ip, now);

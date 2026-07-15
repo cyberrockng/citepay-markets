@@ -42,4 +42,14 @@ describe("createRateLimiter", () => {
     check("ip7");
     expect(check("ip7").allowed).toBe(true);
   });
+
+  it("supports fixed-window maxPerWindow limits", () => {
+    const check = createRateLimiter({ windowMs: 60_000, maxPerWindow: 2 });
+    expect(check("key1").allowed).toBe(true);
+    expect(check("key1").allowed).toBe(true);
+    const third = check("key1");
+    expect(third.allowed).toBe(false);
+    expect(third.retryAfterMs).toBeGreaterThan(0);
+    expect(check("key2").allowed).toBe(true);
+  });
 });

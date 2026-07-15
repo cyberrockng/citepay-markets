@@ -13,7 +13,7 @@
 
 import { neon } from "@neondatabase/serverless";
 import type { Receipt, EvidencePreimage, ScoreBreakdown } from "@/types";
-import type { ClaimClearance, ClearanceCertificate, ClearMandateConfig, RecoveryReport } from "@/lib/clear/types";
+import type { ClaimClearance, ClearanceCertificate, ClearApiKeyRecord, ClearMandateConfig, RecoveryReport } from "@/lib/clear/types";
 
 // Module-level singleton — avoids recreating the connection on every call
 let _sql: ReturnType<typeof neon> | null = null;
@@ -91,8 +91,19 @@ async function init() {
     )
   `;
   await sql`
+    CREATE TABLE IF NOT EXISTS cp_clear_api_keys (
+      key_hash TEXT PRIMARY KEY,
+      key_prefix TEXT NOT NULL,
+      owner_label TEXT NOT NULL,
+      tier TEXT NOT NULL DEFAULT 'stage2',
+      revoked_at TIMESTAMPTZ,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+  `;
+  await sql`
     CREATE TABLE IF NOT EXISTS cp_clear_mandate_configs (
       mandate_config_id TEXT PRIMARY KEY,
+      owner_key_hash TEXT,
       on_chain_mandate_id INTEGER,
       operator_wallet TEXT NOT NULL,
       agent_wallet TEXT NOT NULL,
@@ -117,6 +128,8 @@ async function init() {
   await sql`
     CREATE TABLE IF NOT EXISTS cp_claim_clearances (
       clearance_id TEXT PRIMARY KEY,
+      owner_key_hash TEXT,
+      visibility TEXT NOT NULL DEFAULT 'public',
       mandate_config_id TEXT NOT NULL,
       source_id TEXT NOT NULL,
       on_chain_source_id INTEGER,
@@ -142,6 +155,9 @@ async function init() {
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     )
   `;
+  await sql`ALTER TABLE cp_clear_mandate_configs ADD COLUMN IF NOT EXISTS owner_key_hash TEXT`;
+  await sql`ALTER TABLE cp_claim_clearances ADD COLUMN IF NOT EXISTS owner_key_hash TEXT`;
+  await sql`ALTER TABLE cp_claim_clearances ADD COLUMN IF NOT EXISTS visibility TEXT NOT NULL DEFAULT 'public'`;
   await sql`
     CREATE TABLE IF NOT EXISTS cp_clearance_certificates (
       certificate_id TEXT PRIMARY KEY,
@@ -213,6 +229,74 @@ export interface NeonReceipt {
   purposeCode: string | null;
   contributionWeight: number | null;
   createdAt: string;
+}
+
+export function persistClearApiKey(record: ClearApiKeyRecord): void {
+  const sql = getSql();
+  if (!sql) return;
+  void (async () => {
+    try {
+      await init();
+      await sql`
+        INSERT INTO cp_clear_api_keys (
+          key_hash, key_prefix, owner_label, tier, revoked_at, created_at
+        ) VALUES (
+          ${record.keyHash}, ${record.keyPrefix}, ${record.ownerLabel}, ${record.tier}, ${record.revokedAt}, ${record.createdAt}
+        )
+        ON CONFLICT (key_hash) DO UPDATE SET
+          owner_label = EXCLUDED.owner_label,
+          tier = EXCLUDED.tier,
+          revoked_at = EXCLUDED.revoked_at
+      `;
+    } catch (err) {
+      console.error("[neon] persistClearApiKey failed:", String(err).slice(0, 120));
+    }
+  })();
+}
+
+export async function upsertNeonClearApiKey(record: ClearApiKeyRecord): Promise<void> {
+  const sql = getSql();
+  if (!sql) return;
+  await init();
+  await sql`
+    INSERT INTO cp_clear_api_keys (
+      key_hash, key_prefix, owner_label, tier, revoked_at, created_at
+    ) VALUES (
+      ${record.keyHash}, ${record.keyPrefix}, ${record.ownerLabel}, ${record.tier}, ${record.revokedAt}, ${record.createdAt}
+    )
+    ON CONFLICT (key_hash) DO UPDATE SET
+      owner_label = EXCLUDED.owner_label,
+      tier = EXCLUDED.tier,
+      revoked_at = EXCLUDED.revoked_at
+  `;
+}
+
+function rowToNeonClearApiKey(r: Record<string, unknown>): ClearApiKeyRecord {
+  return {
+    keyHash: r.key_hash as string,
+    keyPrefix: r.key_prefix as string,
+    ownerLabel: r.owner_label as string,
+    tier: r.tier as string,
+    revokedAt: r.revoked_at ? String(r.revoked_at) : null,
+    createdAt: String(r.created_at),
+  };
+}
+
+export async function getNeonClearApiKeyByHash(keyHash: string): Promise<ClearApiKeyRecord | null> {
+  const sql = getSql();
+  if (!sql) return null;
+  try {
+    await init();
+    const rows = await sql`
+      SELECT * FROM cp_clear_api_keys
+      WHERE key_hash = ${keyHash}
+      LIMIT 1
+    ` as Record<string, unknown>[];
+    return rows[0] ? rowToNeonClearApiKey(rows[0]) : null;
+  } catch (err) {
+    console.error("[neon] getNeonClearApiKeyByHash failed:", String(err).slice(0, 120));
+    return null;
+  }
 }
 
 export function persistReceipt(r: NeonReceipt): void {
@@ -305,19 +389,20 @@ export function persistClearMandateConfig(config: ClearMandateConfig): void {
       await init();
       await sql`
         INSERT INTO cp_clear_mandate_configs (
-          mandate_config_id, on_chain_mandate_id, operator_wallet, agent_wallet, policy_name,
+          mandate_config_id, owner_key_hash, on_chain_mandate_id, operator_wallet, agent_wallet, policy_name,
           budget_cap_micro, max_price_per_citation_micro, max_price_per_claim_micro,
           allowed_source_types, blocked_domains, blocked_wallets, required_license_class,
           require_publisher_verified, require_quote_span, min_support_score,
           challenge_window_seconds, expires_at, mandate_hash, operator_signature, created_at
         ) VALUES (
-          ${config.mandateConfigId}, ${config.onChainMandateId}, ${config.operatorWallet}, ${config.agentWallet}, ${config.policyName},
+          ${config.mandateConfigId}, ${config.ownerKeyHash ?? null}, ${config.onChainMandateId}, ${config.operatorWallet}, ${config.agentWallet}, ${config.policyName},
           ${config.budgetCapMicro}, ${config.maxPricePerCitationMicro}, ${config.maxPricePerClaimMicro},
           ${JSON.stringify(config.allowedSourceTypes)}, ${JSON.stringify(config.blockedDomains)}, ${JSON.stringify(config.blockedWallets)}, ${config.requiredLicenseClass},
           ${config.requirePublisherVerified}, ${config.requireQuoteSpan}, ${config.minSupportScore},
           ${config.challengeWindowSeconds}, ${config.expiresAt}, ${config.mandateHash}, ${config.operatorSignature}, ${config.createdAt}
         )
         ON CONFLICT (mandate_config_id) DO UPDATE SET
+          owner_key_hash = EXCLUDED.owner_key_hash,
           on_chain_mandate_id = EXCLUDED.on_chain_mandate_id,
           mandate_hash = EXCLUDED.mandate_hash
       `;
@@ -335,13 +420,13 @@ export function persistClaimClearance(clearance: ClaimClearance): void {
       await init();
       await sql`
         INSERT INTO cp_claim_clearances (
-          clearance_id, mandate_config_id, source_id, on_chain_source_id, answer_hash, claim_hash,
+          clearance_id, owner_key_hash, visibility, mandate_config_id, source_id, on_chain_source_id, answer_hash, claim_hash,
           claim_text, quote_text, quote_start, quote_end, quote_verified, support_score,
           license_class, amount_due_micro, amount_paid_micro, underlying_citation_receipt_id,
           on_chain_mandate_id, decision, policy_trace, receipt_hash, anchor_tx,
           challenge_status, challenge_deadline, created_at
         ) VALUES (
-          ${clearance.clearanceId}, ${clearance.mandateConfigId}, ${clearance.sourceId}, ${clearance.onChainSourceId},
+          ${clearance.clearanceId}, ${clearance.ownerKeyHash ?? null}, ${clearance.visibility ?? "public"}, ${clearance.mandateConfigId}, ${clearance.sourceId}, ${clearance.onChainSourceId},
           ${clearance.answerHash}, ${clearance.claimHash}, ${clearance.claimText}, ${clearance.quoteText},
           ${clearance.quoteStart}, ${clearance.quoteEnd}, ${clearance.quoteVerified}, ${clearance.supportScore},
           ${clearance.licenseClass}, ${clearance.amountDueMicro}, ${clearance.amountPaidMicro}, ${clearance.underlyingCitationReceiptId},
@@ -349,6 +434,8 @@ export function persistClaimClearance(clearance: ClaimClearance): void {
           ${clearance.challengeStatus}, ${clearance.challengeDeadline}, ${clearance.createdAt}
         )
         ON CONFLICT (clearance_id) DO UPDATE SET
+          owner_key_hash = EXCLUDED.owner_key_hash,
+          visibility = EXCLUDED.visibility,
           amount_paid_micro = EXCLUDED.amount_paid_micro,
           underlying_citation_receipt_id = EXCLUDED.underlying_citation_receipt_id,
           decision = EXCLUDED.decision,
@@ -554,6 +641,8 @@ export async function getNeonReceiptById(id: string): Promise<Receipt | null> {
 function rowToNeonClaimClearance(r: Record<string, unknown>): ClaimClearance {
   return {
     clearanceId: r.clearance_id as string,
+    ownerKeyHash: (r.owner_key_hash as string | null) ?? null,
+    visibility: (r.visibility as ClaimClearance["visibility"] | null) ?? "public",
     mandateConfigId: r.mandate_config_id as string,
     sourceId: r.source_id as string,
     onChainSourceId: r.on_chain_source_id != null ? Number(r.on_chain_source_id) : null,
@@ -616,6 +705,7 @@ export async function getNeonClaimClearanceById(id: string): Promise<ClaimCleara
 function rowToNeonClearMandateConfig(r: Record<string, unknown>): ClearMandateConfig {
   return {
     mandateConfigId: r.mandate_config_id as string,
+    ownerKeyHash: (r.owner_key_hash as string | null) ?? null,
     onChainMandateId: (r.on_chain_mandate_id as number | null) ?? null,
     operatorWallet: r.operator_wallet as string,
     agentWallet: r.agent_wallet as string,

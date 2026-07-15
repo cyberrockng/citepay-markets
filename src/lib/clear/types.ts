@@ -7,9 +7,20 @@ export type ClaimDecision =
   | "PENDING";
 
 export type ChallengeStatus = "NONE" | "OPEN" | "UPHELD" | "REJECTED";
+export type ClearanceVisibility = "public" | "private_hash_only";
+
+export interface ClearApiKeyRecord {
+  keyHash: string;
+  keyPrefix: string;
+  ownerLabel: string;
+  tier: string;
+  revokedAt: string | null;
+  createdAt: string;
+}
 
 export interface ClearMandateConfig {
   mandateConfigId: string;
+  ownerKeyHash?: string | null;
   onChainMandateId: number | null;
   operatorWallet: string;
   agentWallet: string;
@@ -33,6 +44,8 @@ export interface ClearMandateConfig {
 
 export interface ClaimClearance {
   clearanceId: string;
+  ownerKeyHash?: string | null;
+  visibility?: ClearanceVisibility;
   mandateConfigId: string;
   sourceId: string;
   onChainSourceId: number | null;

@@ -4,11 +4,12 @@ import fs from "fs";
 import { createHash } from "crypto";
 import { v4 as uuidv4 } from "uuid";
 import type { Source, Receipt, QueryRecord } from "@/types";
-import type { ClaimClearance, ClearanceCertificate, ClearMandateConfig, RecoveryReport } from "@/lib/clear/types";
+import type { ClaimClearance, ClearanceCertificate, ClearApiKeyRecord, ClearMandateConfig, RecoveryReport } from "@/lib/clear/types";
 import { redisIncrSourcePaid, redisIncrSourceRefused } from "@/lib/redis-stats";
 import {
   persistClearanceCertificate,
   persistClaimClearance,
+  persistClearApiKey,
   persistClearMandateConfig,
   persistRecoveryReport,
   persistReceipt,
@@ -143,8 +144,18 @@ function migrate(db: Database.Database) {
   }
 
   db.exec(`
+    CREATE TABLE IF NOT EXISTS clear_api_keys (
+      key_hash TEXT PRIMARY KEY,
+      key_prefix TEXT NOT NULL,
+      owner_label TEXT NOT NULL,
+      tier TEXT NOT NULL DEFAULT 'stage2',
+      revoked_at TEXT DEFAULT NULL,
+      created_at TEXT NOT NULL
+    );
+
     CREATE TABLE IF NOT EXISTS clear_mandate_configs (
       mandate_config_id TEXT PRIMARY KEY,
+      owner_key_hash TEXT DEFAULT NULL,
       on_chain_mandate_id INTEGER DEFAULT NULL,
       operator_wallet TEXT NOT NULL,
       agent_wallet TEXT NOT NULL,
@@ -168,6 +179,8 @@ function migrate(db: Database.Database) {
 
     CREATE TABLE IF NOT EXISTS claim_clearances (
       clearance_id TEXT PRIMARY KEY,
+      owner_key_hash TEXT DEFAULT NULL,
+      visibility TEXT NOT NULL DEFAULT 'public',
       mandate_config_id TEXT NOT NULL,
       source_id TEXT NOT NULL,
       on_chain_source_id INTEGER DEFAULT NULL,
@@ -227,6 +240,18 @@ function migrate(db: Database.Database) {
       created_at TEXT NOT NULL
     );
   `);
+
+  const mandateCols = (db.prepare("PRAGMA table_info(clear_mandate_configs)").all() as { name: string }[]).map((c) => c.name);
+  if (!mandateCols.includes("owner_key_hash")) {
+    db.exec("ALTER TABLE clear_mandate_configs ADD COLUMN owner_key_hash TEXT DEFAULT NULL");
+  }
+  const clearanceCols = (db.prepare("PRAGMA table_info(claim_clearances)").all() as { name: string }[]).map((c) => c.name);
+  if (!clearanceCols.includes("owner_key_hash")) {
+    db.exec("ALTER TABLE claim_clearances ADD COLUMN owner_key_hash TEXT DEFAULT NULL");
+  }
+  if (!clearanceCols.includes("visibility")) {
+    db.exec("ALTER TABLE claim_clearances ADD COLUMN visibility TEXT NOT NULL DEFAULT 'public'");
+  }
 
   // ── Bounties ────────────────────────────────────────────────────────────────
   db.exec(`
@@ -550,17 +575,49 @@ function stringifyNullableArray(value: string[] | null): string | null {
   return value ? JSON.stringify(value) : null;
 }
 
+function rowToClearApiKey(r: Record<string, unknown>): ClearApiKeyRecord {
+  return {
+    keyHash: r.key_hash as string,
+    keyPrefix: r.key_prefix as string,
+    ownerLabel: r.owner_label as string,
+    tier: r.tier as string,
+    revokedAt: (r.revoked_at as string | null) ?? null,
+    createdAt: r.created_at as string,
+  };
+}
+
+export function insertClearApiKey(record: ClearApiKeyRecord): void {
+  getDb().prepare(`
+    INSERT OR REPLACE INTO clear_api_keys (
+      key_hash, key_prefix, owner_label, tier, revoked_at, created_at
+    ) VALUES (?, ?, ?, ?, ?, ?)
+  `).run(
+    record.keyHash, record.keyPrefix, record.ownerLabel, record.tier,
+    record.revokedAt, record.createdAt
+  );
+  persistClearApiKey(record);
+}
+
+export function getClearApiKeyByHash(keyHash: string): ClearApiKeyRecord | null {
+  const row = getDb().prepare("SELECT * FROM clear_api_keys WHERE key_hash = ?").get(keyHash) as Record<string, unknown> | undefined;
+  return row ? rowToClearApiKey(row) : null;
+}
+
+export function revokeClearApiKey(keyHash: string, revokedAt = new Date().toISOString()): void {
+  getDb().prepare("UPDATE clear_api_keys SET revoked_at = ? WHERE key_hash = ?").run(revokedAt, keyHash);
+}
+
 export function insertClearMandateConfig(config: ClearMandateConfig): void {
   getDb().prepare(`
     INSERT OR REPLACE INTO clear_mandate_configs (
-      mandate_config_id, on_chain_mandate_id, operator_wallet, agent_wallet, policy_name,
+      mandate_config_id, owner_key_hash, on_chain_mandate_id, operator_wallet, agent_wallet, policy_name,
       budget_cap_micro, max_price_per_citation_micro, max_price_per_claim_micro,
       allowed_source_types, blocked_domains, blocked_wallets, required_license_class,
       require_publisher_verified, require_quote_span, min_support_score,
       challenge_window_seconds, expires_at, mandate_hash, operator_signature, created_at
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).run(
-    config.mandateConfigId, config.onChainMandateId, config.operatorWallet, config.agentWallet, config.policyName,
+    config.mandateConfigId, config.ownerKeyHash ?? null, config.onChainMandateId, config.operatorWallet, config.agentWallet, config.policyName,
     config.budgetCapMicro, config.maxPricePerCitationMicro, config.maxPricePerClaimMicro,
     stringifyNullableArray(config.allowedSourceTypes), stringifyNullableArray(config.blockedDomains),
     stringifyNullableArray(config.blockedWallets), config.requiredLicenseClass,
@@ -573,14 +630,15 @@ export function insertClearMandateConfig(config: ClearMandateConfig): void {
 export function insertClaimClearance(clearance: ClaimClearance): void {
   getDb().prepare(`
     INSERT OR REPLACE INTO claim_clearances (
-      clearance_id, mandate_config_id, source_id, on_chain_source_id, answer_hash, claim_hash,
+      clearance_id, owner_key_hash, visibility, mandate_config_id, source_id, on_chain_source_id, answer_hash, claim_hash,
       claim_text, quote_text, quote_start, quote_end, quote_verified, support_score,
       license_class, amount_due_micro, amount_paid_micro, underlying_citation_receipt_id,
       on_chain_mandate_id, decision, policy_trace, receipt_hash, anchor_tx,
       challenge_status, challenge_deadline, created_at
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).run(
-    clearance.clearanceId, clearance.mandateConfigId, clearance.sourceId, clearance.onChainSourceId,
+    clearance.clearanceId, clearance.ownerKeyHash ?? null, clearance.visibility ?? "public",
+    clearance.mandateConfigId, clearance.sourceId, clearance.onChainSourceId,
     clearance.answerHash, clearance.claimHash, clearance.claimText, clearance.quoteText,
     clearance.quoteStart, clearance.quoteEnd, clearance.quoteVerified ? 1 : 0, clearance.supportScore,
     clearance.licenseClass, clearance.amountDueMicro, clearance.amountPaidMicro,
@@ -669,6 +727,7 @@ export function hasSettledClaim(mandateConfigId: string, claimHash: string): boo
 function rowToClearMandateConfig(r: Record<string, unknown>): ClearMandateConfig {
   return {
     mandateConfigId: r.mandate_config_id as string,
+    ownerKeyHash: (r.owner_key_hash as string | null) ?? null,
     onChainMandateId: (r.on_chain_mandate_id as number | null) ?? null,
     operatorWallet: r.operator_wallet as string,
     agentWallet: r.agent_wallet as string,
@@ -714,6 +773,8 @@ export function getClaimClearancesByCertificateId(certificateId: string): ClaimC
 function rowToClaimClearance(r: Record<string, unknown>): ClaimClearance {
   return {
     clearanceId: r.clearance_id as string,
+    ownerKeyHash: (r.owner_key_hash as string | null) ?? null,
+    visibility: (r.visibility as ClaimClearance["visibility"] | null) ?? "public",
     mandateConfigId: r.mandate_config_id as string,
     sourceId: r.source_id as string,
     onChainSourceId: (r.on_chain_source_id as number | null) ?? null,

@@ -1,8 +1,18 @@
 import { NextResponse } from "next/server";
 import { getClaimClearanceById, getClearanceCertificateByClearanceId, getClaimClearancesByCertificateId, getReceiptById } from "@/lib/db";
 import { getNeonClaimClearanceById, getNeonClearanceCertificateByClearanceId, getNeonClaimClearancesByIds, getNeonReceiptById } from "@/lib/neon";
+import type { ClaimClearance } from "@/lib/clear/types";
 
 export const dynamic = "force-dynamic";
+
+function redactClearance(clearance: ClaimClearance): ClaimClearance {
+  if (clearance.visibility !== "private_hash_only") return clearance;
+  return {
+    ...clearance,
+    claimText: "[private_hash_only]",
+    quoteText: "[private_hash_only]",
+  };
+}
 
 export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -19,11 +29,23 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
   const underlyingReceipt = clearance.underlyingCitationReceiptId
     ? getReceiptById(clearance.underlyingCitationReceiptId) ?? await getNeonReceiptById(clearance.underlyingCitationReceiptId)
     : null;
+  const settlement = underlyingReceipt?.txHash
+    ? {
+      txHash: underlyingReceipt.txHash,
+      amountMicro: clearance.amountPaidMicro,
+      settledAt: underlyingReceipt.createdAt,
+      explorerUrl: `https://testnet.arcscan.app/tx/${underlyingReceipt.txHash}`,
+    }
+    : null;
 
   return NextResponse.json({
-    clearance,
+    decision: clearance.decision,
+    contentHash: `sha256:${clearance.receiptHash}`,
+    visibility: clearance.visibility ?? "public",
+    settlement,
+    clearance: redactClearance(clearance),
     certificate,
-    certificateClearances,
+    certificateClearances: certificateClearances.map(redactClearance),
     underlyingReceipt,
   });
 }

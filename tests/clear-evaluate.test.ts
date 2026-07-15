@@ -2,6 +2,10 @@ import { describe, expect, it } from "vitest";
 import type { Source } from "../src/types";
 import type { ClearMandateConfig } from "../src/lib/clear/types";
 import { evaluateClaimClearance } from "../src/lib/clear/evaluate";
+import { authenticateClearApiRequest, buildClearApiKeyRecord } from "../src/lib/clear/auth";
+import { runClearCheck } from "../src/lib/clear/check";
+import { insertClearApiKey } from "../src/lib/db";
+import { GET as getClearance } from "../src/app/api/clear/[id]/route";
 
 const SOURCE_TEXT = "Exact source evidence supports the cleared claim. Additional context follows.";
 const QUOTE = "Exact source evidence supports the cleared claim.";
@@ -125,5 +129,84 @@ describe("evaluateClaimClearance", () => {
     const result = evaluate({ sessionSpentMicro: 9_500 });
     expect(result.decision).toBe("OVER_CAP");
     expect(result.amountDueMicro).toBe(0);
+  });
+});
+
+describe("Clear API auth and check handler", () => {
+  it("authenticates hashed cpk_ keys and rejects missing keys", async () => {
+    const rawKey = "cpk_test_valid_auth_key_1234567890";
+    const record = buildClearApiKeyRecord(rawKey, "test-owner", "2026-07-15T00:00:00.000Z");
+    insertClearApiKey(record);
+
+    const good = await authenticateClearApiRequest({
+      headers: { get: (name: string) => name.toLowerCase() === "authorization" ? `Bearer ${rawKey}` : null },
+    });
+    expect(good.ok).toBe(true);
+    if (good.ok) expect(good.auth.keyHash).toBe(record.keyHash);
+
+    const missing = await authenticateClearApiRequest({
+      headers: { get: () => null },
+    });
+    expect(missing.ok).toBe(false);
+  });
+
+  it("checks inline citations and stores private-hash receipts without public text leakage", async () => {
+    const rawKey = "cpk_test_clear_check_key_1234567890";
+    const record = buildClearApiKeyRecord(rawKey, "check-owner", "2026-07-15T00:00:00.000Z");
+    insertClearApiKey(record);
+    const auth = { keyHash: record.keyHash, keyPrefix: record.keyPrefix, ownerLabel: record.ownerLabel, tier: record.tier };
+    const source = "Exact source evidence supports the cleared claim. Additional context follows.";
+
+    const result = await runClearCheck({
+      claim: "Exact source evidence supports the cleared claim.",
+      quote: "Exact source evidence supports the cleared claim.",
+      source: { text: source, label: "Inline source", licenseClass: "standard" },
+      policy: { maxPricePerCitationMicro: 0, requiredLicenseClass: "standard" },
+      visibility: "private_hash_only",
+    }, auth, "https://citepay.test");
+
+    expect(result.status).toBe(200);
+    if (result.status !== 200) throw new Error(result.body.error);
+    expect(result.body.decision).toBe("CLEARED");
+    expect(result.body.checks.quoteVerified).toBe(true);
+    expect(result.body.receiptUrl).toContain(`/clearance/${result.body.clearanceId}`);
+
+    const res = await getClearance(new Request("https://citepay.test"), {
+      params: Promise.resolve({ id: result.body.clearanceId }),
+    });
+    const json = await res.json() as { clearance: { claimText: string; quoteText: string; visibility: string } };
+    expect(json.clearance.visibility).toBe("private_hash_only");
+    expect(json.clearance.claimText).toBe("[private_hash_only]");
+    expect(json.clearance.quoteText).toBe("[private_hash_only]");
+  });
+
+  it("rejects arbitrary source URLs in Stage 2", async () => {
+    const auth = { keyHash: "owner-hash", keyPrefix: "cpk_owner", ownerLabel: "owner", tier: "stage2" };
+    const result = await runClearCheck({
+      claim: "A claim.",
+      quote: "A quote.",
+      sourceUrl: "https://example.com/source",
+      source: { text: "A quote.", label: "Inline source" },
+      policy: { maxPricePerCitationMicro: 0, requiredLicenseClass: "standard" },
+    }, auth, "https://citepay.test");
+
+    expect(result.status).toBe(400);
+    if (result.status !== 200) expect(result.body.field).toBe("sourceUrl");
+  });
+
+  it("marks absent inline quotes unsupported", async () => {
+    const auth = { keyHash: "owner-hash-2", keyPrefix: "cpk_owner", ownerLabel: "owner", tier: "stage2" };
+    const result = await runClearCheck({
+      claim: "Exact source evidence supports the cleared claim.",
+      quote: "This fabricated quote is not present.",
+      source: { text: SOURCE_TEXT, label: "Inline source", licenseClass: "standard" },
+      policy: { maxPricePerCitationMicro: 0, requiredLicenseClass: "standard" },
+      visibility: "public",
+    }, auth, "https://citepay.test");
+
+    expect(result.status).toBe(200);
+    if (result.status !== 200) throw new Error(result.body.error);
+    expect(result.body.decision).toBe("UNSUPPORTED");
+    expect(result.body.checks.quoteVerified).toBe(false);
   });
 });
