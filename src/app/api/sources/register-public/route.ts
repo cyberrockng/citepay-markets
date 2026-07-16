@@ -3,7 +3,10 @@ import { v4 as uuidv4 } from "uuid";
 import { insertSource, updateSourceOnChainId } from "@/lib/db";
 import { registerSourceOnChain } from "@/lib/anchor";
 import { fetchAndHash } from "@/lib/content-hash";
+import { fetchWellKnownPolicy, resolvePublisherLicense } from "@/lib/clear/wellknown";
 import type { Source } from "@/types";
+
+const ALLOWED_LICENSE_CLASSES = new Set(["open", "standard"]);
 
 export const dynamic = "force-dynamic";
 
@@ -50,6 +53,8 @@ export async function POST(req: NextRequest) {
   const category      = String(body.category ?? "Research").trim();
   const priceRaw      = body.price ?? 1500;
   const price         = Math.max(500, Math.min(10_000, Number(priceRaw) || 1500));
+  const licenseClassRaw = String(body.licenseClass ?? "standard").trim();
+  const licenseClass  = ALLOWED_LICENSE_CLASSES.has(licenseClassRaw) ? licenseClassRaw : "standard";
 
   if (!title)        return NextResponse.json({ error: "title is required" }, { status: 400 });
   if (!url)          return NextResponse.json({ error: "url is required" }, { status: 400 });
@@ -72,6 +77,12 @@ export async function POST(req: NextRequest) {
     console.warn(`[register-public] URL fetch failed for ${url}: ${fetched.error}`);
   }
 
+  // Best-effort: read the publisher's own /.well-known/citepay.json to prove domain
+  // control and prefill policy. Never required — a missing file just means "unverified".
+  const wellKnown = await fetchWellKnownPolicy(url);
+  const resolved = resolvePublisherLicense(wellKnown, licenseClass, payoutWallet);
+  const domainVerified = resolved.verificationStatus === "domain_verified";
+
   const id = uuidv4();
   const source: Source = {
     id,
@@ -92,6 +103,8 @@ export async function POST(req: NextRequest) {
     skipCount: 0,
     active: true,
     createdAt: new Date().toISOString(),
+    licenseClass: resolved.licenseClass,
+    verificationStatus: resolved.verificationStatus,
   };
 
   insertSource(source);
@@ -116,6 +129,9 @@ export async function POST(req: NextRequest) {
     contentFetchedAt:   fetched.fetchedAt,
     contentFetchSource: fetched.source,
     contentFetchError:  fetched.error ?? null,
+    wellKnown: wellKnown.ok
+      ? { found: true, verified: domainVerified, policy: wellKnown.policy }
+      : { found: false, verified: false, error: wellKnown.error },
     message:            fetched.source === "fetch"
       ? `Source registered — ${fetched.contentLength.toLocaleString()} chars fingerprinted. You are now in the CitePay market.`
       : `Source registered with fallback hash (URL unreachable: ${fetched.error}). Challenges may not resolve correctly.`,

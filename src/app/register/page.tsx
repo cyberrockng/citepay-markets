@@ -19,6 +19,12 @@ interface RegisteredSource {
   price: number;
 }
 
+interface WellKnownDiagnostic {
+  found: boolean;
+  verified: boolean;
+  error?: string;
+}
+
 export default function RegisterPage() {
   const { stats } = useTraction();
 
@@ -29,10 +35,12 @@ export default function RegisterPage() {
   const [description,   setDescription]   = useState("");
   const [payoutWallet,  setPayoutWallet]  = useState("");
   const [price,         setPrice]         = useState(DEFAULT_PRICE);
+  const [licenseClass,  setLicenseClass]  = useState<"standard" | "open">("standard");
 
   const [loading,    setLoading]    = useState(false);
   const [error,      setError]      = useState("");
   const [registered, setRegistered] = useState<RegisteredSource | null>(null);
+  const [wellKnown,  setWellKnown]  = useState<WellKnownDiagnostic | null>(null);
   const [copied,     setCopied]     = useState(false);
 
   function fillExample() {
@@ -63,6 +71,7 @@ export default function RegisterPage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError("");
+    setWellKnown(null);
     const validationError = validate();
     if (validationError) { setError(validationError); return; }
 
@@ -79,13 +88,15 @@ export default function RegisterPage() {
           description:   description.trim(),
           payoutWallet:  payoutWallet.trim(),
           price,
+          licenseClass,
         }),
       });
-      const data = await res.json() as { source?: RegisteredSource; error?: string };
+      const data = await res.json() as { source?: RegisteredSource; error?: string; wellKnown?: WellKnownDiagnostic };
       if (!res.ok) {
         setError(data.error ?? "Registration failed. Please try again.");
       } else if (data.source) {
         setRegistered(data.source);
+        setWellKnown(data.wellKnown ?? null);
       }
     } catch {
       setError("Network error. Check your connection and try again.");
@@ -143,6 +154,16 @@ export default function RegisterPage() {
                 <span className="text-[#34D399]">active · earning</span>
               </div>
             </div>
+
+            {wellKnown && (
+              <div className={`text-xs rounded-lg px-4 py-3 mb-6 ${wellKnown.verified ? "bg-[#34D399]/10 border border-[#34D399]/30 text-[#34D399]" : "bg-[#1e1e2e] border border-[#1e1e2e] text-[#8b8b9e]"}`}>
+                {wellKnown.verified
+                  ? "✓ Domain-verified via /.well-known/citepay.json — your license class was confirmed, not just self-declared."
+                  : wellKnown.found
+                  ? "Found a /.well-known/citepay.json on your domain, but its payoutAddress didn't match — using your self-declared license class instead."
+                  : "No /.well-known/citepay.json found on your domain — using your self-declared license class. Add one any time to get domain-verified."}
+              </div>
+            )}
 
             <div className="space-y-3 mb-6">
               <Link
@@ -333,6 +354,26 @@ export default function RegisterPage() {
             />
             <p className="text-[10px] text-[#4a4a5e] mt-1.5">
               USDC earnings land here. Must be an Arc Testnet address you control.
+            </p>
+          </div>
+
+          <div>
+            <label htmlFor="licenseClass" className={labelClass}>
+              License class
+            </label>
+            <select
+              id="licenseClass"
+              className={inputClass}
+              value={licenseClass}
+              onChange={(e) => setLicenseClass(e.target.value as "standard" | "open")}
+            >
+              <option value="standard">Standard — default, most citation policies allow this</option>
+              <option value="open">Open — freely citable under any policy</option>
+            </select>
+            <p className="text-[10px] text-[#4a4a5e] mt-1.5">
+              Add a <code className="text-[#6366f1]">/.well-known/citepay.json</code> file on your
+              domain (<code>{"{ version: 1, licenseClass, pricePerCitationMicro, payoutAddress, contact }"}</code>)
+              to have this auto-verified instead of self-declared.
             </p>
           </div>
 
