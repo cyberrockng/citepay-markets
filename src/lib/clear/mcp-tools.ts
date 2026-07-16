@@ -2,7 +2,7 @@ import { authenticateClearApiRequest } from "./auth";
 import { runClearCheck } from "./check";
 import { runClearSettle } from "./settle-api";
 import { getClearanceById } from "./get-clearance";
-import { clearCheckRateLimiter, clearSettleRateLimiter } from "./rate-limiters";
+import { clearCheckRateLimiter, clearGetRateLimiter, clearSettleRateLimiter, getClientIp } from "./rate-limiters";
 
 type JsonObject = Record<string, unknown>;
 type RequestLike = { headers: { get(name: string): string | null } };
@@ -98,6 +98,8 @@ export async function handleClearMcpToolCall(
   baseUrl: string
 ): Promise<ClearMcpToolResult> {
   if (name === "get_clearance") {
+    const rl = clearGetRateLimiter(getClientIp(req));
+    if (!rl.allowed) return { status: 429, body: { error: rl.reason } };
     const clearanceId = typeof args.clearanceId === "string" ? args.clearanceId.trim() : "";
     if (!clearanceId) return { status: 400, body: { error: "clearanceId is required." } };
     const result = await getClearanceById(clearanceId);

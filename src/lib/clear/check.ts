@@ -22,6 +22,7 @@ const QUOTE_MAX = 2_000;
 const INLINE_SOURCE_MAX = 20_000;
 const LABEL_MAX = 200;
 const EXTERNAL_REF_MAX = 128;
+const LICENSE_CLASS_MAX = 64;
 const MAX_MICRO = 1_000_000_000;
 
 type JsonObject = Record<string, unknown>;
@@ -241,9 +242,9 @@ async function resolveSource(input: JsonObject, inlineMandate: ClearMandateConfi
   if (!label.ok) return label;
   const price = integerField(sourceInput.priceMicro, "source.priceMicro", 0);
   if (!price.ok) return price;
-  const licenseClass = typeof sourceInput.licenseClass === "string" && sourceInput.licenseClass.trim()
-    ? sourceInput.licenseClass.trim()
-    : inlineMandate?.requiredLicenseClass ?? "unlicensed";
+  const licenseClassField = optionalStringField(sourceInput, "licenseClass", LICENSE_CLASS_MAX);
+  if (!licenseClassField.ok) return licenseClassField;
+  const licenseClass = licenseClassField.value ?? inlineMandate?.requiredLicenseClass ?? "unlicensed";
   const source = makeInlineSource({
     text: text.value,
     label: label.value ?? "Inline source",

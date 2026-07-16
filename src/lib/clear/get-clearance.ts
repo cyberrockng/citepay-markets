@@ -3,10 +3,16 @@ import { getNeonClaimClearanceById, getNeonClearanceCertificateByClearanceId, ge
 import type { ClaimClearance, ClearanceCertificate } from "./types";
 import type { Receipt } from "@/types";
 
+/**
+ * Never expose the caller's API-key identity on a public surface — ownerKeyHash is
+ * stable per key, so leaving it in would let anyone correlate every public clearance
+ * back to the same caller. Stripped unconditionally, regardless of visibility.
+ */
 export function redactClearance(clearance: ClaimClearance): ClaimClearance {
-  if (clearance.visibility !== "private_hash_only") return clearance;
+  const sanitized: ClaimClearance = { ...clearance, ownerKeyHash: undefined };
+  if (sanitized.visibility !== "private_hash_only") return sanitized;
   return {
-    ...clearance,
+    ...sanitized,
     claimText: "[private_hash_only]",
     quoteText: "[private_hash_only]",
   };

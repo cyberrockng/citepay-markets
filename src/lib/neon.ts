@@ -320,6 +320,19 @@ export async function getNeonClearApiKeyByHash(keyHash: string): Promise<ClearAp
   }
 }
 
+export async function revokeNeonClearApiKey(keyHash: string, revokedAt = new Date().toISOString()): Promise<void> {
+  const sql = getSql();
+  if (!sql) return;
+  try {
+    await init();
+    await sql`
+      UPDATE cp_clear_api_keys SET revoked_at = ${revokedAt} WHERE key_hash = ${keyHash}
+    `;
+  } catch (err) {
+    console.error("[neon] revokeNeonClearApiKey failed:", String(err).slice(0, 120));
+  }
+}
+
 export function persistClearSettlementIdempotency(record: ClearSettlementIdempotencyRecord): void {
   const sql = getSql();
   if (!sql) return;

@@ -8,6 +8,7 @@
  */
 
 import { createHash } from "crypto";
+import { ssrfSafeFetch } from "@/lib/ssrf-safe-fetch";
 
 export interface ContentFetchResult {
   hash:          string;   // 64-char hex SHA-256
@@ -90,39 +91,45 @@ function sha256hex(s: string): string {
 
 /**
  * Fetch a URL, extract its text content, and return a SHA-256 hash.
- * Fails open: if the fetch fails, hashes the URL string itself and
- * sets source: "fallback" so callers can log/warn.
+ * Fails open: if the fetch fails (including SSRF rejection — private/
+ * loopback/link-local targets are always rejected), hashes the URL
+ * string itself and sets source: "fallback" so callers can log/warn.
+ *
+ * Uses the shared SSRF-safe primitive: DNS resolved and validated as
+ * public before connecting, connection pinned to that IP, redirects
+ * re-verified at every hop — a publisher-submitted URL can't be used
+ * to reach internal/private infrastructure.
  */
 export async function fetchAndHash(url: string): Promise<ContentFetchResult> {
   const fetchedAt = new Date().toISOString();
 
   try {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 12_000);
-
-    const res = await fetch(url, {
-      signal: controller.signal,
+    const fetched = await ssrfSafeFetch(url, {
+      timeoutMs: 12_000,
+      maxBytes: 5_000_000,
       headers: {
         "User-Agent": "CitePay-Markets/1.0 (content-verification; +https://citepay-markets.vercel.app)",
         "Accept":     "text/html,text/plain,application/json;q=0.9,*/*;q=0.8",
       },
     });
-    clearTimeout(timeout);
-
-    if (!res.ok) {
-      throw new Error(`HTTP ${res.status} ${res.statusText}`);
+    if (!fetched.ok) {
+      throw new Error(fetched.error);
     }
 
-    const contentType = res.headers.get("content-type") ?? "";
+    const res = fetched.result;
+    if (res.status < 200 || res.status >= 300) {
+      throw new Error(`HTTP ${res.status}`);
+    }
+
+    const contentType = res.contentType ?? "";
     let text: string;
 
     if (contentType.includes("application/json")) {
       // JSON endpoints: hash the raw JSON body
-      text = await res.text();
+      text = res.body;
     } else {
       // HTML / plain text: strip markup
-      const html = await res.text();
-      text = extractText(html);
+      text = extractText(res.body);
     }
 
     const normalised = normalise(text);

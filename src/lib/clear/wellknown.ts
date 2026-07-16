@@ -4,14 +4,15 @@
  * registration to prefill policy and prove domain control. Never
  * crawled automatically after that.
  *
- * Resolves DNS and validates the IP is public BEFORE connecting, then
- * pins the TCP connection to that validated IP (Host/SNI stay the real
- * hostname) so a DNS answer that changes between the check and the
- * request can't redirect the fetch to a private address.
+ * Uses the shared ssrf-safe-fetch primitive: DNS resolved and validated
+ * as public BEFORE connecting, then the connection is pinned to that
+ * validated IP (Host/SNI stay the real hostname) so a DNS answer that
+ * changes between the check and the request can't redirect the fetch to
+ * a private address.
  */
-import { lookup } from "dns/promises";
-import https from "https";
-import { isIP } from "net";
+import { ssrfSafeFetch } from "@/lib/ssrf-safe-fetch";
+
+export { isBlockedIp } from "@/lib/ssrf-safe-fetch";
 
 export interface WellKnownPolicy {
   version: number;
@@ -28,108 +29,7 @@ export type WellKnownFetchResult =
 const MAX_REDIRECTS = 3;
 const MAX_BYTES = 100_000;
 const TIMEOUT_MS = 5_000;
-const MAX_HOSTNAME_LEN = 253;
 const WELL_KNOWN_PATH = "/.well-known/citepay.json";
-
-export function isBlockedIp(ip: string): boolean {
-  const version = isIP(ip);
-  if (version === 4) {
-    const parts = ip.split(".").map(Number);
-    const [a, b] = parts;
-    if (parts.length !== 4 || parts.some((n) => Number.isNaN(n))) return true;
-    if (a === 127) return true;                         // loopback
-    if (a === 10) return true;                           // private
-    if (a === 172 && b >= 16 && b <= 31) return true;     // private
-    if (a === 192 && b === 168) return true;              // private
-    if (a === 169 && b === 254) return true;              // link-local
-    if (a === 100 && b >= 64 && b <= 127) return true;     // CGNAT
-    if (a === 0) return true;                              // "this network"
-    if (a >= 224) return true;                             // multicast + reserved
-    return false;
-  }
-  if (version === 6) {
-    const lower = ip.toLowerCase();
-    if (lower === "::1" || lower === "::") return true;
-    if (lower.startsWith("fe8") || lower.startsWith("fe9") || lower.startsWith("fea") || lower.startsWith("feb")) return true; // fe80::/10
-    if (lower.startsWith("fc") || lower.startsWith("fd")) return true; // fc00::/7 unique-local
-    if (lower.startsWith("::ffff:")) {
-      const v4 = lower.slice(7);
-      return isIP(v4) === 4 ? isBlockedIp(v4) : true;
-    }
-    return false;
-  }
-  return true; // not a resolvable IP literal → treat as blocked
-}
-
-async function resolvePublicIp(hostname: string): Promise<{ ok: true; ip: string } | { ok: false; error: string }> {
-  if (!hostname || hostname.length > MAX_HOSTNAME_LEN) {
-    return { ok: false, error: "Invalid hostname." };
-  }
-  let records;
-  try {
-    records = await lookup(hostname, { all: true, verbatim: true });
-  } catch {
-    return { ok: false, error: `Could not resolve ${hostname}.` };
-  }
-  if (records.length === 0) return { ok: false, error: `No DNS records for ${hostname}.` };
-  for (const r of records) {
-    if (isBlockedIp(r.address)) {
-      return { ok: false, error: `${hostname} resolves to a non-public address.` };
-    }
-  }
-  return { ok: true, ip: records[0].address };
-}
-
-interface RawResponse {
-  status: number;
-  location: string | null;
-  contentType: string | null;
-  body: string;
-}
-
-function requestPinned(hostname: string, ip: string, path: string): Promise<RawResponse> {
-  return new Promise((resolve, reject) => {
-    const req = https.request(
-      {
-        host: ip,
-        servername: hostname, // SNI + cert CN/SAN validation still checks the real hostname
-        path,
-        port: 443,
-        method: "GET",
-        timeout: TIMEOUT_MS,
-        rejectUnauthorized: true,
-        headers: {
-          Host: hostname,
-          "User-Agent": "CitePay-Clear/1.0 (+https://citepay-markets.vercel.app)",
-          Accept: "application/json",
-        },
-      },
-      (res) => {
-        let body = "";
-        let bytes = 0;
-        res.on("data", (chunk: Buffer) => {
-          bytes += chunk.length;
-          if (bytes > MAX_BYTES) {
-            req.destroy(new Error("Response exceeded size limit."));
-            return;
-          }
-          body += chunk.toString("utf8");
-        });
-        res.on("end", () => {
-          resolve({
-            status: res.statusCode ?? 0,
-            location: (res.headers.location as string | undefined) ?? null,
-            contentType: (res.headers["content-type"] as string | undefined) ?? null,
-            body,
-          });
-        });
-      }
-    );
-    req.on("timeout", () => req.destroy(new Error("Request timed out.")));
-    req.on("error", reject);
-    req.end();
-  });
-}
 
 export function extractHostname(input: string): string | null {
   const candidates = input.includes("://") ? [input] : [`https://${input}`];
@@ -168,54 +68,37 @@ export function validatePolicy(raw: unknown): WellKnownPolicy | null {
  * a normal, non-fatal result (registration must not require it).
  */
 export async function fetchWellKnownPolicy(urlOrDomain: string): Promise<WellKnownFetchResult> {
-  const initialHostname = extractHostname(urlOrDomain);
-  if (!initialHostname) return { ok: false, error: "Could not determine an https hostname." };
-  let hostname: string = initialHostname;
-  let path = WELL_KNOWN_PATH;
+  const hostname = extractHostname(urlOrDomain);
+  if (!hostname) return { ok: false, error: "Could not determine an https hostname." };
 
-  for (let hop = 0; hop <= MAX_REDIRECTS; hop++) {
-    const resolved = await resolvePublicIp(hostname);
-    if (!resolved.ok) return { ok: false, error: resolved.error };
+  const fetched = await ssrfSafeFetch(`https://${hostname}${WELL_KNOWN_PATH}`, {
+    timeoutMs: TIMEOUT_MS,
+    maxBytes: MAX_BYTES,
+    maxRedirects: MAX_REDIRECTS,
+    allowedProtocols: ["https:"],
+    headers: {
+      "User-Agent": "CitePay-Clear/1.0 (+https://citepay-markets.vercel.app)",
+      Accept: "application/json",
+    },
+  });
+  if (!fetched.ok) return { ok: false, error: fetched.error };
 
-    let res: RawResponse;
-    try {
-      res = await requestPinned(hostname, resolved.ip, path);
-    } catch (err) {
-      return { ok: false, error: err instanceof Error ? err.message : "Request failed." };
-    }
-
-    if (res.status >= 300 && res.status < 400 && res.location) {
-      const absoluteLocation = res.location.includes("://") ? res.location : `https://${hostname}${res.location}`;
-      let next: URL | null;
-      try {
-        next = new URL(absoluteLocation);
-      } catch {
-        next = null;
-      }
-      if (!next || next.protocol !== "https:") return { ok: false, error: "Redirect target is not https." };
-      hostname = next.hostname;
-      path = next.pathname + next.search;
-      continue;
-    }
-
-    if (res.status !== 200) return { ok: false, error: `HTTP ${res.status} fetching ${WELL_KNOWN_PATH}.` };
-    if (!res.contentType || !res.contentType.toLowerCase().includes("application/json")) {
-      return { ok: false, error: "Expected application/json." };
-    }
-
-    let parsed: unknown;
-    try {
-      parsed = JSON.parse(res.body);
-    } catch {
-      return { ok: false, error: "Response was not valid JSON." };
-    }
-
-    const policy = validatePolicy(parsed);
-    if (!policy) return { ok: false, error: "citepay.json did not match the expected schema." };
-    return { ok: true, policy };
+  const res = fetched.result;
+  if (res.status !== 200) return { ok: false, error: `HTTP ${res.status} fetching ${WELL_KNOWN_PATH}.` };
+  if (!res.contentType || !res.contentType.toLowerCase().includes("application/json")) {
+    return { ok: false, error: "Expected application/json." };
   }
 
-  return { ok: false, error: "Too many redirects." };
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(res.body);
+  } catch {
+    return { ok: false, error: "Response was not valid JSON." };
+  }
+
+  const policy = validatePolicy(parsed);
+  if (!policy) return { ok: false, error: "citepay.json did not match the expected schema." };
+  return { ok: true, policy };
 }
 
 export interface PublisherLicenseResolution {

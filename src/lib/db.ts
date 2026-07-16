@@ -16,6 +16,7 @@ import {
   persistRecoveryReport,
   persistReceipt,
   updateNeonReceiptOnChain,
+  revokeNeonClearApiKey,
 } from "@/lib/neon";
 
 const DATA_DIR = process.env.NODE_ENV === "production"
@@ -636,8 +637,9 @@ export function getClearApiKeyByHash(keyHash: string): ClearApiKeyRecord | null 
   return row ? rowToClearApiKey(row) : null;
 }
 
-export function revokeClearApiKey(keyHash: string, revokedAt = new Date().toISOString()): void {
+export async function revokeClearApiKey(keyHash: string, revokedAt = new Date().toISOString()): Promise<void> {
   getDb().prepare("UPDATE clear_api_keys SET revoked_at = ? WHERE key_hash = ?").run(revokedAt, keyHash);
+  await revokeNeonClearApiKey(keyHash, revokedAt);
 }
 
 export function getClearSettlementIdempotencyByHash(idempotencyKeyHash: string): ClearSettlementIdempotencyRecord | null {

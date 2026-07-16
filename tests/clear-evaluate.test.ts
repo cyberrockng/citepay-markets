@@ -8,7 +8,7 @@ import { runClearCheck } from "../src/lib/clear/check";
 import { createClearMandate } from "../src/lib/clear/mandate";
 import { runClearSettle } from "../src/lib/clear/settle-api";
 import { hashClearApiKey } from "../src/lib/clear/auth";
-import { getClearMandateConfigById, insertClaimClearance, insertClearApiKey, insertClearSettlementIdempotency, insertReceipt } from "../src/lib/db";
+import { getClearApiKeyByHash, getClearMandateConfigById, insertClaimClearance, insertClearApiKey, insertClearSettlementIdempotency, insertReceipt, revokeClearApiKey } from "../src/lib/db";
 import { GET as getClearance } from "../src/app/api/clear/[id]/route";
 import { badgeState, GET as getClearBadge } from "../src/app/api/clear/[id]/badge/route";
 import { clearBadgeEmbedSnippet } from "../src/lib/clear/embed";
@@ -214,6 +214,25 @@ describe("Clear API auth and check handler", () => {
     expect(missing.ok).toBe(false);
   });
 
+  it("a revoked key is rejected on its next request", async () => {
+    const rawKey = "cpk_test_revocation_key_1234567890";
+    const record = buildClearApiKeyRecord(rawKey, "revocation-owner", "2026-07-16T00:00:00.000Z");
+    insertClearApiKey(record);
+
+    const before = await authenticateClearApiRequest({
+      headers: { get: (name: string) => name.toLowerCase() === "authorization" ? `Bearer ${rawKey}` : null },
+    });
+    expect(before.ok).toBe(true);
+
+    await revokeClearApiKey(record.keyHash);
+    expect(getClearApiKeyByHash(record.keyHash)?.revokedAt).not.toBeNull();
+
+    const after = await authenticateClearApiRequest({
+      headers: { get: (name: string) => name.toLowerCase() === "authorization" ? `Bearer ${rawKey}` : null },
+    });
+    expect(after.ok).toBe(false);
+  });
+
   it("checks inline citations and stores private-hash receipts without public text leakage", async () => {
     const rawKey = "cpk_test_clear_check_key_1234567890";
     const record = buildClearApiKeyRecord(rawKey, "check-owner", "2026-07-15T00:00:00.000Z");
@@ -256,6 +275,19 @@ describe("Clear API auth and check handler", () => {
 
     expect(result.status).toBe(400);
     if (result.status !== 200) expect(result.body.field).toBe("sourceUrl");
+  });
+
+  it("rejects an oversized inline licenseClass", async () => {
+    const auth = { keyHash: "owner-hash-license-cap", keyPrefix: "cpk_owner", ownerLabel: "owner", tier: "stage2" };
+    const result = await runClearCheck({
+      claim: "A claim.",
+      quote: "A quote.",
+      source: { text: SOURCE_TEXT, label: "Inline source", licenseClass: "x".repeat(65) },
+      policy: { maxPricePerCitationMicro: 0, requiredLicenseClass: "standard" },
+    }, auth, "https://citepay.test");
+
+    expect(result.status).toBe(413);
+    if (result.status !== 200) expect(result.body.field).toBe("licenseClass");
   });
 
   it("marks absent inline quotes unsupported", async () => {
@@ -580,6 +612,30 @@ describe("Clear public receipt API", () => {
     expect(json.settlement).toBeNull();
     expect(json.clearance.claimText).toBe(clearance.claimText);
     expect(json.clearance.quoteText).toBe(clearance.quoteText);
+  });
+
+  it("never exposes ownerKeyHash, public or private", async () => {
+    const publicClearance = { ...evaluate({ clearanceId: "clearance-ownerhash-public" }), ownerKeyHash: "owner-hash-should-not-leak" };
+    insertClaimClearance(publicClearance);
+    const publicRes = await getClearance(new Request("https://citepay.test"), {
+      params: Promise.resolve({ id: publicClearance.clearanceId }),
+    });
+    const publicRaw = await publicRes.text();
+    expect(publicRaw).not.toContain("owner-hash-should-not-leak");
+    const publicJson = JSON.parse(publicRaw) as { clearance: ClaimClearance };
+    expect(publicJson.clearance.ownerKeyHash).toBeUndefined();
+
+    const privateClearance = {
+      ...evaluate({ clearanceId: "clearance-ownerhash-private" }),
+      ownerKeyHash: "owner-hash-should-not-leak-2",
+      visibility: "private_hash_only" as const,
+    };
+    insertClaimClearance(privateClearance);
+    const privateRes = await getClearance(new Request("https://citepay.test"), {
+      params: Promise.resolve({ id: privateClearance.clearanceId }),
+    });
+    const privateRaw = await privateRes.text();
+    expect(privateRaw).not.toContain("owner-hash-should-not-leak-2");
   });
 
   it("redacts private-hash claim and quote text, including receipt preimage excerpts", async () => {

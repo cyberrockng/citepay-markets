@@ -3,6 +3,7 @@ import type { Receipt } from "@/types";
 import type { ClaimClearance } from "@/lib/clear/types";
 import { getClaimClearanceById, getReceiptById } from "@/lib/db";
 import { getNeonClaimClearanceById, getNeonReceiptById } from "@/lib/neon";
+import { clearBadgeRateLimiter, getClientIp } from "@/lib/clear/rate-limiters";
 
 export const dynamic = "force-dynamic";
 
@@ -85,7 +86,14 @@ function renderBadge(state: ClearBadgeState): string {
 </svg>`;
 }
 
-export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
+export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
+  const rl = clearBadgeRateLimiter(getClientIp(req));
+  if (!rl.allowed) {
+    const res = NextResponse.json({ error: rl.reason }, { status: 429 });
+    if (rl.retryAfterMs) res.headers.set("Retry-After", String(Math.ceil(rl.retryAfterMs / 1000)));
+    return res;
+  }
+
   const { id } = await params;
   const clearance = getClaimClearanceById(id) ?? await getNeonClaimClearanceById(id);
   const receipt = clearance?.underlyingCitationReceiptId
