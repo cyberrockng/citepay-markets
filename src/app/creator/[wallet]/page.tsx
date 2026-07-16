@@ -163,6 +163,12 @@ export default function CreatorPage({ params }: { params: Promise<{ wallet: stri
               >
                 ArcScan ↗
               </a>
+              <Link
+                href={`/creator/${wallet}/clearances`}
+                className="text-xs text-[#6366f1] hover:text-indigo-300 transition-colors"
+              >
+                Clear clearances →
+              </Link>
             </div>
           </div>
         </div>

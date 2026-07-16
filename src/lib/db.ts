@@ -838,6 +838,24 @@ export function getClearanceCertificateByClearanceId(clearanceId: string): Clear
   return row ? rowToClearanceCertificate(row) : null;
 }
 
+export function getClaimClearancesBySourceKeys(sourceIds: string[], onChainSourceIds: number[]): ClaimClearance[] {
+  if (sourceIds.length === 0 && onChainSourceIds.length === 0) return [];
+  const clauses: string[] = [];
+  const params: (string | number)[] = [];
+  if (sourceIds.length > 0) {
+    clauses.push(`source_id IN (${sourceIds.map(() => "?").join(",")})`);
+    params.push(...sourceIds);
+  }
+  if (onChainSourceIds.length > 0) {
+    clauses.push(`on_chain_source_id IN (${onChainSourceIds.map(() => "?").join(",")})`);
+    params.push(...onChainSourceIds);
+  }
+  const rows = getDb().prepare(
+    `SELECT * FROM claim_clearances WHERE ${clauses.join(" OR ")} ORDER BY created_at DESC LIMIT 200`
+  ).all(...params) as Record<string, unknown>[];
+  return rows.map(rowToClaimClearance);
+}
+
 export function getClaimClearancesByCertificateId(certificateId: string): ClaimClearance[] {
   const cert = getClearanceCertificateById(certificateId);
   if (!cert) return [];

@@ -950,6 +950,24 @@ export async function getNeonClearanceCertificateByClearanceId(clearanceId: stri
   }
 }
 
+export async function getNeonClaimClearancesBySourceKeys(sourceIds: string[], onChainSourceIds: number[]): Promise<ClaimClearance[]> {
+  const sql = getSql();
+  if (!sql || (sourceIds.length === 0 && onChainSourceIds.length === 0)) return [];
+  try {
+    await init();
+    const rows = await sql`
+      SELECT * FROM cp_claim_clearances
+      WHERE source_id = ANY(${sourceIds}) OR on_chain_source_id = ANY(${onChainSourceIds})
+      ORDER BY created_at DESC
+      LIMIT 200
+    ` as Record<string, unknown>[];
+    return rows.map(rowToNeonClaimClearance);
+  } catch (err) {
+    console.error("[neon] getNeonClaimClearancesBySourceKeys failed:", String(err).slice(0, 120));
+    return [];
+  }
+}
+
 export async function getNeonClaimClearancesByIds(ids: string[]): Promise<ClaimClearance[]> {
   const sql = getSql();
   if (!sql || ids.length === 0) return [];

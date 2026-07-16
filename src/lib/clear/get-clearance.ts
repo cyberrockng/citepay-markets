@@ -3,7 +3,7 @@ import { getNeonClaimClearanceById, getNeonClearanceCertificateByClearanceId, ge
 import type { ClaimClearance, ClearanceCertificate } from "./types";
 import type { Receipt } from "@/types";
 
-function redactClearance(clearance: ClaimClearance): ClaimClearance {
+export function redactClearance(clearance: ClaimClearance): ClaimClearance {
   if (clearance.visibility !== "private_hash_only") return clearance;
   return {
     ...clearance,
@@ -25,7 +25,7 @@ function redactUnderlyingReceipt(clearance: ClaimClearance, receipt: Receipt | n
   };
 }
 
-function confirmedSettlement(clearance: ClaimClearance, receipt: Receipt | null) {
+export function confirmedSettlement(clearance: ClaimClearance, receipt: Receipt | null) {
   if (
     clearance.decision !== "CLEARED"
     || clearance.amountPaidMicro <= 0
