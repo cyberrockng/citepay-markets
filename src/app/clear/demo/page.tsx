@@ -29,6 +29,13 @@ function micro(v: number) {
   return `$${(v / 1_000_000).toFixed(6)} USDC`;
 }
 
+const CONTRACT = "0x396cf1646EbAeF85ee8428C2d9239C46Ae956085";
+
+function short(addr: string) {
+  if (!addr || addr.length < 10) return addr;
+  return `${addr.slice(0, 6)}…${addr.slice(-4)}`;
+}
+
 function decisionClass(decision: string) {
   if (decision === "CLEARED") return "border-[#34D399]/40 bg-[#34D399]/10 text-[#34D399]";
   if (decision === "UNSUPPORTED") return "border-red-700 bg-red-900/20 text-red-300";
@@ -388,6 +395,46 @@ export default function ClearDemoPage() {
           </section>
         </div>
       )}
+
+      <section className="mt-6 rounded-xl border border-white/10 bg-[var(--surface)] p-5">
+        <h2 className="font-semibold text-[#f0f0f5] mb-1">Independently verify</h2>
+        <p className="text-sm text-[#8b8b9e] max-w-2xl mb-4">
+          Nothing here needs to be trusted — read the code, check the contract, open the receipt.
+        </p>
+        <div className="grid gap-3 sm:grid-cols-3">
+          <a
+            href="https://github.com/cyberrockng/citepay-markets/tree/main/src/lib/clear"
+            target="_blank" rel="noopener noreferrer"
+            className="rounded-lg border border-white/10 bg-[#0a0a0f] p-4 hover:border-[#6366f1]/50 transition-colors"
+          >
+            <div className="text-xs text-[#8b8b9e] mb-1">Evaluation code</div>
+            <div className="text-sm font-semibold text-[#6366f1]">src/lib/clear on GitHub ↗</div>
+            <p className="mt-1 text-xs text-[#8b8b9e]">Deterministic checks that run before any payment — no black box.</p>
+          </a>
+          <a
+            href={`https://testnet.arcscan.app/address/${CONTRACT}`}
+            target="_blank" rel="noopener noreferrer"
+            className="rounded-lg border border-white/10 bg-[#0a0a0f] p-4 hover:border-[#6366f1]/50 transition-colors"
+          >
+            <div className="text-xs text-[#8b8b9e] mb-1">Settlement contract · Arc Testnet</div>
+            <div className="text-sm font-semibold text-[#6366f1] font-mono">{short(CONTRACT)} ↗</div>
+            <p className="mt-1 text-xs text-[#8b8b9e]">Cleared, paid claims settle here in real USDC — testnet, not mainnet.</p>
+          </a>
+          <Link
+            href={cleared ? `/clearance/${cleared.clearanceId}` : VERIFIED_PROOFS.paid}
+            className="rounded-lg border border-white/10 bg-[#0a0a0f] p-4 hover:border-[#6366f1]/50 transition-colors"
+          >
+            <div className="text-xs text-[#8b8b9e] mb-1">Sample paid receipt</div>
+            <div className="text-sm font-semibold text-[#6366f1]">Open clearance ↗</div>
+            <p className="mt-1 text-xs text-[#8b8b9e]">Content hash, decision, and transaction on one public page.</p>
+          </Link>
+        </div>
+        <p className="mt-4 text-xs text-[#4a4a5e]">
+          Everything on this page is Arc Testnet. See{" "}
+          <Link href="/proof" className="text-[#6366f1] hover:underline">/proof</Link> for the raw on-chain event feed, or{" "}
+          <Link href="/traction" className="text-[#6366f1] hover:underline">/traction</Link> for aggregated totals (demo-traffic origin disclosed there).
+        </p>
+      </section>
     </PageShell>
   );
 }

@@ -80,6 +80,23 @@ export default function ProofPage() {
           </p>
         </div>
 
+        {/* Bridge to Clear */}
+        <div className="bg-[var(--surface)] border border-[#6366f1]/25 rounded-xl p-4 mb-6 flex flex-wrap items-center justify-between gap-3">
+          <p className="text-sm text-[#8b8b9e]">
+            Looking for <span className="text-[#f0f0f5] font-medium">CitePay Clear</span> — the pre-payment citation check, not just payment proof?
+          </p>
+          <div className="flex items-center gap-4 text-xs font-mono">
+            <Link href="/clear/demo" className="text-[#6366f1] hover:text-indigo-300">Run the Clear demo →</Link>
+            <a
+              href="https://github.com/cyberrockng/citepay-markets/tree/main/src/lib/clear"
+              target="_blank" rel="noopener noreferrer"
+              className="text-[#6366f1] hover:text-indigo-300"
+            >
+              Read the code ↗
+            </a>
+          </div>
+        </div>
+
         {/* Verify yourself */}
         <div className="bg-[var(--surface)] border border-white/10 rounded-xl p-5 mb-6 font-mono text-xs">
           <div className="text-[#4a4a5e] text-[10px] tracking-widest mb-3">VERIFY YOURSELF</div>
