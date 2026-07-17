@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { authenticateClearApiRequest } from "@/lib/clear/auth";
+import { authenticateClearApiRequest, CLEAR_SCOPE_CLEAR_SETTLE, hasClearApiScope } from "@/lib/clear/auth";
 import { runClearSettle } from "@/lib/clear/settle-api";
 import { clearSettleRateLimiter as _checkRateLimit } from "@/lib/clear/rate-limiters";
 
@@ -9,6 +9,9 @@ export async function POST(req: NextRequest) {
   const auth = await authenticateClearApiRequest(req);
   if (!auth.ok) {
     return NextResponse.json({ error: auth.error }, { status: auth.status });
+  }
+  if (!hasClearApiScope(auth.auth, CLEAR_SCOPE_CLEAR_SETTLE)) {
+    return NextResponse.json({ error: "Clear API key is not scoped for settlement." }, { status: 403 });
   }
 
   const rl = _checkRateLimit(auth.auth.keyHash);

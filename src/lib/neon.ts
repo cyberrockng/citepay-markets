@@ -105,10 +105,12 @@ async function init() {
       key_prefix TEXT NOT NULL,
       owner_label TEXT NOT NULL,
       tier TEXT NOT NULL DEFAULT 'stage2',
+      scopes_json JSONB,
       revoked_at TIMESTAMPTZ,
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     )
   `;
+  await sql`ALTER TABLE cp_clear_api_keys ADD COLUMN IF NOT EXISTS scopes_json JSONB`;
   await sql`
     CREATE TABLE IF NOT EXISTS cp_clear_settlement_idempotency (
       idempotency_key_hash TEXT PRIMARY KEY,
@@ -166,6 +168,7 @@ async function init() {
     CREATE TABLE IF NOT EXISTS cp_claim_clearances (
       clearance_id TEXT PRIMARY KEY,
       owner_key_hash TEXT,
+      external_ref TEXT,
       visibility TEXT NOT NULL DEFAULT 'public',
       mandate_config_id TEXT NOT NULL,
       source_id TEXT NOT NULL,
@@ -194,7 +197,13 @@ async function init() {
   `;
   await sql`ALTER TABLE cp_clear_mandate_configs ADD COLUMN IF NOT EXISTS owner_key_hash TEXT`;
   await sql`ALTER TABLE cp_claim_clearances ADD COLUMN IF NOT EXISTS owner_key_hash TEXT`;
+  await sql`ALTER TABLE cp_claim_clearances ADD COLUMN IF NOT EXISTS external_ref TEXT`;
   await sql`ALTER TABLE cp_claim_clearances ADD COLUMN IF NOT EXISTS visibility TEXT NOT NULL DEFAULT 'public'`;
+  await sql`
+    CREATE UNIQUE INDEX IF NOT EXISTS cp_claim_clearances_owner_mandate_external_ref_idx
+    ON cp_claim_clearances(owner_key_hash, mandate_config_id, external_ref)
+    WHERE external_ref IS NOT NULL
+  `;
   await sql`
     CREATE TABLE IF NOT EXISTS cp_clearance_certificates (
       certificate_id TEXT PRIMARY KEY,
@@ -276,13 +285,14 @@ export function persistClearApiKey(record: ClearApiKeyRecord): void {
       await init();
       await sql`
         INSERT INTO cp_clear_api_keys (
-          key_hash, key_prefix, owner_label, tier, revoked_at, created_at
+          key_hash, key_prefix, owner_label, tier, scopes_json, revoked_at, created_at
         ) VALUES (
-          ${record.keyHash}, ${record.keyPrefix}, ${record.ownerLabel}, ${record.tier}, ${record.revokedAt}, ${record.createdAt}
+          ${record.keyHash}, ${record.keyPrefix}, ${record.ownerLabel}, ${record.tier}, ${record.scopes ?? null}, ${record.revokedAt}, ${record.createdAt}
         )
         ON CONFLICT (key_hash) DO UPDATE SET
           owner_label = EXCLUDED.owner_label,
           tier = EXCLUDED.tier,
+          scopes_json = EXCLUDED.scopes_json,
           revoked_at = EXCLUDED.revoked_at
       `;
     } catch (err) {
@@ -297,13 +307,14 @@ export async function upsertNeonClearApiKey(record: ClearApiKeyRecord): Promise<
   await init();
   await sql`
     INSERT INTO cp_clear_api_keys (
-      key_hash, key_prefix, owner_label, tier, revoked_at, created_at
+      key_hash, key_prefix, owner_label, tier, scopes_json, revoked_at, created_at
     ) VALUES (
-      ${record.keyHash}, ${record.keyPrefix}, ${record.ownerLabel}, ${record.tier}, ${record.revokedAt}, ${record.createdAt}
+      ${record.keyHash}, ${record.keyPrefix}, ${record.ownerLabel}, ${record.tier}, ${record.scopes ?? null}, ${record.revokedAt}, ${record.createdAt}
     )
     ON CONFLICT (key_hash) DO UPDATE SET
       owner_label = EXCLUDED.owner_label,
       tier = EXCLUDED.tier,
+      scopes_json = EXCLUDED.scopes_json,
       revoked_at = EXCLUDED.revoked_at
   `;
 }
@@ -314,6 +325,7 @@ function rowToNeonClearApiKey(r: Record<string, unknown>): ClearApiKeyRecord {
     keyPrefix: r.key_prefix as string,
     ownerLabel: r.owner_label as string,
     tier: r.tier as string,
+    scopes: parseJson<string[] | null>(r.scopes_json, null),
     revokedAt: r.revoked_at ? String(r.revoked_at) : null,
     createdAt: String(r.created_at),
   };
@@ -660,13 +672,13 @@ export function persistClaimClearance(clearance: ClaimClearance): void {
       await init();
       await sql`
         INSERT INTO cp_claim_clearances (
-          clearance_id, owner_key_hash, visibility, mandate_config_id, source_id, on_chain_source_id, answer_hash, claim_hash,
+          clearance_id, owner_key_hash, external_ref, visibility, mandate_config_id, source_id, on_chain_source_id, answer_hash, claim_hash,
           claim_text, quote_text, quote_start, quote_end, quote_verified, support_score,
           license_class, amount_due_micro, amount_paid_micro, underlying_citation_receipt_id,
           on_chain_mandate_id, decision, policy_trace, receipt_hash, anchor_tx,
           challenge_status, challenge_deadline, created_at
         ) VALUES (
-          ${clearance.clearanceId}, ${clearance.ownerKeyHash ?? null}, ${clearance.visibility ?? "public"}, ${clearance.mandateConfigId}, ${clearance.sourceId}, ${clearance.onChainSourceId},
+          ${clearance.clearanceId}, ${clearance.ownerKeyHash ?? null}, ${clearance.externalRef ?? null}, ${clearance.visibility ?? "public"}, ${clearance.mandateConfigId}, ${clearance.sourceId}, ${clearance.onChainSourceId},
           ${clearance.answerHash}, ${clearance.claimHash}, ${clearance.claimText}, ${clearance.quoteText},
           ${clearance.quoteStart}, ${clearance.quoteEnd}, ${clearance.quoteVerified}, ${clearance.supportScore},
           ${clearance.licenseClass}, ${clearance.amountDueMicro}, ${clearance.amountPaidMicro}, ${clearance.underlyingCitationReceiptId},
@@ -674,13 +686,31 @@ export function persistClaimClearance(clearance: ClaimClearance): void {
           ${clearance.challengeStatus}, ${clearance.challengeDeadline}, ${clearance.createdAt}
         )
         ON CONFLICT (clearance_id) DO UPDATE SET
-          owner_key_hash = EXCLUDED.owner_key_hash,
-          visibility = EXCLUDED.visibility,
-          amount_paid_micro = EXCLUDED.amount_paid_micro,
-          underlying_citation_receipt_id = EXCLUDED.underlying_citation_receipt_id,
-          decision = EXCLUDED.decision,
-          receipt_hash = EXCLUDED.receipt_hash,
-          challenge_status = EXCLUDED.challenge_status
+          owner_key_hash = COALESCE(cp_claim_clearances.owner_key_hash, EXCLUDED.owner_key_hash),
+          external_ref = COALESCE(cp_claim_clearances.external_ref, EXCLUDED.external_ref),
+          visibility = cp_claim_clearances.visibility,
+          amount_paid_micro = CASE
+            WHEN EXCLUDED.amount_paid_micro > cp_claim_clearances.amount_paid_micro THEN EXCLUDED.amount_paid_micro
+            ELSE cp_claim_clearances.amount_paid_micro
+          END,
+          underlying_citation_receipt_id = COALESCE(EXCLUDED.underlying_citation_receipt_id, cp_claim_clearances.underlying_citation_receipt_id),
+          decision = CASE
+            WHEN EXCLUDED.amount_paid_micro > cp_claim_clearances.amount_paid_micro THEN EXCLUDED.decision
+            ELSE cp_claim_clearances.decision
+          END,
+          receipt_hash = CASE
+            WHEN EXCLUDED.amount_paid_micro > cp_claim_clearances.amount_paid_micro THEN EXCLUDED.receipt_hash
+            ELSE cp_claim_clearances.receipt_hash
+          END,
+          anchor_tx = COALESCE(EXCLUDED.anchor_tx, cp_claim_clearances.anchor_tx),
+          challenge_status = CASE
+            WHEN EXCLUDED.amount_paid_micro > cp_claim_clearances.amount_paid_micro THEN EXCLUDED.challenge_status
+            ELSE cp_claim_clearances.challenge_status
+          END,
+          challenge_deadline = CASE
+            WHEN EXCLUDED.amount_paid_micro > cp_claim_clearances.amount_paid_micro THEN EXCLUDED.challenge_deadline
+            ELSE cp_claim_clearances.challenge_deadline
+          END
       `;
     } catch (err) {
       console.error("[neon] persistClaimClearance failed:", String(err).slice(0, 120));
@@ -882,6 +912,7 @@ function rowToNeonClaimClearance(r: Record<string, unknown>): ClaimClearance {
   return {
     clearanceId: r.clearance_id as string,
     ownerKeyHash: (r.owner_key_hash as string | null) ?? null,
+    externalRef: (r.external_ref as string | null) ?? null,
     visibility: (r.visibility as ClaimClearance["visibility"] | null) ?? "public",
     mandateConfigId: r.mandate_config_id as string,
     sourceId: r.source_id as string,
@@ -938,6 +969,30 @@ export async function getNeonClaimClearanceById(id: string): Promise<ClaimCleara
     return rows[0] ? rowToNeonClaimClearance(rows[0]) : null;
   } catch (err) {
     console.error("[neon] getNeonClaimClearanceById failed:", String(err).slice(0, 120));
+    return null;
+  }
+}
+
+export async function getNeonClaimClearanceByExternalRef(
+  ownerKeyHash: string,
+  mandateConfigId: string,
+  externalRef: string
+): Promise<ClaimClearance | null> {
+  const sql = getSql();
+  if (!sql) return null;
+  try {
+    await init();
+    const rows = await sql`
+      SELECT * FROM cp_claim_clearances
+      WHERE owner_key_hash = ${ownerKeyHash}
+        AND mandate_config_id = ${mandateConfigId}
+        AND external_ref = ${externalRef}
+      ORDER BY created_at ASC
+      LIMIT 1
+    ` as Record<string, unknown>[];
+    return rows[0] ? rowToNeonClaimClearance(rows[0]) : null;
+  } catch (err) {
+    console.error("[neon] getNeonClaimClearanceByExternalRef failed:", String(err).slice(0, 120));
     return null;
   }
 }

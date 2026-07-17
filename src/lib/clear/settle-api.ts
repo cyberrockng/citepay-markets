@@ -307,6 +307,7 @@ export async function runClearSettle(input: unknown, auth: ClearApiAuth, baseUrl
   const updatedWithoutHash = {
     ...current,
     ownerKeyHash: clearance.ownerKeyHash ?? auth.keyHash,
+    externalRef: clearance.externalRef ?? null,
     visibility: clearance.visibility ?? "public",
     amountPaidMicro: payment.amountPaid,
     underlyingCitationReceiptId: payment.receiptId,

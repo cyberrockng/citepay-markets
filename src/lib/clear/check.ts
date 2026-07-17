@@ -8,6 +8,7 @@ import { sourceText } from "./source-text";
 import { contentHashFromText, sha256 } from "@/lib/evidence";
 import {
   getAllSources,
+  getClaimClearanceByExternalRef,
   getClearMandateConfigById,
   getReservedMicroByMandateConfigId,
   getSpentMicroByMandateConfigId,
@@ -15,6 +16,7 @@ import {
 } from "@/lib/db";
 import {
   getNeonClearMandateConfigById,
+  getNeonClaimClearanceByExternalRef,
   getNeonReservedMicroByMandateConfigId,
   getNeonSpentMicroByMandateConfigId,
 } from "@/lib/neon";
@@ -35,6 +37,7 @@ export type ClearCheckResult =
 
 export interface ClearCheckSuccess {
   clearanceId: string;
+  externalRef: string | null;
   decision: ClaimClearance["decision"];
   checks: {
     quoteVerified: boolean;
@@ -54,6 +57,68 @@ export interface ClearCheckSuccess {
   contentHash: string;
   visibility: ClearanceVisibility;
   createdAt: string;
+}
+
+async function consumedMicroForMandate(mandateConfigId: string, spentMicro: number): Promise<number> {
+  const reservedMicro = Math.max(
+    getReservedMicroByMandateConfigId(mandateConfigId),
+    await getNeonReservedMicroByMandateConfigId(mandateConfigId)
+  );
+  return Math.max(spentMicro, reservedMicro);
+}
+
+function isSettleableClearance(clearance: ClaimClearance): boolean {
+  return clearance.decision === "CLEARED"
+    && clearance.onChainSourceId !== null
+    && !clearance.sourceId.startsWith("inline-");
+}
+
+function sourcePriceForClearance(clearance: ClaimClearance): number {
+  const source = getAllSources().find((s) => {
+    if (clearance.onChainSourceId !== null && s.onChainId === clearance.onChainSourceId) return true;
+    return s.id === clearance.sourceId;
+  });
+  return source?.price ?? clearance.amountDueMicro + clearance.amountPaidMicro;
+}
+
+function clearCheckResponse(opts: {
+  clearance: ClaimClearance;
+  mandate: ClearMandateConfig;
+  consumedMicro: number;
+  priceMicro: number;
+  baseUrl: string;
+}): ClearCheckResult {
+  const settleable = isSettleableClearance(opts.clearance);
+  const inlineSource = opts.clearance.sourceId.startsWith("inline-");
+  const normalizedBaseUrl = opts.baseUrl.replace(/\/$/, "");
+  return {
+    status: 200,
+    body: {
+      clearanceId: opts.clearance.clearanceId,
+      externalRef: opts.clearance.externalRef ?? null,
+      decision: opts.clearance.decision,
+      checks: {
+        quoteVerified: opts.clearance.quoteVerified,
+        supportScore: opts.clearance.supportScore,
+        supportScoreMethod: "deterministic_overlap_v1",
+        licenseClass: opts.clearance.licenseClass,
+        priceMicro: opts.priceMicro,
+        budgetRemainingMicro: Math.max(0, opts.mandate.budgetCapMicro - opts.consumedMicro),
+      },
+      settleable,
+      ...(inlineSource ? { settlementRequirement: "registered_source" as const } : {}),
+      settlement: null,
+      receiptUrl: `${normalizedBaseUrl}/clearance/${opts.clearance.clearanceId}`,
+      contentHash: `sha256:${opts.clearance.receiptHash}`,
+      visibility: opts.clearance.visibility ?? "private_hash_only",
+      createdAt: opts.clearance.createdAt,
+    },
+  };
+}
+
+function clearanceIdForExternalRef(auth: ClearApiAuth, mandateConfigId: string, externalRef: string | null): string {
+  if (!externalRef) return `clr_${uuidv4()}`;
+  return `clr_${sha256(`${auth.keyHash}:${mandateConfigId}:${externalRef}`).slice(0, 32)}`;
 }
 
 function isObject(value: unknown): value is JsonObject {
@@ -288,6 +353,21 @@ export async function runClearCheck(input: unknown, auth: ClearApiAuth, baseUrl:
     return { status: mandateResult.status, body: { error: mandateResult.error, field: mandateResult.field } };
   }
 
+  if (externalRef.value) {
+    const existing = getClaimClearanceByExternalRef(auth.keyHash, mandateResult.mandate.mandateConfigId, externalRef.value)
+      ?? await getNeonClaimClearanceByExternalRef(auth.keyHash, mandateResult.mandate.mandateConfigId, externalRef.value);
+    if (existing) {
+      const consumedMicro = await consumedMicroForMandate(mandateResult.mandate.mandateConfigId, mandateResult.spentMicro);
+      return clearCheckResponse({
+        clearance: existing,
+        mandate: mandateResult.mandate,
+        consumedMicro,
+        priceMicro: sourcePriceForClearance(existing),
+        baseUrl,
+      });
+    }
+  }
+
   const sourceResult = await resolveSource(input, mandateResult.inline ? mandateResult.mandate : null);
   if (!sourceResult.ok) {
     return { status: sourceResult.status, body: { error: sourceResult.error, field: sourceResult.field } };
@@ -296,7 +376,7 @@ export async function runClearCheck(input: unknown, auth: ClearApiAuth, baseUrl:
   const answerHash = sha256(`${claim.value}\n${quote.value}\n${sourceResult.source.contentHash}`);
   const supportScore = scoreClaimSupport(claim.value, quote.value);
   const clearance = evaluateClaimClearance({
-    clearanceId: `clr_${uuidv4()}`,
+    clearanceId: clearanceIdForExternalRef(auth, mandateResult.mandate.mandateConfigId, externalRef.value),
     mandate: mandateResult.mandate,
     source: sourceResult.source,
     answerHash,
@@ -309,43 +389,38 @@ export async function runClearCheck(input: unknown, auth: ClearApiAuth, baseUrl:
   const ownedClearance: ClaimClearance = {
     ...clearance,
     ownerKeyHash: auth.keyHash,
+    externalRef: externalRef.value,
     visibility,
   };
-  insertClaimClearance(ownedClearance);
+  try {
+    insertClaimClearance(ownedClearance);
+  } catch (err) {
+    if (externalRef.value) {
+      const existing = getClaimClearanceByExternalRef(auth.keyHash, mandateResult.mandate.mandateConfigId, externalRef.value)
+        ?? await getNeonClaimClearanceByExternalRef(auth.keyHash, mandateResult.mandate.mandateConfigId, externalRef.value);
+      if (existing) {
+        const consumedMicro = await consumedMicroForMandate(mandateResult.mandate.mandateConfigId, mandateResult.spentMicro);
+        return clearCheckResponse({
+          clearance: existing,
+          mandate: mandateResult.mandate,
+          consumedMicro,
+          priceMicro: sourcePriceForClearance(existing),
+          baseUrl,
+        });
+      }
+    }
+    throw err;
+  }
 
   // Remaining budget is reported against max(actual spend, reserved) so a preview never shows more
   // headroom than settlement will actually grant — reservations from in-flight/committed settles
   // count as consumed even before their SUM(amount_paid) lands.
-  const reservedMicro = Math.max(
-    getReservedMicroByMandateConfigId(mandateResult.mandate.mandateConfigId),
-    await getNeonReservedMicroByMandateConfigId(mandateResult.mandate.mandateConfigId)
-  );
-  const consumedMicro = Math.max(mandateResult.spentMicro, reservedMicro);
-
-  const inlineSource = sourceResult.source.url.startsWith("inline://");
-  const settleable = ownedClearance.decision === "CLEARED" && !inlineSource;
-
-  const normalizedBaseUrl = baseUrl.replace(/\/$/, "");
-  return {
-    status: 200,
-    body: {
-      clearanceId: ownedClearance.clearanceId,
-      decision: ownedClearance.decision,
-      checks: {
-        quoteVerified: ownedClearance.quoteVerified,
-        supportScore: ownedClearance.supportScore,
-        supportScoreMethod: "deterministic_overlap_v1",
-        licenseClass: ownedClearance.licenseClass,
-        priceMicro: sourceResult.source.price,
-        budgetRemainingMicro: Math.max(0, mandateResult.mandate.budgetCapMicro - consumedMicro),
-      },
-      settleable,
-      ...(inlineSource ? { settlementRequirement: "registered_source" as const } : {}),
-      settlement: null,
-      receiptUrl: `${normalizedBaseUrl}/clearance/${ownedClearance.clearanceId}`,
-      contentHash: `sha256:${ownedClearance.receiptHash}`,
-      visibility,
-      createdAt: ownedClearance.createdAt,
-    },
-  };
+  const consumedMicro = await consumedMicroForMandate(mandateResult.mandate.mandateConfigId, mandateResult.spentMicro);
+  return clearCheckResponse({
+    clearance: ownedClearance,
+    mandate: mandateResult.mandate,
+    consumedMicro,
+    priceMicro: sourceResult.source.price,
+    baseUrl,
+  });
 }

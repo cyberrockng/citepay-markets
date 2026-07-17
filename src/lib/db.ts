@@ -152,6 +152,7 @@ function migrate(db: Database.Database) {
       key_prefix TEXT NOT NULL,
       owner_label TEXT NOT NULL,
       tier TEXT NOT NULL DEFAULT 'stage2',
+      scopes_json TEXT DEFAULT NULL,
       revoked_at TEXT DEFAULT NULL,
       created_at TEXT NOT NULL
     );
@@ -209,6 +210,7 @@ function migrate(db: Database.Database) {
     CREATE TABLE IF NOT EXISTS claim_clearances (
       clearance_id TEXT PRIMARY KEY,
       owner_key_hash TEXT DEFAULT NULL,
+      external_ref TEXT DEFAULT NULL,
       visibility TEXT NOT NULL DEFAULT 'public',
       mandate_config_id TEXT NOT NULL,
       source_id TEXT NOT NULL,
@@ -275,12 +277,24 @@ function migrate(db: Database.Database) {
     db.exec("ALTER TABLE clear_mandate_configs ADD COLUMN owner_key_hash TEXT DEFAULT NULL");
   }
   const clearanceCols = (db.prepare("PRAGMA table_info(claim_clearances)").all() as { name: string }[]).map((c) => c.name);
+  const clearKeyCols = (db.prepare("PRAGMA table_info(clear_api_keys)").all() as { name: string }[]).map((c) => c.name);
+  if (!clearKeyCols.includes("scopes_json")) {
+    db.exec("ALTER TABLE clear_api_keys ADD COLUMN scopes_json TEXT DEFAULT NULL");
+  }
   if (!clearanceCols.includes("owner_key_hash")) {
     db.exec("ALTER TABLE claim_clearances ADD COLUMN owner_key_hash TEXT DEFAULT NULL");
+  }
+  if (!clearanceCols.includes("external_ref")) {
+    db.exec("ALTER TABLE claim_clearances ADD COLUMN external_ref TEXT DEFAULT NULL");
   }
   if (!clearanceCols.includes("visibility")) {
     db.exec("ALTER TABLE claim_clearances ADD COLUMN visibility TEXT NOT NULL DEFAULT 'public'");
   }
+  db.exec(`
+    CREATE UNIQUE INDEX IF NOT EXISTS claim_clearances_owner_mandate_external_ref_idx
+    ON claim_clearances(owner_key_hash, mandate_config_id, external_ref)
+    WHERE external_ref IS NOT NULL
+  `);
 
   // ── Bounties ────────────────────────────────────────────────────────────────
   db.exec(`
@@ -610,6 +624,7 @@ function rowToClearApiKey(r: Record<string, unknown>): ClearApiKeyRecord {
     keyPrefix: r.key_prefix as string,
     ownerLabel: r.owner_label as string,
     tier: r.tier as string,
+    scopes: parseJsonArray(r.scopes_json) ?? null,
     revokedAt: (r.revoked_at as string | null) ?? null,
     createdAt: r.created_at as string,
   };
@@ -630,11 +645,11 @@ function rowToClearSettlementIdempotency(r: Record<string, unknown>): ClearSettl
 export function insertClearApiKey(record: ClearApiKeyRecord): void {
   getDb().prepare(`
     INSERT OR REPLACE INTO clear_api_keys (
-      key_hash, key_prefix, owner_label, tier, revoked_at, created_at
-    ) VALUES (?, ?, ?, ?, ?, ?)
+      key_hash, key_prefix, owner_label, tier, scopes_json, revoked_at, created_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?)
   `).run(
     record.keyHash, record.keyPrefix, record.ownerLabel, record.tier,
-    record.revokedAt, record.createdAt
+    stringifyNullableArray(record.scopes), record.revokedAt, record.createdAt
   );
   persistClearApiKey(record);
 }
@@ -714,15 +729,41 @@ export function insertClearMandateConfig(config: ClearMandateConfig): void {
 
 export function insertClaimClearance(clearance: ClaimClearance): void {
   getDb().prepare(`
-    INSERT OR REPLACE INTO claim_clearances (
-      clearance_id, owner_key_hash, visibility, mandate_config_id, source_id, on_chain_source_id, answer_hash, claim_hash,
+    INSERT INTO claim_clearances (
+      clearance_id, owner_key_hash, external_ref, visibility, mandate_config_id, source_id, on_chain_source_id, answer_hash, claim_hash,
       claim_text, quote_text, quote_start, quote_end, quote_verified, support_score,
       license_class, amount_due_micro, amount_paid_micro, underlying_citation_receipt_id,
       on_chain_mandate_id, decision, policy_trace, receipt_hash, anchor_tx,
       challenge_status, challenge_deadline, created_at
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ON CONFLICT(clearance_id) DO UPDATE SET
+      owner_key_hash = COALESCE(claim_clearances.owner_key_hash, excluded.owner_key_hash),
+      external_ref = COALESCE(claim_clearances.external_ref, excluded.external_ref),
+      visibility = claim_clearances.visibility,
+      amount_paid_micro = CASE
+        WHEN excluded.amount_paid_micro > claim_clearances.amount_paid_micro THEN excluded.amount_paid_micro
+        ELSE claim_clearances.amount_paid_micro
+      END,
+      underlying_citation_receipt_id = COALESCE(excluded.underlying_citation_receipt_id, claim_clearances.underlying_citation_receipt_id),
+      decision = CASE
+        WHEN excluded.amount_paid_micro > claim_clearances.amount_paid_micro THEN excluded.decision
+        ELSE claim_clearances.decision
+      END,
+      receipt_hash = CASE
+        WHEN excluded.amount_paid_micro > claim_clearances.amount_paid_micro THEN excluded.receipt_hash
+        ELSE claim_clearances.receipt_hash
+      END,
+      anchor_tx = COALESCE(excluded.anchor_tx, claim_clearances.anchor_tx),
+      challenge_status = CASE
+        WHEN excluded.amount_paid_micro > claim_clearances.amount_paid_micro THEN excluded.challenge_status
+        ELSE claim_clearances.challenge_status
+      END,
+      challenge_deadline = CASE
+        WHEN excluded.amount_paid_micro > claim_clearances.amount_paid_micro THEN excluded.challenge_deadline
+        ELSE claim_clearances.challenge_deadline
+      END
   `).run(
-    clearance.clearanceId, clearance.ownerKeyHash ?? null, clearance.visibility ?? "public",
+    clearance.clearanceId, clearance.ownerKeyHash ?? null, clearance.externalRef ?? null, clearance.visibility ?? "public",
     clearance.mandateConfigId, clearance.sourceId, clearance.onChainSourceId,
     clearance.answerHash, clearance.claimHash, clearance.claimText, clearance.quoteText,
     clearance.quoteStart, clearance.quoteEnd, clearance.quoteVerified ? 1 : 0, clearance.supportScore,
@@ -781,6 +822,18 @@ export function getRecoveryReportById(id: string): RecoveryReport | null {
 
 export function getClaimClearanceById(id: string): ClaimClearance | null {
   const row = getDb().prepare("SELECT * FROM claim_clearances WHERE clearance_id = ?").get(id) as Record<string, unknown> | undefined;
+  return row ? rowToClaimClearance(row) : null;
+}
+
+export function getClaimClearanceByExternalRef(ownerKeyHash: string, mandateConfigId: string, externalRef: string): ClaimClearance | null {
+  const row = getDb().prepare(`
+    SELECT * FROM claim_clearances
+    WHERE owner_key_hash = ?
+      AND mandate_config_id = ?
+      AND external_ref = ?
+    ORDER BY created_at ASC
+    LIMIT 1
+  `).get(ownerKeyHash, mandateConfigId, externalRef) as Record<string, unknown> | undefined;
   return row ? rowToClaimClearance(row) : null;
 }
 
@@ -928,6 +981,7 @@ function rowToClaimClearance(r: Record<string, unknown>): ClaimClearance {
   return {
     clearanceId: r.clearance_id as string,
     ownerKeyHash: (r.owner_key_hash as string | null) ?? null,
+    externalRef: (r.external_ref as string | null) ?? null,
     visibility: (r.visibility as ClaimClearance["visibility"] | null) ?? "public",
     mandateConfigId: r.mandate_config_id as string,
     sourceId: r.source_id as string,

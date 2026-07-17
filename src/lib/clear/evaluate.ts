@@ -44,6 +44,7 @@ function decisionCountsAsBlocked(decision: ClaimDecision): boolean {
 export function buildReceiptHash(clearance: Omit<ClaimClearance, "receiptHash">): string {
   return hashClearObject({
     clearanceId: clearance.clearanceId,
+    externalRef: clearance.externalRef ?? null,
     mandateConfigId: clearance.mandateConfigId,
     sourceId: clearance.sourceId,
     onChainSourceId: clearance.onChainSourceId,

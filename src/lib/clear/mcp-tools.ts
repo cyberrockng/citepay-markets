@@ -1,4 +1,9 @@
-import { authenticateClearApiRequest } from "./auth";
+import {
+  authenticateClearApiRequest,
+  CLEAR_SCOPE_CLEAR_CHECK,
+  CLEAR_SCOPE_CLEAR_SETTLE,
+  hasClearApiScope,
+} from "./auth";
 import { runClearCheck } from "./check";
 import { runClearSettle } from "./settle-api";
 import { getClearanceById } from "./get-clearance";
@@ -41,7 +46,10 @@ export const CLEAR_MCP_TOOL_DEFS = [
             minSupportScore: { type: "number" },
           },
         },
-        externalRef: { type: "string", description: "Optional caller reference, up to 128 characters." },
+        externalRef: {
+          type: "string",
+          description: "Optional caller reference, up to 128 characters. Retries with the same owner, mandateConfigId, and externalRef return the same clearance.",
+        },
         visibility: {
           type: "string",
           enum: ["public", "private_hash_only"],
@@ -111,12 +119,18 @@ export async function handleClearMcpToolCall(
   if (!auth.ok) return { status: auth.status, body: { error: auth.error } };
 
   if (name === "clear_claim") {
+    if (!hasClearApiScope(auth.auth, CLEAR_SCOPE_CLEAR_CHECK)) {
+      return { status: 403, body: { error: "Clear API key is not scoped for clear checks." } };
+    }
     const rl = clearCheckRateLimiter(auth.auth.keyHash);
     if (!rl.allowed) return { status: 429, body: { error: rl.reason } };
     return runClearCheck(args, auth.auth, baseUrl);
   }
 
   if (name === "settle_clearance") {
+    if (!hasClearApiScope(auth.auth, CLEAR_SCOPE_CLEAR_SETTLE)) {
+      return { status: 403, body: { error: "Clear API key is not scoped for settlement." } };
+    }
     const rl = clearSettleRateLimiter(auth.auth.keyHash);
     if (!rl.allowed) return { status: 429, body: { error: rl.reason } };
     return runClearSettle(args, auth.auth, baseUrl);

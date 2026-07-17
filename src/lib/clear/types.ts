@@ -14,6 +14,7 @@ export interface ClearApiKeyRecord {
   keyPrefix: string;
   ownerLabel: string;
   tier: string;
+  scopes: string[] | null;
   revokedAt: string | null;
   createdAt: string;
 }
@@ -55,6 +56,7 @@ export interface ClearMandateConfig {
 export interface ClaimClearance {
   clearanceId: string;
   ownerKeyHash?: string | null;
+  externalRef?: string | null;
   visibility?: ClearanceVisibility;
   mandateConfigId: string;
   sourceId: string;

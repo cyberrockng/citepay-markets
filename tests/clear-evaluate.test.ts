@@ -356,6 +356,53 @@ describe("Clear API auth and check handler", () => {
     expect(checkResult.body.decision).toBe("CLEARED");
   });
 
+  it("returns the same clearance for repeated owner, mandate, and externalRef", async () => {
+    const record = buildClearApiKeyRecord("cpk_test_external_ref_key_1234567890", "external-ref-owner", "2026-07-17T00:00:00.000Z");
+    insertClearApiKey(record);
+    const auth = { keyHash: record.keyHash, keyPrefix: record.keyPrefix, ownerLabel: record.ownerLabel, tier: record.tier };
+    const mandateResult = await createClearMandate({
+      name: "external ref policy",
+      requiredLicenseClass: "standard",
+      maxPricePerCitationMicro: 100_000,
+      totalBudgetMicro: 5_000_000,
+    }, auth);
+    if (mandateResult.status !== 201) throw new Error(mandateResult.body.error);
+
+    const externalRef = `shadow-float-${randomUUID()}`;
+    const first = await runClearCheck({
+      claim: "Exact source evidence supports the cleared claim.",
+      quote: "Exact source evidence supports the cleared claim.",
+      source: { text: SOURCE_TEXT, label: "Inline source", licenseClass: "standard" },
+      policy: { mandateConfigId: mandateResult.body.mandateConfigId },
+      externalRef,
+      visibility: "public",
+    }, auth, "https://citepay.test");
+    if (first.status !== 200) throw new Error(first.body.error);
+    expect(first.body.decision).toBe("CLEARED");
+    expect(first.body.externalRef).toBe(externalRef);
+
+    const retryWithDifferentPayload = await runClearCheck({
+      claim: "A different claim should not replace the idempotent clearance.",
+      quote: "This fabricated quote is not present.",
+      source: { text: SOURCE_TEXT, label: "Inline source", licenseClass: "standard" },
+      policy: { mandateConfigId: mandateResult.body.mandateConfigId },
+      externalRef,
+      visibility: "private_hash_only",
+    }, auth, "https://citepay.test");
+    if (retryWithDifferentPayload.status !== 200) throw new Error(retryWithDifferentPayload.body.error);
+    expect(retryWithDifferentPayload.body.clearanceId).toBe(first.body.clearanceId);
+    expect(retryWithDifferentPayload.body.decision).toBe("CLEARED");
+    expect(retryWithDifferentPayload.body.externalRef).toBe(externalRef);
+
+    const res = await getClearance(new Request("https://citepay.test"), {
+      params: Promise.resolve({ id: first.body.clearanceId }),
+    });
+    const json = await res.json() as { externalRef: string | null; clearance: ClaimClearance };
+    expect(json.externalRef).toBe(externalRef);
+    expect(json.clearance.externalRef).toBe(externalRef);
+    expect(json.clearance.claimText).toBe("Exact source evidence supports the cleared claim.");
+  });
+
   it("rejects invalid mandate license and budget values", async () => {
     const auth = { keyHash: "mandate-invalid-owner", keyPrefix: "cpk_invalid", ownerLabel: "owner", tier: "stage2" };
     const badLicense = await createClearMandate({

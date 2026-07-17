@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildClearApiKeyRecord } from "../src/lib/clear/auth";
+import { buildClearApiKeyRecord, CLEAR_SCOPE_CLEAR_CHECK } from "../src/lib/clear/auth";
 import { insertClearApiKey } from "../src/lib/db";
 import { CLEAR_MCP_TOOL_DEFS, CLEAR_MCP_TOOL_NAMES, handleClearMcpToolCall } from "../src/lib/clear/mcp-tools";
 
@@ -84,5 +84,27 @@ describe("CitePay Clear MCP tools", () => {
       clearanceId: "clr_does_not_exist", mandateConfigId: "mnd_does_not_exist", idempotencyKey: "idem-2", confirm: true,
     }, reqWithBearer(rawKey), "https://citepay.test");
     expect(authed.status).toBe(404);
+  });
+
+  it("honors scoped keys that can check but cannot settle", async () => {
+    const rawKey = "cpk_test_mcp_scoped_check_key_1234567890";
+    insertClearApiKey(buildClearApiKeyRecord(rawKey, "mcp-scoped-owner", "2026-07-17T00:00:00.000Z", [CLEAR_SCOPE_CLEAR_CHECK]));
+
+    const checkResult = await handleClearMcpToolCall("clear_claim", {
+      claim: QUOTE,
+      quote: QUOTE,
+      source: { text: SOURCE_TEXT, label: "Inline source", licenseClass: "standard" },
+      policy: { maxPricePerCitationMicro: 0, requiredLicenseClass: "standard" },
+      visibility: "public",
+    }, reqWithBearer(rawKey), "https://citepay.test");
+    expect(checkResult.status).toBe(200);
+
+    const settle = await handleClearMcpToolCall("settle_clearance", {
+      clearanceId: "clr_no_settle_scope",
+      mandateConfigId: "mnd_no_settle_scope",
+      idempotencyKey: "idem-no-scope",
+      confirm: true,
+    }, reqWithBearer(rawKey), "https://citepay.test");
+    expect(settle.status).toBe(403);
   });
 });

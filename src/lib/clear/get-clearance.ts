@@ -55,6 +55,7 @@ export function confirmedSettlement(clearance: ClaimClearance, receipt: Receipt 
 export interface ClearanceLookupResult {
   decision: ClaimClearance["decision"];
   contentHash: string;
+  externalRef: string | null;
   visibility: string;
   settlement: ReturnType<typeof confirmedSettlement>;
   clearance: ClaimClearance;
@@ -81,6 +82,7 @@ export async function getClearanceById(id: string): Promise<ClearanceLookupResul
   return {
     decision: clearance.decision,
     contentHash: `sha256:${clearance.receiptHash}`,
+    externalRef: clearance.externalRef ?? null,
     visibility: clearance.visibility ?? "public",
     settlement,
     clearance: redactClearance(clearance),

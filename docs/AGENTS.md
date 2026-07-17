@@ -34,12 +34,18 @@ if the exact quote isn't in the source, no support score can force a `CLEARED`.
   "quote": "x402 lets agents pay per HTTP request without a subscription.",
   "source": { "onChainId": "14" },              // or { "text": "...", "label": "..." }
   "policy": { "mandateConfigId": "mnd_..." },    // or inline: { "maxPricePerCitationMicro": 100000, "requiredLicenseClass": "standard" }
+  "externalRef": "shadow-float-request-hash-...",
   "visibility": "private_hash_only"              // default; use "public" to show claim/quote text on the receipt
 }
 ```
 
 Returns `decision` (`CLEARED` / `UNSUPPORTED` / `BLOCKED_LICENSE` / `BLOCKED_POLICY` / `OVER_CAP`),
-`clearanceId`, `receiptUrl`, and `contentHash`.
+`clearanceId`, `externalRef`, `receiptUrl`, and `contentHash`.
+
+`externalRef` is optional but recommended for adapters. When it is present, retries
+with the same API-key owner, `mandateConfigId`, and `externalRef` return the original
+clearance instead of creating a second one. Use this to bind a CitePay clearance to
+an upstream signed intent or request hash.
 
 ### `get_clearance`
 `{ "clearanceId": "clr_..." }` — public, no key needed. Returns the same receipt
@@ -61,6 +67,17 @@ time is never trusted as final.
 ```
 
 Retrying with the same `idempotencyKey` returns the original result — safe to retry on a timeout.
+
+## Settlement accounting
+
+`settle_clearance` is a **separate downstream creator payout** from the CitePay
+agent wallet to the registered source creator. It does not replace an upstream
+provider transfer made by another system.
+
+For Shadow Float integrations, the Float transfer pays the configured provider.
+Use CitePay `clear_claim` / `get_clearance` as the fail-closed clearance gate,
+and do **not** call `settle_clearance` unless both sides explicitly intend a
+second creator-payout leg with a separate recipient and amount.
 
 ## Settleable end-to-end path (read this before your first integration)
 
@@ -103,6 +120,109 @@ and as `mandateConfigId` in `settle_clearance`.
 ## Getting an API key
 
 Keys aren't self-serve yet — request one from the CitePay team. A key looks like `cpk_...`.
+
+Scoped check-only key for provider adapters:
+
+```bash
+npx tsx scripts/issue-clear-api-key.ts \
+  --scopes=mandate:create,clear:check \
+  "shadow-clear-adapter"
+```
+
+Legacy keys with no scopes keep full stage2 access. Scoped keys with
+`mandate:create,clear:check` can create mandates and run clearance checks; they
+cannot call `settle_clearance`.
+
+## V1-V4 JSON vectors
+
+Use these after creating a mandate with `requiredLicenseClass: "standard"` and
+`maxPricePerCitationMicro >= 1000`.
+
+### V1 — CLEARED with externalRef
+
+```json
+{
+  "claim": "USDC settles instantly on Base.",
+  "quote": "USDC is a fully reserved, dollar-backed stablecoin that settles instantly on Base.",
+  "source": {
+    "text": "USDC is a fully reserved, dollar-backed stablecoin that settles instantly on Base.",
+    "label": "Shadow vector V1",
+    "licenseClass": "standard",
+    "priceMicro": 1000
+  },
+  "policy": { "mandateConfigId": "mnd_..." },
+  "externalRef": "shadow-v1-request-hash",
+  "visibility": "private_hash_only"
+}
+```
+
+Expected: `decision: "CLEARED"`, `quoteVerified: true`, `settleable: false`,
+`settlementRequirement: "registered_source"`, and `externalRef` echoed.
+
+### V2 — idempotent retry
+
+```json
+{
+  "claim": "A changed retry payload must not create a new clearance.",
+  "quote": "This quote is intentionally absent from the source.",
+  "source": {
+    "text": "USDC is a fully reserved, dollar-backed stablecoin that settles instantly on Base.",
+    "label": "Shadow vector V2 retry",
+    "licenseClass": "standard",
+    "priceMicro": 1000
+  },
+  "policy": { "mandateConfigId": "mnd_..." },
+  "externalRef": "shadow-v1-request-hash",
+  "visibility": "public"
+}
+```
+
+Expected: the same `clearanceId` and original `decision` returned by V1.
+
+### V3 — UNSUPPORTED absent quote
+
+```json
+{
+  "claim": "USDC settles instantly on Base.",
+  "quote": "This fabricated quote is not present in the source.",
+  "source": {
+    "text": "USDC is a fully reserved, dollar-backed stablecoin that settles instantly on Base.",
+    "label": "Shadow vector V3",
+    "licenseClass": "standard",
+    "priceMicro": 1000
+  },
+  "policy": { "mandateConfigId": "mnd_..." },
+  "externalRef": "shadow-v3-request-hash",
+  "visibility": "private_hash_only"
+}
+```
+
+Expected: `decision: "UNSUPPORTED"`, `quoteVerified: false`, `amountDueMicro: 0`
+on the receipt.
+
+### V4 — OVER_CAP
+
+```json
+{
+  "claim": "USDC settles instantly on Base.",
+  "quote": "USDC is a fully reserved, dollar-backed stablecoin that settles instantly on Base.",
+  "source": {
+    "text": "USDC is a fully reserved, dollar-backed stablecoin that settles instantly on Base.",
+    "label": "Shadow vector V4",
+    "licenseClass": "standard",
+    "priceMicro": 2000
+  },
+  "policy": {
+    "maxPricePerCitationMicro": 1000,
+    "requiredLicenseClass": "standard",
+    "minSupportScore": 0
+  },
+  "externalRef": "shadow-v4-request-hash",
+  "visibility": "private_hash_only"
+}
+```
+
+Expected: `decision: "OVER_CAP"` and no settlement.
 
 ## Full loop
 
