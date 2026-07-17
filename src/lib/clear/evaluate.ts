@@ -14,6 +14,7 @@ export interface ClaimClearanceInput {
   sourceFullText: string;
   supportScore: number;
   sessionSpentMicro: number;
+  externalRef?: string | null;
   nowIso?: string;
 }
 
@@ -138,6 +139,7 @@ export function evaluateClaimClearance(input: ClaimClearanceInput): ClaimClearan
   const challengeDeadline = new Date(new Date(now).getTime() + input.mandate.challengeWindowSeconds * 1000).toISOString();
   const withoutHash: Omit<ClaimClearance, "receiptHash"> = {
     clearanceId: input.clearanceId,
+    externalRef: input.externalRef ?? null,
     mandateConfigId: input.mandate.mandateConfigId,
     sourceId: input.source.id,
     onChainSourceId: input.source.onChainId ?? null,

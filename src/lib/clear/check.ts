@@ -385,6 +385,7 @@ export async function runClearCheck(input: unknown, auth: ClearApiAuth, baseUrl:
     sourceFullText: sourceResult.sourceFullText,
     supportScore,
     sessionSpentMicro: mandateResult.spentMicro,
+    externalRef: externalRef.value ?? null,
   });
   const ownedClearance: ClaimClearance = {
     ...clearance,

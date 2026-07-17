@@ -393,14 +393,47 @@ describe("Clear API auth and check handler", () => {
     expect(retryWithDifferentPayload.body.clearanceId).toBe(first.body.clearanceId);
     expect(retryWithDifferentPayload.body.decision).toBe("CLEARED");
     expect(retryWithDifferentPayload.body.externalRef).toBe(externalRef);
+    // The retry payload deliberately differs (claim/quote/visibility), so a same-hash result here
+    // proves the retry returned the original stored clearance rather than re-evaluating and
+    // silently recomputing a hash that happens to match.
+    expect(retryWithDifferentPayload.body.contentHash).toBe(first.body.contentHash);
 
     const res = await getClearance(new Request("https://citepay.test"), {
       params: Promise.resolve({ id: first.body.clearanceId }),
     });
-    const json = await res.json() as { externalRef: string | null; clearance: ClaimClearance };
+    const json = await res.json() as { externalRef: string | null; contentHash: string; clearance: ClaimClearance };
     expect(json.externalRef).toBe(externalRef);
+    expect(json.contentHash).toBe(first.body.contentHash);
     expect(json.clearance.externalRef).toBe(externalRef);
     expect(json.clearance.claimText).toBe("Exact source evidence supports the cleared claim.");
+  });
+
+  it("commits externalRef into the receipt hash — identical inputs with different externalRef diverge", () => {
+    // Unit-level against evaluateClaimClearance directly, with clearanceId held constant, so this
+    // isolates externalRef's own contribution to the hash. A test that instead drove this through
+    // runClearCheck would pass even with the bug this guards against: check.ts derives clearanceId
+    // from externalRef too, so clearanceId alone would already make the hashes differ and mask a
+    // receiptHash that silently commits to externalRef: null regardless of the real value.
+    const baseInput = {
+      clearanceId: "clr_fixed_for_hash_test",
+      mandate: mandate(),
+      source: source(),
+      answerHash: "answer-hash",
+      claimText: QUOTE,
+      quoteText: QUOTE,
+      sourceFullText: SOURCE_TEXT,
+      supportScore: 100,
+      sessionSpentMicro: 0,
+      nowIso: "2026-07-17T00:00:00.000Z",
+    };
+
+    const a = evaluateClaimClearance({ ...baseInput, externalRef: "hash-vector-a" });
+    const b = evaluateClaimClearance({ ...baseInput, externalRef: "hash-vector-b" });
+
+    expect(a.clearanceId).toBe(b.clearanceId);
+    expect(a.externalRef).toBe("hash-vector-a");
+    expect(b.externalRef).toBe("hash-vector-b");
+    expect(a.receiptHash).not.toBe(b.receiptHash);
   });
 
   it("rejects invalid mandate license and budget values", async () => {

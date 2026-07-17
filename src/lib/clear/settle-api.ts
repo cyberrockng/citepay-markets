@@ -261,6 +261,7 @@ export async function runClearSettle(input: unknown, auth: ClearApiAuth, baseUrl
     sourceFullText: sourceText(source),
     supportScore: clearance.supportScore,
     sessionSpentMicro: spentSoFar,
+    externalRef: clearance.externalRef,
   });
   if (current.decision !== "CLEARED") {
     return { status: current.decision === "OVER_CAP" ? 402 : 422, body: { error: `Would not clear under current mandate: ${current.decision}.`, clearance: current } };
