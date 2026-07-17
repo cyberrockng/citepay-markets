@@ -409,6 +409,9 @@ describe("Clear API auth and check handler", () => {
     }, auth, "https://citepay.test");
     if (checkResult.status !== 200) throw new Error(checkResult.body.error);
     expect(checkResult.body.decision).toBe("CLEARED");
+    // P0-B: an inline CLEARED result must self-declare it cannot be settled, at check time.
+    expect(checkResult.body.settleable).toBe(false);
+    expect(checkResult.body.settlementRequirement).toBe("registered_source");
 
     const settleResult = await runClearSettle({
       clearanceId: checkResult.body.clearanceId,

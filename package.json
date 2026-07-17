@@ -12,7 +12,7 @@
     "test:api": "vitest run tests/api.test.ts --root .",
     "test:payment": "vitest run tests/payment-flow.test.ts --root .",
     "test:ratelimit": "vitest run tests/rate-limit.test.ts --root .",
-    "test:clear": "vitest run tests/quote-verify.test.ts tests/clear-evaluate.test.ts tests/clear-recover.test.ts tests/clear-mcp.test.ts tests/clear-wellknown.test.ts tests/clear-creator-clearances.test.ts tests/content-hash.test.ts --root .",
+    "test:clear": "vitest run tests/quote-verify.test.ts tests/clear-evaluate.test.ts tests/clear-recover.test.ts tests/clear-mcp.test.ts tests/clear-wellknown.test.ts tests/clear-creator-clearances.test.ts tests/clear-budget.test.ts tests/content-hash.test.ts --root .",
     "seed": "npx tsx scripts/seed-sources.ts"
   },
   "overrides": {

@@ -25,6 +25,15 @@ function getSql() {
   return _sql;
 }
 
+/**
+ * Whether Neon is the authoritative store for this process. When true (prod), atomic budget
+ * reservation must happen on Neon — the per-instance SQLite mirror resets on cold start and
+ * cannot enforce a cross-instance cap. When false (local dev / tests), SQLite is authoritative.
+ */
+export function isNeonEnabled(): boolean {
+  return Boolean(process.env.DATABASE_URL);
+}
+
 // ─── Schema ──────────────────────────────────────────────────────────────────
 
 let _initialised = false;
@@ -119,6 +128,13 @@ async function init() {
       mandate_config_id TEXT NOT NULL,
       claim_hash TEXT NOT NULL,
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+  `;
+  await sql`
+    CREATE TABLE IF NOT EXISTS cp_clear_mandate_budgets (
+      mandate_config_id TEXT PRIMARY KEY,
+      budget_cap_micro BIGINT NOT NULL,
+      reserved_micro BIGINT NOT NULL DEFAULT 0
     )
   `;
   await sql`
@@ -429,6 +445,68 @@ export async function tryReserveNeonClearSettlementLock(opts: {
     RETURNING lock_key
   ` as Record<string, unknown>[];
   return rows.length > 0;
+}
+
+/**
+ * Seed the per-mandate budget row on Neon, lazily backfilling reserved_micro from prior actual
+ * spend so an existing mandate keeps its true consumed amount. Idempotent.
+ */
+export async function ensureNeonClearMandateBudgetRow(mandateConfigId: string, budgetCapMicro: number): Promise<void> {
+  const sql = getSql();
+  if (!sql) return;
+  await init();
+  await sql`
+    INSERT INTO cp_clear_mandate_budgets (mandate_config_id, budget_cap_micro, reserved_micro)
+    SELECT ${mandateConfigId}, ${budgetCapMicro}, COALESCE(
+      (SELECT SUM(amount_paid_micro) FROM cp_claim_clearances WHERE mandate_config_id = ${mandateConfigId}), 0)
+    ON CONFLICT (mandate_config_id) DO NOTHING
+  `;
+}
+
+/**
+ * Atomic budget reservation on Neon. The single-statement conditional UPDATE relies on Postgres
+ * row locking: a concurrent second reservation blocks until the first commits, then re-evaluates
+ * against the committed reserved_micro. Zero rows returned means the cap would be breached (null).
+ */
+export async function reserveNeonClearMandateBudget(mandateConfigId: string, amountMicro: number): Promise<number | null> {
+  const sql = getSql();
+  if (!sql) return null;
+  await init();
+  const rows = await sql`
+    UPDATE cp_clear_mandate_budgets
+    SET reserved_micro = reserved_micro + ${amountMicro}
+    WHERE mandate_config_id = ${mandateConfigId}
+      AND reserved_micro + ${amountMicro} <= budget_cap_micro
+    RETURNING reserved_micro
+  ` as { reserved_micro: string | number }[];
+  return rows.length > 0 ? Number(rows[0].reserved_micro) : null;
+}
+
+/** Release a speculative Neon reservation after a failed payment. Never called on success. */
+export async function releaseNeonClearMandateBudget(mandateConfigId: string, amountMicro: number): Promise<void> {
+  const sql = getSql();
+  if (!sql) return;
+  await init();
+  await sql`
+    UPDATE cp_clear_mandate_budgets
+    SET reserved_micro = GREATEST(0, reserved_micro - ${amountMicro})
+    WHERE mandate_config_id = ${mandateConfigId}
+  `;
+}
+
+export async function getNeonReservedMicroByMandateConfigId(mandateConfigId: string): Promise<number> {
+  const sql = getSql();
+  if (!sql) return 0;
+  try {
+    await init();
+    const rows = await sql`
+      SELECT reserved_micro FROM cp_clear_mandate_budgets WHERE mandate_config_id = ${mandateConfigId}
+    ` as { reserved_micro: string | number }[];
+    return Number(rows[0]?.reserved_micro ?? 0);
+  } catch (err) {
+    console.error("[neon] getNeonReservedMicroByMandateConfigId failed:", String(err).slice(0, 120));
+    return 0;
+  }
 }
 
 export function persistReceipt(r: NeonReceipt): void {

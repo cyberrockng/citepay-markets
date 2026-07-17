@@ -6,6 +6,7 @@ import { sourceText } from "./source-text";
 import { createPaidReceipt, PaymentNotConfirmedError } from "./settle";
 import { sha256 } from "@/lib/evidence";
 import {
+  ensureClearMandateBudgetRow,
   getAllSources,
   getClaimClearanceById,
   getClearMandateConfigById,
@@ -15,15 +16,21 @@ import {
   hasSettledClaim,
   insertClaimClearance,
   insertClearSettlementIdempotency,
+  releaseClearMandateBudget,
+  reserveClearMandateBudget,
   reserveClearSettlementLock,
 } from "@/lib/db";
 import {
+  ensureNeonClearMandateBudgetRow,
   getNeonClaimClearanceById,
   getNeonClearMandateConfigById,
   getNeonClearSettlementIdempotencyByHash,
   getNeonHasSettledClaim,
   getNeonReceiptById,
   getNeonSpentMicroByMandateConfigId,
+  isNeonEnabled,
+  releaseNeonClearMandateBudget,
+  reserveNeonClearMandateBudget,
   tryReserveNeonClearSettlementLock,
 } from "@/lib/neon";
 import { isExplicitDevModeEnabled } from "@/lib/env-gates";
@@ -108,6 +115,29 @@ function parseStoredResponse(record: ClearSettlementIdempotencyRecord): ClearSet
   }
 }
 
+/**
+ * Reserve budget on the single authoritative store: Neon in prod (cross-instance), SQLite in
+ * local dev/tests. Reserving on only the authoritative store — rather than both — avoids the two
+ * mirrors ever disagreeing on whether the cap was breached. Returns the new reserved total, or
+ * null if this reservation would exceed the cap.
+ */
+async function reserveBudget(mandateConfigId: string, budgetCapMicro: number, amountMicro: number): Promise<number | null> {
+  if (isNeonEnabled()) {
+    await ensureNeonClearMandateBudgetRow(mandateConfigId, budgetCapMicro);
+    return reserveNeonClearMandateBudget(mandateConfigId, amountMicro);
+  }
+  ensureClearMandateBudgetRow(mandateConfigId, budgetCapMicro);
+  return reserveClearMandateBudget(mandateConfigId, amountMicro);
+}
+
+async function releaseBudget(mandateConfigId: string, amountMicro: number): Promise<void> {
+  if (isNeonEnabled()) {
+    await releaseNeonClearMandateBudget(mandateConfigId, amountMicro);
+    return;
+  }
+  releaseClearMandateBudget(mandateConfigId, amountMicro);
+}
+
 async function recordIdempotentSuccess(opts: {
   idempotencyKeyHash: string;
   ownerKeyHash: string;
@@ -189,7 +219,7 @@ export async function runClearSettle(input: unknown, auth: ClearApiAuth, baseUrl
 
   const source = findRegisteredSource(clearance);
   if (!source || source.url.startsWith("inline://")) {
-    return { status: 422, body: { error: "Paid settlement requires a registered source with a real payout wallet." } };
+    return { status: 422, body: { error: "Inline sources cannot be settled — re-run clear_claim/check with a registered source.onChainId (a catalog source with a real payout wallet), then settle that clearance. See docs/AGENTS.md → \"Settleable end-to-end path\"." } };
   }
 
   const alreadySettled =
@@ -236,8 +266,17 @@ export async function runClearSettle(input: unknown, auth: ClearApiAuth, baseUrl
     return { status: current.decision === "OVER_CAP" ? 402 : 422, body: { error: `Would not clear under current mandate: ${current.decision}.`, clearance: current } };
   }
 
+  // Atomic budget gate. The re-evaluation above still checks the cap advisorily against SUM(paid),
+  // but this reservation is the authoritative enforcement: it cannot be split by a concurrent
+  // settle of a different claim on the same mandate, so total reserved can never exceed the cap.
+  const reservedAfter = await reserveBudget(mandate.mandateConfigId, mandate.budgetCapMicro, current.amountDueMicro);
+  if (reservedAfter === null) {
+    return { status: 402, body: { error: "Would not clear under current mandate: OVER_CAP (mandate budget exhausted).", clearance: current } };
+  }
+
+  let payment: Awaited<ReturnType<typeof createPaidReceipt>>;
   try {
-    const payment = await createPaidReceipt({
+    payment = await createPaidReceipt({
       source,
       queryId: `clear-${clearance.clearanceId}`,
       query: `[Clear] ${clearance.claimText}`,
@@ -246,39 +285,10 @@ export async function runClearSettle(input: unknown, auth: ClearApiAuth, baseUrl
       budgetBefore: mandate.budgetCapMicro - spentSoFar,
       requireConfirmed: !allowSimulatedSettlement(),
     });
-
-    const updatedWithoutHash = {
-      ...current,
-      ownerKeyHash: clearance.ownerKeyHash ?? auth.keyHash,
-      visibility: clearance.visibility ?? "public",
-      amountPaidMicro: payment.amountPaid,
-      underlyingCitationReceiptId: payment.receiptId,
-    };
-    const settled: ClaimClearance = { ...updatedWithoutHash, receiptHash: buildReceiptHash(updatedWithoutHash) };
-    insertClaimClearance(settled);
-
-    const response: ClearSettleSuccess = {
-      settled: true,
-      clearanceId: settled.clearanceId,
-      mandateConfigId: mandate.mandateConfigId,
-      receiptId: payment.receiptId,
-      txHash: payment.paymentStatus === "confirmed" ? payment.txHash : null,
-      paymentStatus: payment.paymentStatus ?? "simulated",
-      chainSettlement: payment.paymentStatus === "confirmed",
-      amountMicro: payment.amountPaid,
-      receiptUrl: `${baseUrl.replace(/\/$/, "")}/clearance/${settled.clearanceId}`,
-      remainingBudgetMicro: mandate.budgetCapMicro - spentSoFar - payment.amountPaid,
-    };
-    await recordIdempotentSuccess({
-      idempotencyKeyHash,
-      ownerKeyHash: auth.keyHash,
-      clearanceId: settled.clearanceId,
-      mandateConfigId: mandate.mandateConfigId,
-      receiptId: payment.receiptId,
-      response,
-    });
-    return { status: 200, body: response };
   } catch (err) {
+    // Payment did not go through — release the speculative reservation so it does not permanently
+    // consume budget with no corresponding payment.
+    await releaseBudget(mandate.mandateConfigId, current.amountDueMicro);
     if (err instanceof PaymentNotConfirmedError) {
       return {
         status: 502,
@@ -291,4 +301,38 @@ export async function runClearSettle(input: unknown, auth: ClearApiAuth, baseUrl
     }
     throw err;
   }
+
+  // Payment confirmed. From here on the reservation stands permanently (never released) — it is
+  // the authoritative record that this claim's amount was consumed from the mandate budget.
+  const updatedWithoutHash = {
+    ...current,
+    ownerKeyHash: clearance.ownerKeyHash ?? auth.keyHash,
+    visibility: clearance.visibility ?? "public",
+    amountPaidMicro: payment.amountPaid,
+    underlyingCitationReceiptId: payment.receiptId,
+  };
+  const settled: ClaimClearance = { ...updatedWithoutHash, receiptHash: buildReceiptHash(updatedWithoutHash) };
+  insertClaimClearance(settled);
+
+  const response: ClearSettleSuccess = {
+    settled: true,
+    clearanceId: settled.clearanceId,
+    mandateConfigId: mandate.mandateConfigId,
+    receiptId: payment.receiptId,
+    txHash: payment.paymentStatus === "confirmed" ? payment.txHash : null,
+    paymentStatus: payment.paymentStatus ?? "simulated",
+    chainSettlement: payment.paymentStatus === "confirmed",
+    amountMicro: payment.amountPaid,
+    receiptUrl: `${baseUrl.replace(/\/$/, "")}/clearance/${settled.clearanceId}`,
+    remainingBudgetMicro: Math.max(0, mandate.budgetCapMicro - reservedAfter),
+  };
+  await recordIdempotentSuccess({
+    idempotencyKeyHash,
+    ownerKeyHash: auth.keyHash,
+    clearanceId: settled.clearanceId,
+    mandateConfigId: mandate.mandateConfigId,
+    receiptId: payment.receiptId,
+    response,
+  });
+  return { status: 200, body: response };
 }

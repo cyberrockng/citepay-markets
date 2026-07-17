@@ -9,11 +9,13 @@ import { contentHashFromText, sha256 } from "@/lib/evidence";
 import {
   getAllSources,
   getClearMandateConfigById,
+  getReservedMicroByMandateConfigId,
   getSpentMicroByMandateConfigId,
   insertClaimClearance,
 } from "@/lib/db";
 import {
   getNeonClearMandateConfigById,
+  getNeonReservedMicroByMandateConfigId,
   getNeonSpentMicroByMandateConfigId,
 } from "@/lib/neon";
 
@@ -42,6 +44,11 @@ export interface ClearCheckSuccess {
     priceMicro: number;
     budgetRemainingMicro: number | null;
   };
+  // Whether this clearance can proceed to settle_clearance. Inline sources CLEAR for verification
+  // but can never be settled (no real payout wallet) — surfaced here so an integrator learns it at
+  // check time, not three steps later when settle_clearance returns 422.
+  settleable: boolean;
+  settlementRequirement?: "registered_source";
   settlement: null;
   receiptUrl: string;
   contentHash: string;
@@ -306,6 +313,18 @@ export async function runClearCheck(input: unknown, auth: ClearApiAuth, baseUrl:
   };
   insertClaimClearance(ownedClearance);
 
+  // Remaining budget is reported against max(actual spend, reserved) so a preview never shows more
+  // headroom than settlement will actually grant — reservations from in-flight/committed settles
+  // count as consumed even before their SUM(amount_paid) lands.
+  const reservedMicro = Math.max(
+    getReservedMicroByMandateConfigId(mandateResult.mandate.mandateConfigId),
+    await getNeonReservedMicroByMandateConfigId(mandateResult.mandate.mandateConfigId)
+  );
+  const consumedMicro = Math.max(mandateResult.spentMicro, reservedMicro);
+
+  const inlineSource = sourceResult.source.url.startsWith("inline://");
+  const settleable = ownedClearance.decision === "CLEARED" && !inlineSource;
+
   const normalizedBaseUrl = baseUrl.replace(/\/$/, "");
   return {
     status: 200,
@@ -318,8 +337,10 @@ export async function runClearCheck(input: unknown, auth: ClearApiAuth, baseUrl:
         supportScoreMethod: "deterministic_overlap_v1",
         licenseClass: ownedClearance.licenseClass,
         priceMicro: sourceResult.source.price,
-        budgetRemainingMicro: mandateResult.mandate.budgetCapMicro - mandateResult.spentMicro,
+        budgetRemainingMicro: Math.max(0, mandateResult.mandate.budgetCapMicro - consumedMicro),
       },
+      settleable,
+      ...(inlineSource ? { settlementRequirement: "registered_source" as const } : {}),
       settlement: null,
       receiptUrl: `${normalizedBaseUrl}/clearance/${ownedClearance.clearanceId}`,
       contentHash: `sha256:${ownedClearance.receiptHash}`,

@@ -62,6 +62,30 @@ time is never trusted as final.
 
 Retrying with the same `idempotencyKey` returns the original result — safe to retry on a timeout.
 
+## Settleable end-to-end path (read this before your first integration)
+
+`clear_claim` accepts two source modes, but only one is **settleable**:
+
+- **Inline source** (`source.text`): great for a quick verification of the quote/license/support logic. An inline claim can return `CLEARED`, but it **cannot** be settled — there's no real payout wallet. `clear_claim` tells you this up front: the response carries `"settleable": false` and `"settlementRequirement": "registered_source"`. Calling `settle_clearance` on it returns `422`.
+- **Registered source** (`source.onChainId`): a catalog source with a real creator payout wallet. A `CLEARED` result here has `"settleable": true` and can be settled end-to-end.
+
+So the real loop is: `clear_claim` with `source.onChainId` → `CLEARED` (`settleable: true`) → `settle_clearance`.
+
+**Copy-paste settleable vector** (registered source, license `standard`, price 1000 µUSDC — fits the recommended mandate below):
+
+```jsonc
+// clear_claim
+{
+  "claim": "USDC settles instantly on Base.",
+  "quote": "USDC is a fully reserved, dollar-backed stablecoin that settles instantly on Base.",
+  "source": { "onChainId": "22" },
+  "policy": { "mandateConfigId": "mnd_..." }
+}
+// → decision: "CLEARED", settleable: true  → then settle_clearance that clearanceId
+```
+
+Always gate on `settleable === true` (not just `decision === "CLEARED"`) before calling `settle_clearance`.
+
 ## Before you settle: create a mandate
 
 There's no MCP tool for this yet — call the REST endpoint once per policy:

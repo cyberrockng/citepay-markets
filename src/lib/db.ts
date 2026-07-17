@@ -172,7 +172,14 @@ function migrate(db: Database.Database) {
       clearance_id TEXT NOT NULL,
       mandate_config_id TEXT NOT NULL,
       claim_hash TEXT NOT NULL,
+      receipt_id TEXT DEFAULT NULL,
       created_at TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS clear_mandate_budgets (
+      mandate_config_id TEXT PRIMARY KEY,
+      budget_cap_micro INTEGER NOT NULL,
+      reserved_micro INTEGER NOT NULL DEFAULT 0
     );
 
     CREATE TABLE IF NOT EXISTS clear_mandate_configs (
@@ -787,6 +794,57 @@ export function getSpentMicroByMandateConfigId(mandateConfigId: string): number 
     "SELECT COALESCE(SUM(amount_paid_micro), 0) as spent FROM claim_clearances WHERE mandate_config_id = ?"
   ).get(mandateConfigId) as { spent: number };
   return row.spent;
+}
+
+/**
+ * Seed the per-mandate budget row the first time we settle against a mandate. `reserved_micro`
+ * is lazily backfilled from any prior actual spend (SUM of amount_paid_micro) so a mandate that
+ * already settled some claims before this table existed keeps its true consumed amount rather
+ * than resetting to zero. Idempotent: ON CONFLICT DO NOTHING never disturbs an existing row.
+ */
+export function ensureClearMandateBudgetRow(mandateConfigId: string, budgetCapMicro: number): void {
+  getDb().prepare(`
+    INSERT INTO clear_mandate_budgets (mandate_config_id, budget_cap_micro, reserved_micro)
+    SELECT ?, ?, COALESCE(
+      (SELECT SUM(amount_paid_micro) FROM claim_clearances WHERE mandate_config_id = ?), 0)
+    ON CONFLICT(mandate_config_id) DO NOTHING
+  `).run(mandateConfigId, budgetCapMicro, mandateConfigId);
+}
+
+/**
+ * Atomic budget reservation. The conditional UPDATE is a single statement, so the cap check and
+ * the increment cannot be split by a concurrent settle — a second reservation that would breach
+ * the cap simply matches zero rows and returns null. Returns the new reserved total on success.
+ */
+export function reserveClearMandateBudget(mandateConfigId: string, amountMicro: number): number | null {
+  const row = getDb().prepare(`
+    UPDATE clear_mandate_budgets
+    SET reserved_micro = reserved_micro + ?
+    WHERE mandate_config_id = ?
+      AND reserved_micro + ? <= budget_cap_micro
+    RETURNING reserved_micro
+  `).get(amountMicro, mandateConfigId, amountMicro) as { reserved_micro: number } | undefined;
+  return row ? row.reserved_micro : null;
+}
+
+/**
+ * Release a speculative reservation when the payment it was made for did not go through. Never
+ * called on success — the reservation stands permanently as the enforcement high-water mark, and
+ * decrementing it on success would reopen the very race this table closes.
+ */
+export function releaseClearMandateBudget(mandateConfigId: string, amountMicro: number): void {
+  getDb().prepare(`
+    UPDATE clear_mandate_budgets
+    SET reserved_micro = MAX(0, reserved_micro - ?)
+    WHERE mandate_config_id = ?
+  `).run(amountMicro, mandateConfigId);
+}
+
+export function getReservedMicroByMandateConfigId(mandateConfigId: string): number {
+  const row = getDb().prepare(
+    "SELECT reserved_micro FROM clear_mandate_budgets WHERE mandate_config_id = ?"
+  ).get(mandateConfigId) as { reserved_micro: number } | undefined;
+  return row?.reserved_micro ?? 0;
 }
 
 export function hasSettledClaim(mandateConfigId: string, claimHash: string): boolean {
