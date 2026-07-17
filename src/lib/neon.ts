@@ -278,27 +278,9 @@ export interface NeonReceipt {
 }
 
 export function persistClearApiKey(record: ClearApiKeyRecord): void {
-  const sql = getSql();
-  if (!sql) return;
-  void (async () => {
-    try {
-      await init();
-      await sql`
-        INSERT INTO cp_clear_api_keys (
-          key_hash, key_prefix, owner_label, tier, scopes_json, revoked_at, created_at
-        ) VALUES (
-          ${record.keyHash}, ${record.keyPrefix}, ${record.ownerLabel}, ${record.tier}, ${record.scopes ?? null}, ${record.revokedAt}, ${record.createdAt}
-        )
-        ON CONFLICT (key_hash) DO UPDATE SET
-          owner_label = EXCLUDED.owner_label,
-          tier = EXCLUDED.tier,
-          scopes_json = EXCLUDED.scopes_json,
-          revoked_at = EXCLUDED.revoked_at
-      `;
-    } catch (err) {
-      console.error("[neon] persistClearApiKey failed:", String(err).slice(0, 120));
-    }
-  })();
+  void upsertNeonClearApiKey(record).catch((err) => {
+    console.error("[neon] persistClearApiKey failed:", String(err).slice(0, 120));
+  });
 }
 
 export async function upsertNeonClearApiKey(record: ClearApiKeyRecord): Promise<void> {
@@ -309,7 +291,7 @@ export async function upsertNeonClearApiKey(record: ClearApiKeyRecord): Promise<
     INSERT INTO cp_clear_api_keys (
       key_hash, key_prefix, owner_label, tier, scopes_json, revoked_at, created_at
     ) VALUES (
-      ${record.keyHash}, ${record.keyPrefix}, ${record.ownerLabel}, ${record.tier}, ${record.scopes ?? null}, ${record.revokedAt}, ${record.createdAt}
+      ${record.keyHash}, ${record.keyPrefix}, ${record.ownerLabel}, ${record.tier}, ${record.scopes ? JSON.stringify(record.scopes) : null}, ${record.revokedAt}, ${record.createdAt}
     )
     ON CONFLICT (key_hash) DO UPDATE SET
       owner_label = EXCLUDED.owner_label,
