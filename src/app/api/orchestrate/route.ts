@@ -400,7 +400,12 @@ Write a 2-3 sentence self-assessment as JSON:
           orchestratorWallet: orchestratorClient.address,
           pilotAttestationTx: pilotPlan?.attestationTxHash ?? null,
           agentToAgentCount: subAgentRewards.length,
-          agentCoordinationRewardsMicro: subAgentRewards.reduce((s, r) => s + r.rewardMicro, 0),
+          // Only count rewards that actually landed on-chain — a failed payCreator call is pushed
+          // into subAgentRewards with txHash: null (see the catch above) so its attempt is still
+          // visible, but summing its rewardMicro here would silently overstate how much USDC
+          // actually moved whenever a sub-agent reward fails.
+          agentCoordinationRewardsMicro: subAgentRewards.filter((r) => r.txHash !== null).reduce((s, r) => s + r.rewardMicro, 0),
+          agentToAgentFailedCount: subAgentRewards.filter((r) => r.txHash === null).length,
         },
       });
     } catch (err) {

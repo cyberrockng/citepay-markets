@@ -504,22 +504,29 @@ export default function OrchestratePage() {
                         Sub-Agent {p.agentIndex + 1}: &quot;{p.subQuery.slice(0, 50)}{p.subQuery.length > 50 ? "…" : ""}&quot;
                       </span>
                       <span className="text-[#4a4a5e]">score: {p.contributionScore}/100</span>
-                      <span className="text-[#34D399]">${(p.rewardMicro / 1e6).toFixed(4)}</span>
-                      {p.txHash && (
-                        <a
-                          href={`https://testnet.arcscan.app/tx/${p.txHash}`}
-                          target="_blank" rel="noopener noreferrer"
-                          className="text-[#6366f1] hover:text-indigo-300"
-                        >
-                          ↗
-                        </a>
+                      {p.txHash ? (
+                        <>
+                          <span className="text-[#34D399]">${(p.rewardMicro / 1e6).toFixed(4)}</span>
+                          <a
+                            href={`https://testnet.arcscan.app/tx/${p.txHash}`}
+                            target="_blank" rel="noopener noreferrer"
+                            className="text-[#6366f1] hover:text-indigo-300"
+                          >
+                            ↗
+                          </a>
+                        </>
+                      ) : (
+                        <span className="text-[#ef4444]">payout failed</span>
                       )}
                     </div>
                   ))}
                 </div>
                 <div className="mt-3 pt-3 border-t border-[#1e1e2e] text-[10px] text-[#4a4a5e] font-mono flex items-center justify-between">
                   <span>
-                    Total coordination rewards: <span className="text-[#34D399]">${(agentRewards.reduce((s, p) => s + p.rewardMicro, 0) / 1e6).toFixed(4)} USDC</span>
+                    Total coordination rewards: <span className="text-[#34D399]">${(agentRewards.filter((p) => p.txHash).reduce((s, p) => s + p.rewardMicro, 0) / 1e6).toFixed(4)} USDC</span>
+                    {agentRewards.some((p) => !p.txHash) && (
+                      <span className="text-[#ef4444]"> · {agentRewards.filter((p) => !p.txHash).length} payout{agentRewards.filter((p) => !p.txHash).length > 1 ? "s" : ""} failed</span>
+                    )}
                   </span>
                   <span>Settled on Arc Testnet · 3-layer economic graph</span>
                 </div>
