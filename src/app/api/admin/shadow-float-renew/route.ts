@@ -27,7 +27,7 @@ import {
 import { privateKeyToAccount } from "viem/accounts";
 import { ARC_USDC, ARC_RPC } from "@/lib/x402";
 
-export const config = { maxDuration: 60 };
+export const config = { maxDuration: 180 };
 
 const ARC_CHAIN_ID = 5_042_002;
 const USDC_ADDRESS = (process.env.ARC_USDC_ADDRESS || ARC_USDC) as Address;
@@ -73,6 +73,30 @@ function freshHash(label: string): Hex {
   return keccak256(toHex(`${label}-${Date.now()}-${Math.random()}`));
 }
 
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+// Arc testnet's public RPC rate-limits aggressively enough that back-to-back calls from one
+// function invocation trip it (seen directly: two readContract calls a beat apart both hit
+// "request limit reached") — and waitForTransactionReceipt polls internally, so it can hit the
+// same limit mid-wait with no way to insert a gap from the outside. Wrapping every RPC-touching
+// call in a retry lets a transient rate-limit error resolve itself instead of failing the whole
+// (multi-transaction, partially irreversible) sequence.
+async function withRetry<T>(label: string, fn: () => Promise<T>, attempts = 6, delayMs = 4_000): Promise<T> {
+  let lastErr: unknown;
+  for (let i = 1; i <= attempts; i++) {
+    try {
+      return await fn();
+    } catch (err) {
+      lastErr = err;
+      console.error(`[shadow-float-renew] ${label} attempt ${i}/${attempts} failed: ${String(err).slice(0, 200)}`);
+      if (i < attempts) await sleep(delayMs);
+    }
+  }
+  throw lastErr;
+}
+
 export async function POST(req: NextRequest) {
   const secret = process.env.SHADOW_FLOAT_RENEW_SECRET;
   if (!secret) {
@@ -101,33 +125,33 @@ export async function POST(req: NextRequest) {
   try {
     // Guard: don't attempt this twice — a line already existing for the new agent means either
     // a prior run succeeded or something else opened one; either way, don't blindly re-run.
-    const existingAgentLine = await publicClient.readContract({
+    const existingAgentLine = await withRetry("read existingAgentLine", () => publicClient.readContract({
       address: SHADOW_FLOAT_ADDRESS, abi: shadowFloatAbi, functionName: "lines", args: [agent],
-    });
+    }));
     if (existingAgentLine[0] !== "0x0000000000000000000000000000000000000000") {
       return NextResponse.json({ error: "A line already exists for the new agent address. Not re-running.", existingLine: serializeLine(existingAgentLine) }, { status: 409 });
     }
 
     // 1. Reclaim the old line's reserve — sponsor-only, needs no agent signature.
-    const oldSponsor = await publicClient.readContract({
+    const oldSponsor = await withRetry("read oldSponsor", () => publicClient.readContract({
       address: SHADOW_FLOAT_ADDRESS, abi: shadowFloatAbi, functionName: "lineSponsors", args: [OLD_AGENT],
-    });
+    }));
     if (oldSponsor[0].toLowerCase() !== sponsor.toLowerCase()) {
       return NextResponse.json({ error: `Old line sponsor mismatch: expected ${sponsor}, found ${oldSponsor[0]}` }, { status: 409 });
     }
     const reserveUSDC = oldSponsor[1];
-    const closeHash = await walletClient.writeContract({
+    const closeHash = await withRetry("write closeSponsoredLine", () => walletClient.writeContract({
       address: SHADOW_FLOAT_ADDRESS, abi: shadowFloatAbi, functionName: "closeSponsoredLine",
       args: [OLD_AGENT, sponsor, freshHash("close")],
-    });
-    await publicClient.waitForTransactionReceipt({ hash: closeHash, timeout: 30_000 });
+    }));
+    await withRetry("wait closeOldLine receipt", () => publicClient.waitForTransactionReceipt({ hash: closeHash, timeout: 30_000 }));
     txHashes.closeOldLine = closeHash;
 
     // 2. Approve + open a fresh line for the new agent, using the reclaimed reserve.
-    const approve1Hash = await walletClient.writeContract({
+    const approve1Hash = await withRetry("write approve (open)", () => walletClient.writeContract({
       address: USDC_ADDRESS, abi: erc20Abi, functionName: "approve", args: [SHADOW_FLOAT_ADDRESS, reserveUSDC],
-    });
-    await publicClient.waitForTransactionReceipt({ hash: approve1Hash, timeout: 30_000 });
+    }));
+    await withRetry("wait approveForOpen receipt", () => publicClient.waitForTransactionReceipt({ hash: approve1Hash, timeout: 30_000 }));
     txHashes.approveForOpen = approve1Hash;
 
     const nowSec = BigInt(Math.floor(Date.now() / 1000));
@@ -135,11 +159,11 @@ export async function POST(req: NextRequest) {
     const endpointHash = keccak256(toHex("citepay:shadow-float-renewal"));
     const mandateId = freshHash("mandate");
 
-    const openHash = await walletClient.writeContract({
+    const openHash = await withRetry("write openSponsoredLine", () => walletClient.writeContract({
       address: SHADOW_FLOAT_ADDRESS, abi: shadowFloatAbi, functionName: "openSponsoredLine",
       args: [agent, reserveUSDC, mandateId, lineExpiry, sponsor, endpointHash, MAX_PER_REQUEST_MICRO, DAILY_LIMIT_MICRO, lineExpiry],
-    });
-    await publicClient.waitForTransactionReceipt({ hash: openHash, timeout: 30_000 });
+    }));
+    await withRetry("wait openNewLine receipt", () => publicClient.waitForTransactionReceipt({ hash: openHash, timeout: 30_000 }));
     txHashes.openNewLine = openHash;
 
     // 3. Sign (as the new agent) and submit (as the sponsor) one real FloatSpendIntent —
@@ -164,38 +188,38 @@ export async function POST(req: NextRequest) {
     const domain = { name: "ShadowFloat", version: "1", chainId: ARC_CHAIN_ID, verifyingContract: SHADOW_FLOAT_ADDRESS } as const;
     const signature = await agentAccount.signTypedData({ domain, types: intentTypes, primaryType: "FloatSpendIntent", message: intent });
 
-    const spendHash = await walletClient.writeContract({
+    const spendHash = await withRetry("write requestSignedSpend", () => walletClient.writeContract({
       address: SHADOW_FLOAT_ADDRESS, abi: shadowFloatAbi, functionName: "requestSignedSpend",
       args: [intent, signature],
-    });
-    await publicClient.waitForTransactionReceipt({ hash: spendHash, timeout: 30_000 });
+    }));
+    await withRetry("wait signedSpend receipt", () => publicClient.waitForTransactionReceipt({ hash: spendHash, timeout: 30_000 }));
     txHashes.signedSpend = spendHash;
 
     // 4. Approve + repay in full, immediately — this is a canary, not a real draw. repay() is
     //    permissionless, so the sponsor wallet can call it directly without the agent's key.
-    const approve2Hash = await walletClient.writeContract({
+    const approve2Hash = await withRetry("write approve (repay)", () => walletClient.writeContract({
       address: USDC_ADDRESS, abi: erc20Abi, functionName: "approve", args: [SHADOW_FLOAT_ADDRESS, SPEND_AMOUNT_MICRO],
-    });
-    await publicClient.waitForTransactionReceipt({ hash: approve2Hash, timeout: 30_000 });
+    }));
+    await withRetry("wait approveForRepay receipt", () => publicClient.waitForTransactionReceipt({ hash: approve2Hash, timeout: 30_000 }));
     txHashes.approveForRepay = approve2Hash;
 
-    const repayHash = await walletClient.writeContract({
+    const repayHash = await withRetry("write repay", () => walletClient.writeContract({
       address: SHADOW_FLOAT_ADDRESS, abi: shadowFloatAbi, functionName: "repay",
       args: [agent, SPEND_AMOUNT_MICRO, freshHash("repay")],
-    });
-    await publicClient.waitForTransactionReceipt({ hash: repayHash, timeout: 30_000 });
+    }));
+    await withRetry("wait repay receipt", () => publicClient.waitForTransactionReceipt({ hash: repayHash, timeout: 30_000 }));
     txHashes.repay = repayHash;
 
     // 5. Read back final state for the canary report — no credentials, only public chain state.
-    const finalLine = await publicClient.readContract({
+    const finalLine = await withRetry("read finalLine", () => publicClient.readContract({
       address: SHADOW_FLOAT_ADDRESS, abi: shadowFloatAbi, functionName: "lines", args: [agent],
-    });
-    const finalSponsor = await publicClient.readContract({
+    }));
+    const finalSponsor = await withRetry("read finalSponsor", () => publicClient.readContract({
       address: SHADOW_FLOAT_ADDRESS, abi: shadowFloatAbi, functionName: "lineSponsors", args: [agent],
-    });
-    const finalExpiry = await publicClient.readContract({
+    }));
+    const finalExpiry = await withRetry("read finalExpiry", () => publicClient.readContract({
       address: SHADOW_FLOAT_ADDRESS, abi: shadowFloatAbi, functionName: "lineExpiries", args: [agent],
-    });
+    }));
 
     return NextResponse.json({
       ok: true,
