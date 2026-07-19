@@ -5,6 +5,7 @@ import { use } from "react";
 import type { Receipt, Source } from "@/types";
 import { Badge } from "@/components/ui";
 import { BackButton } from "@/components/back-button";
+import { clearBadgeEmbedSnippet } from "@/lib/clear/embed";
 
 const ARCSCAN = "https://testnet.arcscan.app";
 
@@ -22,6 +23,31 @@ function ReputationBar({ rep, max = 10 }: { rep: number; max?: number }) {
       </div>
     </div>
   );
+}
+
+function micro(v: number) {
+  return `$${(v / 1_000_000).toFixed(4)} USDC`;
+}
+
+function priceSummary(sources: Source[]) {
+  if (sources.length === 0) return "none";
+  const prices = sources.map((s) => s.price);
+  const min = Math.min(...prices);
+  const max = Math.max(...prices);
+  return min === max ? micro(min) : `${micro(min)}-${micro(max)}`;
+}
+
+function licenseSummary(sources: Source[]) {
+  const licenses = Array.from(new Set(sources.map((s) => s.licenseClass ?? "standard")));
+  return licenses.length ? licenses.join(", ") : "standard";
+}
+
+function verificationSummary(sources: Source[]) {
+  if (sources.length === 0) return "none";
+  const verified = sources.filter((s) => s.verificationStatus === "domain_verified").length;
+  if (verified === sources.length) return "domain verified";
+  if (verified > 0) return `${verified}/${sources.length} domain verified`;
+  return "self declared";
 }
 
 interface ShareModalProps {
@@ -75,6 +101,7 @@ export default function CreatorPage({ params }: { params: Promise<{ wallet: stri
   const [data, setData] = useState<{ sources: Source[]; receipts: Receipt[]; totalEarned: number } | null>(null);
   const [loading, setLoading] = useState(true);
   const [showShare, setShowShare] = useState(false);
+  const [copiedBadge, setCopiedBadge] = useState(false);
   const [onChainStats, setOnChainStats] = useState<{
     citations: number;
     totalUSDC: number;
@@ -122,6 +149,14 @@ export default function CreatorPage({ params }: { params: Promise<{ wallet: stri
   const avgRep = data?.sources.length
     ? data.sources.reduce((s, x) => s + x.reputation, 0) / data.sources.length
     : 0;
+  const sources = data?.sources ?? [];
+  const badgeTemplate = clearBadgeEmbedSnippet("https://citepay-markets.vercel.app", "clr_...");
+
+  async function copyBadgeTemplate() {
+    await navigator.clipboard.writeText(badgeTemplate).catch(() => {});
+    setCopiedBadge(true);
+    setTimeout(() => setCopiedBadge(false), 2000);
+  }
 
   return (
     <main className="min-h-screen bg-[#0a0a0f] text-[#f0f0f5] pb-20">
@@ -188,6 +223,53 @@ export default function CreatorPage({ params }: { params: Promise<{ wallet: stri
           ))}
         </div>
 
+        {/* Creator setup */}
+        {(data?.sources.length || 0) > 0 && (
+          <div className="bg-[#111118] rounded-xl border border-[#1e1e2e] mb-6 overflow-hidden">
+            <div className="px-6 py-4 border-b border-[#1e1e2e] flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <h2 className="font-semibold text-[#f0f0f5]">Creator Setup</h2>
+                <p className="text-[10px] font-mono text-[#4a4a5e] mt-0.5">License, wallet, policy status, and badge template</p>
+              </div>
+              <Link href={`/creator/${wallet}/clearances`} className="text-xs text-[#6366f1] hover:text-indigo-300 transition-colors">
+                Clearance history →
+              </Link>
+            </div>
+            <div className="grid gap-3 px-6 py-5 sm:grid-cols-2">
+              {[
+                { label: "License class", value: licenseSummary(sources), accent: "text-[#f0f0f5]" },
+                { label: "Price per citation", value: priceSummary(sources), accent: "text-[#34D399]" },
+                { label: "Payout wallet", value: wallet, accent: "text-[#8b8b9e]", mono: true },
+                { label: "citepay.json", value: verificationSummary(sources), accent: sources.some((s) => s.verificationStatus === "domain_verified") ? "text-[#34D399]" : "text-[#8b8b9e]" },
+              ].map((item) => (
+                <div key={item.label} className="rounded-lg border border-white/10 bg-[#0a0a0f] px-4 py-3 min-w-0">
+                  <div className="text-[10px] font-mono text-[#4a4a5e] mb-1">{item.label}</div>
+                  <div className={`text-sm ${item.accent} ${item.mono ? "font-mono break-all" : ""}`}>{item.value}</div>
+                </div>
+              ))}
+            </div>
+            <div className="px-6 pb-5">
+              <div className="rounded-lg border border-white/10 bg-[#0a0a0f] p-4">
+                <div className="mb-3 flex items-center justify-between gap-3">
+                  <div>
+                    <div className="text-[10px] font-mono text-[#4a4a5e]">CLEAR BADGE EMBED</div>
+                    <div className="text-xs text-[#8b8b9e] mt-1">Replace the placeholder with a clearance ID from your history.</div>
+                  </div>
+                  <button
+                    onClick={copyBadgeTemplate}
+                    className="text-xs font-mono px-3 py-1.5 rounded bg-[#1e1e2e] hover:bg-[#2e2e3e] text-[#8b8b9e] hover:text-[#f0f0f5] transition-colors flex-shrink-0"
+                  >
+                    {copiedBadge ? "Copied!" : "Copy"}
+                  </button>
+                </div>
+                <pre className="overflow-x-auto rounded border border-white/10 bg-[#050508] p-3 text-[10px] leading-5 text-[#d6d6e7]">
+                  <code>{badgeTemplate}</code>
+                </pre>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Sources */}
         {(data?.sources.length || 0) > 0 && (
           <div className="bg-[#111118] rounded-xl border border-[#1e1e2e] mb-6 overflow-hidden">
@@ -213,8 +295,12 @@ export default function CreatorPage({ params }: { params: Promise<{ wallet: stri
                        className="text-[#6366f1] text-xs hover:text-indigo-300 break-all">
                       {s.url}
                     </a>
-                    <div className="flex gap-4 mt-2 text-xs text-[#8b8b9e]">
+                    <div className="flex flex-wrap gap-x-4 gap-y-1 mt-2 text-xs text-[#8b8b9e]">
                       <span>Price: <span className="text-[#f0f0f5] font-mono">${(s.price / 1_000_000).toFixed(4)}</span></span>
+                      <span>License: <span className="text-[#f0f0f5] font-mono">{s.licenseClass ?? "standard"}</span></span>
+                      <span>citepay.json: <span className={s.verificationStatus === "domain_verified" ? "text-[#34D399]" : "text-[#8b8b9e]"}>
+                        {s.verificationStatus === "domain_verified" ? "domain verified" : "self declared"}
+                      </span></span>
                       <span>Paid: <span className="text-[#34D399]">{s.paidCount}</span></span>
                       <span>Refused: <span className="text-red-400">{s.refusedCount}</span></span>
                     </div>

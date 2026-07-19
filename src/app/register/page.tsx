@@ -3,6 +3,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { BackButton } from "@/components/back-button";
 import { useTraction } from "@/hooks/use-traction";
+import { clearBadgeEmbedSnippet } from "@/lib/clear/embed";
 
 const MIN_PRICE = 500;
 const MAX_PRICE = 5000;
@@ -17,6 +18,8 @@ interface RegisteredSource {
   title: string;
   payoutWallet: string;
   price: number;
+  licenseClass?: string;
+  verificationStatus?: string;
 }
 
 interface WellKnownDiagnostic {
@@ -42,6 +45,7 @@ export default function RegisterPage() {
   const [registered, setRegistered] = useState<RegisteredSource | null>(null);
   const [wellKnown,  setWellKnown]  = useState<WellKnownDiagnostic | null>(null);
   const [copied,     setCopied]     = useState(false);
+  const [copiedBadge, setCopiedBadge] = useState(false);
 
   function fillExample() {
     const suffix = Date.now().toString(36);
@@ -113,12 +117,30 @@ export default function RegisterPage() {
       .catch(() => {});
   }
 
+  function copyBadgeSnippet() {
+    navigator.clipboard
+      .writeText(clearBadgeEmbedSnippet("https://citepay-markets.vercel.app", "clr_..."))
+      .then(() => { setCopiedBadge(true); setTimeout(() => setCopiedBadge(false), 2000); })
+      .catch(() => {});
+  }
+
+  function verificationLabel(status?: string) {
+    if (status === "domain_verified") return "domain verified";
+    return "self declared";
+  }
+
   const inputClass =
     "w-full bg-[#111118] border border-[#1e1e2e] rounded-lg px-4 py-3 text-[#f0f0f5] placeholder-[#4a4a5e] focus:outline-none focus:border-[#6366f1] transition-colors text-sm";
   const labelClass = "block text-xs font-mono text-[#8b8b9e] mb-1.5";
 
   // ── Success panel ──────────────────────────────────────────────────────────
   if (registered) {
+    const license = registered.licenseClass ?? licenseClass;
+    const verification = registered.verificationStatus ?? (wellKnown?.verified ? "domain_verified" : "unverified");
+    const creatorUrl = `https://citepay-markets.vercel.app/creator/${registered.payoutWallet}`;
+    const clearancesUrl = `/creator/${registered.payoutWallet}/clearances`;
+    const badgeTemplate = clearBadgeEmbedSnippet("https://citepay-markets.vercel.app", "clr_...");
+
     return (
       <main className="min-h-screen bg-[#0a0a0f] text-[#f0f0f5]">
         <div className="max-w-2xl mx-auto px-6 py-12">
@@ -150,6 +172,20 @@ export default function RegisterPage() {
                 <span className="text-[#34D399]">${priceToUsd(registered.price)} USDC</span>
               </div>
               <div className="flex justify-between">
+                <span>License class</span>
+                <span className="text-[#8b8b9e]">{license}</span>
+              </div>
+              <div className="flex justify-between gap-4">
+                <span>Payout wallet</span>
+                <span className="text-[#8b8b9e] text-right break-all">{registered.payoutWallet}</span>
+              </div>
+              <div className="flex justify-between">
+                <span>citepay.json</span>
+                <span className={verification === "domain_verified" ? "text-[#34D399]" : "text-[#8b8b9e]"}>
+                  {verificationLabel(verification)}
+                </span>
+              </div>
+              <div className="flex justify-between">
                 <span>Status</span>
                 <span className="text-[#34D399]">active · earning</span>
               </div>
@@ -174,6 +210,13 @@ export default function RegisterPage() {
                 <span>→</span>
               </Link>
               <Link
+                href={clearancesUrl}
+                className="flex items-center justify-between w-full bg-[#0a0a0f] border border-[#34D399]/30 hover:border-[#34D399]/60 text-[#34D399] hover:text-green-200 rounded-lg px-4 py-3 text-sm transition-colors"
+              >
+                View clearance history
+                <span>→</span>
+              </Link>
+              <Link
                 href="/ask"
                 className="flex items-center justify-between w-full bg-[#0a0a0f] border border-[#1e1e2e] hover:border-[#6366f1]/50 text-[#8b8b9e] hover:text-[#f0f0f5] rounded-lg px-4 py-3 text-sm transition-colors"
               >
@@ -182,11 +225,32 @@ export default function RegisterPage() {
               </Link>
             </div>
 
+            <div className="bg-[#0a0a0f] rounded-lg border border-[#1e1e2e] p-4 mb-6">
+              <div className="flex items-center justify-between gap-3 mb-3">
+                <div>
+                  <div className="text-[10px] font-mono text-[#4a4a5e]">CLEAR BADGE EMBED</div>
+                  <div className="text-xs text-[#8b8b9e] mt-1">
+                    Use a real clearance ID from your history.
+                  </div>
+                </div>
+                <button
+                  onClick={copyBadgeSnippet}
+                  aria-label="Copy badge embed snippet"
+                  className="text-xs font-mono px-3 py-1.5 rounded bg-[#1e1e2e] hover:bg-[#2e2e3e] text-[#8b8b9e] hover:text-[#f0f0f5] transition-colors flex-shrink-0"
+                >
+                  {copiedBadge ? "Copied!" : "Copy"}
+                </button>
+              </div>
+              <pre className="overflow-x-auto rounded border border-white/10 bg-[#050508] p-3 text-[10px] leading-5 text-[#d6d6e7]">
+                <code>{badgeTemplate}</code>
+              </pre>
+            </div>
+
             <div className="bg-[#0a0a0f] rounded-lg border border-[#1e1e2e] p-4">
               <div className="text-[10px] font-mono text-[#4a4a5e] mb-2">SHARE YOUR EARNINGS PAGE</div>
               <div className="flex items-center gap-2">
                 <span className="font-mono text-xs text-[#6366f1] truncate flex-1">
-                  citepay-markets.vercel.app/creator/{registered.payoutWallet.slice(0, 10)}…
+                  {creatorUrl.replace("https://", "").slice(0, 44)}…
                 </span>
                 <button
                   onClick={copyEarningsLink}
