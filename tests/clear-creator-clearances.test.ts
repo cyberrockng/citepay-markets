@@ -1,9 +1,11 @@
 import { describe, expect, it } from "vitest";
+import { NextRequest } from "next/server";
 import type { Source } from "../src/types";
 import { buildClearApiKeyRecord } from "../src/lib/clear/auth";
 import { runClearCheck } from "../src/lib/clear/check";
 import { insertClearApiKey, insertSource, updateSourceOnChainId } from "../src/lib/db";
 import { getClearancesForWallet } from "../src/lib/clear/creator-clearances";
+import { GET as getCreatorClearances } from "../src/app/api/creator/[wallet]/clearances/route";
 
 // Unit fixtures must never be persisted to durable project storage.
 delete process.env.DATABASE_URL;
@@ -95,5 +97,20 @@ describe("getClearancesForWallet", () => {
 
     const rows = await getClearancesForWallet(WALLET.toUpperCase(), "https://citepay.test");
     expect(rows.some((r) => r.clearanceId === checkResult.body.clearanceId)).toBe(true);
+  });
+
+  it("rate limits the public creator clearances route by IP", async () => {
+    const request = () => new NextRequest(`https://citepay.test/api/creator/${WALLET}/clearances`, {
+      headers: { "x-forwarded-for": "203.0.113.88" },
+    });
+
+    for (let i = 0; i < 30; i++) {
+      const res = await getCreatorClearances(request(), { params: Promise.resolve({ wallet: WALLET }) });
+      expect(res.status).toBe(200);
+    }
+
+    const blocked = await getCreatorClearances(request(), { params: Promise.resolve({ wallet: WALLET }) });
+    expect(blocked.status).toBe(429);
+    expect(blocked.headers.get("Retry-After")).toBeTruthy();
   });
 });
