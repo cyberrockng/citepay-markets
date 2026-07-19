@@ -12,6 +12,7 @@
  */
 
 import { neon } from "@neondatabase/serverless";
+import type { RateLimitCheckResult } from "@/lib/rate-limit";
 import type { Receipt, EvidencePreimage, ScoreBreakdown } from "@/types";
 import type { ClaimClearance, ClearanceCertificate, ClearApiKeyRecord, ClearMandateConfig, ClearSettlementIdempotencyRecord, RecoveryReport } from "@/lib/clear/types";
 
@@ -137,6 +138,17 @@ async function init() {
       mandate_config_id TEXT PRIMARY KEY,
       budget_cap_micro BIGINT NOT NULL,
       reserved_micro BIGINT NOT NULL DEFAULT 0
+    )
+  `;
+  await sql`
+    CREATE TABLE IF NOT EXISTS cp_clear_rate_limits (
+      limiter_id TEXT NOT NULL,
+      subject_hash TEXT NOT NULL,
+      window_started_at TIMESTAMPTZ NOT NULL,
+      window_count INTEGER NOT NULL DEFAULT 0,
+      lifetime_count INTEGER NOT NULL DEFAULT 0,
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      PRIMARY KEY (limiter_id, subject_hash)
     )
   `;
   await sql`
@@ -501,6 +513,119 @@ export async function getNeonReservedMicroByMandateConfigId(mandateConfigId: str
     console.error("[neon] getNeonReservedMicroByMandateConfigId failed:", String(err).slice(0, 120));
     return 0;
   }
+}
+
+export async function checkNeonClearRateLimit(opts: {
+  limiterId: string;
+  subjectHash: string;
+  windowMs: number;
+  maxPerWindow?: number;
+  lifetimeCap?: number;
+}): Promise<RateLimitCheckResult | null> {
+  const sql = getSql();
+  if (!sql) return null;
+  await init();
+
+  const windowMs = Math.max(0, Math.floor(opts.windowMs));
+  const maxPerWindow = opts.maxPerWindow ?? null;
+  const lifetimeCap = opts.lifetimeCap ?? 50;
+  const rows = await sql`
+    WITH input AS (
+      SELECT
+        ${opts.limiterId}::text AS limiter_id,
+        ${opts.subjectHash}::text AS subject_hash,
+        ${windowMs}::bigint AS window_ms,
+        ${maxPerWindow}::integer AS max_per_window,
+        ${lifetimeCap}::integer AS lifetime_cap,
+        NOW() AS checked_at
+    ),
+    attempted AS (
+      INSERT INTO cp_clear_rate_limits (
+        limiter_id, subject_hash, window_started_at, window_count, lifetime_count, updated_at
+      )
+      SELECT limiter_id, subject_hash, checked_at, 1, 1, checked_at
+      FROM input
+      WHERE lifetime_cap > 0
+        AND (max_per_window IS NULL OR max_per_window > 0)
+      ON CONFLICT (limiter_id, subject_hash) DO UPDATE SET
+        window_started_at = CASE
+          WHEN (SELECT window_ms FROM input) <= 0
+            OR EXTRACT(EPOCH FROM (EXCLUDED.updated_at - cp_clear_rate_limits.window_started_at)) * 1000 >= (SELECT window_ms FROM input)
+          THEN EXCLUDED.updated_at
+          ELSE cp_clear_rate_limits.window_started_at
+        END,
+        window_count = CASE
+          WHEN (SELECT window_ms FROM input) <= 0
+            OR EXTRACT(EPOCH FROM (EXCLUDED.updated_at - cp_clear_rate_limits.window_started_at)) * 1000 >= (SELECT window_ms FROM input)
+          THEN 1
+          ELSE cp_clear_rate_limits.window_count + 1
+        END,
+        lifetime_count = cp_clear_rate_limits.lifetime_count + 1,
+        updated_at = EXCLUDED.updated_at
+      WHERE cp_clear_rate_limits.lifetime_count < (SELECT lifetime_cap FROM input)
+        AND (
+          (SELECT max_per_window FROM input) IS NULL
+          OR (SELECT window_ms FROM input) <= 0
+          OR EXTRACT(EPOCH FROM (EXCLUDED.updated_at - cp_clear_rate_limits.window_started_at)) * 1000 >= (SELECT window_ms FROM input)
+          OR cp_clear_rate_limits.window_count < (SELECT max_per_window FROM input)
+        )
+      RETURNING window_started_at, window_count, lifetime_count
+    ),
+    current_state AS (
+      SELECT rl.window_started_at, rl.window_count, rl.lifetime_count
+      FROM cp_clear_rate_limits rl, input
+      WHERE rl.limiter_id = input.limiter_id
+        AND rl.subject_hash = input.subject_hash
+    ),
+    state AS (
+      SELECT true AS allowed, window_started_at, window_count, lifetime_count
+      FROM attempted
+      UNION ALL
+      SELECT false AS allowed, window_started_at, window_count, lifetime_count
+      FROM current_state
+      WHERE NOT EXISTS (SELECT 1 FROM attempted)
+    )
+    SELECT
+      state.allowed,
+      CASE
+        WHEN NOT state.allowed AND state.lifetime_count >= input.lifetime_cap THEN 'lifetime'
+        WHEN NOT state.allowed THEN 'window'
+        ELSE NULL
+      END AS blocked_reason,
+      CASE
+        WHEN NOT state.allowed
+          AND input.max_per_window IS NOT NULL
+          AND state.lifetime_count < input.lifetime_cap
+        THEN GREATEST(
+          0,
+          CEIL(input.window_ms - EXTRACT(EPOCH FROM (input.checked_at - state.window_started_at)) * 1000)
+        )::bigint
+        ELSE NULL
+      END AS retry_after_ms
+    FROM state, input
+    LIMIT 1
+  ` as { allowed: boolean; blocked_reason: string | null; retry_after_ms: string | number | null }[];
+
+  const row = rows[0];
+  if (!row) {
+    const wait = maxPerWindow === 0 ? windowMs : undefined;
+    return {
+      allowed: false,
+      ...(wait !== undefined ? { retryAfterMs: wait } : {}),
+      reason: wait !== undefined ? `Rate limit: wait ${Math.ceil(wait / 1000)}s` : "Session request limit reached",
+    };
+  }
+  if (row.allowed) return { allowed: true };
+  if (row.blocked_reason === "lifetime") {
+    return { allowed: false, reason: "Session request limit reached" };
+  }
+
+  const retryAfterMs = Math.max(0, Number(row.retry_after_ms ?? windowMs));
+  return {
+    allowed: false,
+    retryAfterMs,
+    reason: `Rate limit: wait ${Math.ceil(retryAfterMs / 1000)}s`,
+  };
 }
 
 export function persistReceipt(r: NeonReceipt): void {

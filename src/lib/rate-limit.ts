@@ -1,18 +1,26 @@
+export interface RateLimiterOptions {
+  windowMs: number;
+  maxPerWindow?: number;
+  lifetimeCap?: number;
+}
+
+export interface RateLimitCheckResult {
+  allowed: boolean;
+  retryAfterMs?: number;
+  reason?: string;
+}
+
 /**
  * Shared in-memory rate limiter for payment-triggering endpoints.
  * Per-IP: configurable cooldown window + lifetime request cap.
  * State survives within a Vercel instance; resets on cold start (by design).
  */
-export function createRateLimiter(opts: {
-  windowMs: number;
-  maxPerWindow?: number;
-  lifetimeCap?: number;
-}) {
+export function createRateLimiter(opts: RateLimiterOptions) {
   const timestamps = new Map<string, number>();
   const windows = new Map<string, { startedAt: number; count: number }>();
   const counts = new Map<string, number>();
 
-  return function check(ip: string): { allowed: boolean; retryAfterMs?: number; reason?: string } {
+  return function check(ip: string): RateLimitCheckResult {
     const now = Date.now();
     const count = counts.get(ip) ?? 0;
 

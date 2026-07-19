@@ -106,7 +106,7 @@ export async function handleClearMcpToolCall(
   baseUrl: string
 ): Promise<ClearMcpToolResult> {
   if (name === "get_clearance") {
-    const rl = clearGetRateLimiter(getClientIp(req));
+    const rl = await clearGetRateLimiter(getClientIp(req));
     if (!rl.allowed) return { status: 429, body: { error: rl.reason } };
     const clearanceId = typeof args.clearanceId === "string" ? args.clearanceId.trim() : "";
     if (!clearanceId) return { status: 400, body: { error: "clearanceId is required." } };
@@ -122,7 +122,7 @@ export async function handleClearMcpToolCall(
     if (!hasClearApiScope(auth.auth, CLEAR_SCOPE_CLEAR_CHECK)) {
       return { status: 403, body: { error: "Clear API key is not scoped for clear checks." } };
     }
-    const rl = clearCheckRateLimiter(auth.auth.keyHash);
+    const rl = await clearCheckRateLimiter(auth.auth.keyHash);
     if (!rl.allowed) return { status: 429, body: { error: rl.reason } };
     return runClearCheck(args, auth.auth, baseUrl);
   }
@@ -131,7 +131,7 @@ export async function handleClearMcpToolCall(
     if (!hasClearApiScope(auth.auth, CLEAR_SCOPE_CLEAR_SETTLE)) {
       return { status: 403, body: { error: "Clear API key is not scoped for settlement." } };
     }
-    const rl = clearSettleRateLimiter(auth.auth.keyHash);
+    const rl = await clearSettleRateLimiter(auth.auth.keyHash);
     if (!rl.allowed) return { status: 429, body: { error: rl.reason } };
     return runClearSettle(args, auth.auth, baseUrl);
   }

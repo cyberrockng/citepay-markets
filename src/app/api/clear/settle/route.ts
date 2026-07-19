@@ -14,7 +14,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Clear API key is not scoped for settlement." }, { status: 403 });
   }
 
-  const rl = _checkRateLimit(auth.auth.keyHash);
+  const rl = await _checkRateLimit(auth.auth.keyHash);
   if (!rl.allowed) {
     const res = NextResponse.json({ error: rl.reason }, { status: 429 });
     if (rl.retryAfterMs) {

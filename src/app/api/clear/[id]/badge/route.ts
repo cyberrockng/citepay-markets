@@ -87,7 +87,7 @@ function renderBadge(state: ClearBadgeState): string {
 }
 
 export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
-  const rl = clearBadgeRateLimiter(getClientIp(req));
+  const rl = await clearBadgeRateLimiter(getClientIp(req));
   if (!rl.allowed) {
     const res = NextResponse.json({ error: rl.reason }, { status: 429 });
     if (rl.retryAfterMs) res.headers.set("Retry-After", String(Math.ceil(rl.retryAfterMs / 1000)));

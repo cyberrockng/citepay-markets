@@ -5,7 +5,7 @@ import { clearGetRateLimiter, getClientIp } from "@/lib/clear/rate-limiters";
 export const dynamic = "force-dynamic";
 
 export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
-  const rl = clearGetRateLimiter(getClientIp(req));
+  const rl = await clearGetRateLimiter(getClientIp(req));
   if (!rl.allowed) {
     const res = NextResponse.json({ error: rl.reason }, { status: 429 });
     if (rl.retryAfterMs) res.headers.set("Retry-After", String(Math.ceil(rl.retryAfterMs / 1000)));
