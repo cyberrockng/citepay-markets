@@ -63,6 +63,19 @@ a real, exact quote clears; a paraphrased or slightly-off quote gets
 refused — even if the agent was confident about it. That refusal, not the
 happy path, is the actual proof the integration is doing something real.
 
+## Badge embed
+
+Every clearance can be shown as a public SVG badge. Use the `clearanceId`
+returned by `clear_claim`:
+
+```html
+<a href="https://citepay-markets.vercel.app/clearance/clr_..."><img alt="CitePay clearance badge" src="https://citepay-markets.vercel.app/api/clear/clr_.../badge" /></a>
+```
+
+This is the same snippet shown on `/clearance/<id>`. The badge renders
+`Cleared`, `Cleared Paid`, `Not cleared`, or `Not found`, and the linked
+receipt carries the detailed evidence.
+
 ## Settling a cleared claim
 
 `settle_clearance` needs a `mandateConfigId` — create one once via REST

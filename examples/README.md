@@ -26,3 +26,14 @@ Call `clear_claim` (or `POST /api/clear/check`) with the claim, the exact
 quote, and the source. If `decision !== "CLEARED"`, don't cite it and don't
 pay for it — the check is deterministic, so a high AI confidence score can
 never force a pass on a quote that isn't actually in the source.
+
+## Badge embed
+
+After `clear_claim`, link the public receipt and badge together:
+
+```html
+<a href="https://citepay-markets.vercel.app/clearance/clr_..."><img alt="CitePay clearance badge" src="https://citepay-markets.vercel.app/api/clear/clr_.../badge" /></a>
+```
+
+The same copy-paste snippet appears on each `/clearance/<id>` receipt page.
+Badge states are `Cleared`, `Cleared Paid`, `Not cleared`, and `Not found`.

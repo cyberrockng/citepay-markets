@@ -52,6 +52,25 @@ an upstream signed intent or request hash.
 shown at `/clearance/<id>`, including `settlement` (`null` until a real on-chain
 payment confirms).
 
+## Clear Badge embeds
+
+Every clearance has a public SVG badge at:
+
+```text
+https://citepay-markets.vercel.app/api/clear/<clearanceId>/badge
+```
+
+Embed it by linking the badge image back to the public clearance receipt:
+
+```html
+<a href="https://citepay-markets.vercel.app/clearance/clr_..."><img alt="CitePay clearance badge" src="https://citepay-markets.vercel.app/api/clear/clr_.../badge" /></a>
+```
+
+That snippet matches the copy-paste embed shown on `/clearance/<id>`. The badge
+renders four public states: `Cleared`, `Cleared Paid`, `Not cleared`, and
+`Not found`. Treat the badge as a link to the live receipt; detailed refusal and
+settlement evidence lives there.
+
 ### `settle_clearance`
 Pays a `CLEARED` clearance against a mandate's budget. Re-evaluates against the
 mandate's *current* state before paying — a clearance being `CLEARED` at check
