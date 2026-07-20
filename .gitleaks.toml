@@ -1,0 +1,4 @@
+title = "citepay-markets gitleaks config"
+
+[extend]
+useDefault = true
