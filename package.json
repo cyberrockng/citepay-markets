@@ -14,7 +14,8 @@
     "test:ratelimit": "vitest run tests/rate-limit.test.ts --root .",
     "test:clear": "vitest run tests/quote-verify.test.ts tests/clear-evaluate.test.ts tests/clear-recover.test.ts tests/clear-mcp.test.ts tests/clear-wellknown.test.ts tests/clear-creator-clearances.test.ts tests/clear-budget.test.ts tests/content-hash.test.ts --root .",
     "clear:verify-live": "node scripts/clear-verify-live.mjs",
-    "seed": "npx tsx scripts/seed-sources.ts"
+    "seed": "npx tsx scripts/seed-sources.ts",
+    "prepare": "husky"
   },
   "overrides": {
     "@circle-fin/adapter-circle-wallets": {
@@ -60,6 +61,7 @@
     "dotenv": "^17.4.2",
     "eslint": "^9",
     "eslint-config-next": "16.2.9",
+    "husky": "^9.1.7",
     "playwright": "^1.61.0",
     "tailwindcss": "^4",
     "tsx": "^4.19.0",
